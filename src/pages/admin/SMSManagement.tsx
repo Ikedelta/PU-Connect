@@ -23,7 +23,7 @@ export default function SMSManagement() {
   const [sentMessages, setSentMessages] = useState<any[]>([]);
 
   useEffect(() => {
-    if (profile?.role !== 'admin') {
+    if (profile?.role !== 'admin' && profile?.role !== 'super_admin') {
       navigate('/marketplace');
       return;
     }
@@ -229,8 +229,8 @@ export default function SMSManagement() {
                           <p className="text-xs text-gray-500 truncate">{user.email}</p>
                         </div>
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${user.role === 'seller'
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-sky-100 text-sky-700'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-sky-100 text-sky-700'
                           }`}>
                           {user.role}
                         </span>

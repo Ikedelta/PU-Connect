@@ -29,12 +29,57 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (authLoading) return;
-    // DEVELOPER MODE: Role check disabled to allow access
-    // if (!profile || (profile.role !== 'admin' && profile.role !== 'super_admin')) {
-    //   navigate('/marketplace');
-    //   return;
-    // }
+
     fetchData();
+
+    // Realtime Subscriptions
+    const channels = [
+      supabase
+        .channel('admin-dashboard-apps')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'seller_applications' },
+          (payload) => {
+            console.log('Realtime update:', payload);
+            fetchData(); // Refresh data on any change
+            if (payload.eventType === 'INSERT') {
+              setNotification({ type: 'success', message: 'New seller application received' });
+            }
+          }
+        )
+        .subscribe(),
+
+      supabase
+        .channel('admin-dashboard-products')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'products' },
+          () => fetchData()
+        )
+        .subscribe(),
+
+      supabase
+        .channel('admin-dashboard-news')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'campus_news' },
+          () => fetchData()
+        )
+        .subscribe(),
+
+      supabase
+        .channel('admin-dashboard-messages')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'messages' },
+          () => fetchData()
+        )
+        .subscribe()
+    ];
+
+    return () => {
+      channels.forEach(channel => supabase.removeChannel(channel));
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, authLoading]);
 
@@ -259,6 +304,7 @@ export default function AdminDashboard() {
                     { title: 'Add Product', desc: 'List new inventory item', path: '/seller/add-product', icon: 'ri-add-circle-line' },
                     { title: 'SMS Broadcast', desc: 'Send alerts to students', path: '/admin/sms', icon: 'ri-message-3-line' },
                     { title: 'Newsletter List', desc: 'Manage subscribers', path: '/admin/newsletter', icon: 'ri-mail-open-line' },
+                    { title: 'Website Content', desc: 'Update site images', path: '/admin/content', icon: 'ri-layout-masonry-line' },
                     { title: 'Internal Chat', desc: 'Team Communication', path: '/admin/messages', icon: 'ri-chat-smile-2-line' },
                     // Conditional Links for Super Admin
                     ...(profile?.role === 'super_admin' ? [

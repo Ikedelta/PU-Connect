@@ -27,7 +27,7 @@ export default function UserManagement() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editRole, setEditRole] = useState('');
+  const [editData, setEditData] = useState({ role: '', department: '', phone: '' });
   const [saving, setSaving] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
 
@@ -100,41 +100,46 @@ export default function UserManagement() {
 
   const handleEditRole = (user: User) => {
     setSelectedUser(user);
-    setEditRole(user.role);
+    setEditData({
+      role: user.role,
+      department: user.department || '',
+      phone: user.phone || ''
+    });
     setShowEditModal(true);
     setOpenDropdown(null);
   };
 
-  const handleSaveRole = async () => {
+  const handleSaveUser = async () => {
     if (!selectedUser) return;
 
     setSaving(true);
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ role: editRole })
+        .update({
+          role: editData.role,
+          department: editData.department,
+          phone: editData.phone
+        })
         .eq('id', selectedUser.id);
 
       if (error) throw error;
 
       // Send SMS Notification if role changed
-      if (selectedUser.phone) {
+      if (selectedUser.role !== editData.role && editData.phone) {
         try {
           const { sendSMS } = await import('../../lib/arkesel');
           const firstName = selectedUser.full_name.split(' ')[0];
-          const newRole = editRole === 'news_publisher' ? 'News Publisher' :
-            editRole.charAt(0).toUpperCase() + editRole.slice(1);
+          const newRole = editData.role === 'news_publisher' ? 'News Publisher' :
+            editData.role.charAt(0).toUpperCase() + editData.role.slice(1);
 
           await sendSMS(
-            [selectedUser.phone],
+            [editData.phone],
             `Hi ${firstName}, your account role on PU Connect has been updated to "${newRole}". You now have ${newRole} privileges. Login to access your dashboard.`
           );
         } catch (smsErr) {
           console.error('Failed to send role update SMS:', smsErr);
-          alert('Role updated, but failed to send SMS notification.');
         }
-      } else {
-        alert('User has no phone number connected. Role updated without SMS notification.');
       }
 
       await fetchUsers();
@@ -143,8 +148,8 @@ export default function UserManagement() {
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 3000);
     } catch (error) {
-      console.error('Error updating role:', error);
-      alert('Failed to update user role');
+      console.error('Error updating profile:', error);
+      alert('Failed to update user profile');
     } finally {
       setSaving(false);
     }
@@ -493,13 +498,40 @@ export default function UserManagement() {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3 ml-1">
+                  Department
+                </label>
+                <input
+                  type="text"
+                  value={editData.department}
+                  onChange={(e) => setEditData({ ...editData, department: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-gray-900 dark:text-white font-bold text-sm focus:ring-2 focus:ring-blue-500/20 outline-none"
+                  placeholder="e.g. Computer Science"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3 ml-1">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  value={editData.phone}
+                  onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-gray-900 dark:text-white font-bold text-sm focus:ring-2 focus:ring-blue-500/20 outline-none"
+                  placeholder="e.g. 0540000000"
+                />
+              </div>
+            </div>
+
             <div className="mb-8">
               <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3 ml-1">
                 Select System Role
               </label>
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 gap-3 max-h-48 overflow-y-auto">
                 {['buyer', 'seller', 'news_publisher', 'admin'].map((role) => (
-                  <label key={role} className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${editRole === role
+                  <label key={role} className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${editData.role === role
                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                     : 'border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700'
                     }`}>
@@ -507,8 +539,8 @@ export default function UserManagement() {
                       type="radio"
                       name="role"
                       value={role}
-                      checked={editRole === role}
-                      onChange={(e) => setEditRole(e.target.value)}
+                      checked={editData.role === role}
+                      onChange={(e) => setEditData({ ...editData, role: e.target.value })}
                       className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                     />
                     <div>
@@ -529,8 +561,8 @@ export default function UserManagement() {
                 Cancel
               </button>
               <button
-                onClick={handleSaveRole}
-                disabled={saving || editRole === selectedUser.role}
+                onClick={handleSaveUser}
+                disabled={saving}
                 className="flex-1 px-6 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-black dark:hover:bg-gray-100 transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {saving ? (
@@ -539,7 +571,7 @@ export default function UserManagement() {
                     Saving...
                   </>
                 ) : (
-                  'Update Role'
+                  'Update Profile'
                 )}
               </button>
             </div>
