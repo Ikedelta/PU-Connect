@@ -15,8 +15,13 @@ export default function Navbar() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Sign out error:', error);
+    } finally {
+      navigate('/login');
+    }
   };
 
   const getDashboardLink = () => {
@@ -76,11 +81,11 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 relative">
         <div className="flex justify-between items-center h-16 md:h-20">
           {/* Logo Section */}
-          <Link to="/" className="flex items-center space-x-3 group relative z-10 transition-transform active:scale-95">
-            {/* Logo Image - Clean Look */}
-            <div className="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center transition-transform duration-500 group-hover:scale-105">
+          <Link to="/" className="flex items-center gap-3 group relative z-10 transition-transform active:scale-95">
+            {/* Logo Image - Enhanced Size */}
+            <div className="w-24 h-24 md:w-32 md:h-32 flex items-center justify-center transition-transform duration-500 group-hover:scale-105">
               <img
-                src="/logo.png"
+                src="/PU%20Connect%20logo.png"
                 alt="PU Connect"
                 className="w-full h-full object-contain drop-shadow-sm"
                 onError={(e) => {
@@ -89,12 +94,6 @@ export default function Navbar() {
                   e.currentTarget.parentElement!.innerHTML = '<i class="ri-store-3-fill text-2xl"></i>';
                 }}
               />
-            </div>
-            <div className="flex flex-col">
-              <h1 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white tracking-tight leading-none">
-                PU<span className="text-blue-600 ml-0.5">Connect</span>
-              </h1>
-              <p className="text-[9px] text-gray-400 font-semibold tracking-wide uppercase mt-0.5 hidden sm:block">Marketplace</p>
             </div>
           </Link>
 
@@ -213,7 +212,11 @@ export default function Navbar() {
                           </Link>
                         ))}
                         <button
-                          onClick={handleSignOut}
+                          type="button"
+                          onClick={() => {
+                            setShowDropdown(false);
+                            handleSignOut();
+                          }}
                           className="w-full flex items-center gap-4 p-4 text-sm font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/10 rounded-xl transition-all mt-2 cursor-pointer uppercase tracking-wide"
                         >
                           <i className="ri-logout-circle-line text-xl"></i>
@@ -264,7 +267,18 @@ export default function Navbar() {
         <div className={`relative h-full flex flex-col p-8 pt-32 overflow-y-auto transition-transform duration-500 ease-out ${showMobileMenu ? 'translate-y-0' : '-translate-y-12'
           }`}>
           <div className="space-y-2">
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.3em] mb-8 pl-2">Navigation Terminal</p>
+            {/* Mobile Menu Logo */}
+            <div className="flex items-center gap-4 mb-10 pl-2">
+              <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-900/40">
+                <img src="/PU%20Connect%20logo.png" alt="PU Connect" className="w-12 h-12 object-contain brightness-0 invert" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-white tracking-tight">PU Connect</h3>
+                <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Student Portal</p>
+              </div>
+            </div>
+
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.3em] mb-4 pl-2">Navigation Terminal</p>
             {[
               { label: 'Home Terminal', path: '/', icon: 'ri-home-5-line', color: 'text-blue-400', bg: 'bg-blue-900/20' },
               { label: 'Marketplace', path: '/marketplace', icon: 'ri-compass-3-line', color: 'text-emerald-400', bg: 'bg-emerald-900/20' },

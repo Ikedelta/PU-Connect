@@ -99,7 +99,7 @@ export default function Messages() {
           )}
         </div>
 
-        <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl shadow-gray-200/40 overflow-hidden" style={{ height: 'calc(100vh - 200px)' }}>
+        <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl shadow-gray-200/40 overflow-hidden h-[calc(100dvh-11rem)] md:h-[calc(100dvh-12rem)]">
           <div className="grid grid-cols-1 lg:grid-cols-12 h-full">
             {/* Conversations List */}
             <div className={`${showConversationList ? 'block' : 'hidden'} lg:block lg:col-span-4 border-r border-gray-50 overflow-y-auto bg-gray-50/30`}>

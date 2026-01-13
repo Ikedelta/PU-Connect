@@ -76,7 +76,7 @@ export async function uploadImage(
 export async function deleteImage(path: string): Promise<void> {
   try {
     const { error } = await supabase.storage
-      .from('uploads')
+      .from('media')
       .remove([path]);
 
     if (error) {

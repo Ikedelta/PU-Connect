@@ -131,7 +131,10 @@ export default function UserManagement() {
           );
         } catch (smsErr) {
           console.error('Failed to send role update SMS:', smsErr);
+          alert('Role updated, but failed to send SMS notification.');
         }
+      } else {
+        alert('User has no phone number connected. Role updated without SMS notification.');
       }
 
       await fetchUsers();

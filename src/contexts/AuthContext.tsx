@@ -262,27 +262,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   ) => {
     setError(null);
     try {
-      const response = await fetch(`${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/register-user`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY}`,
+      // 1. Create Auth User
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            student_id: studentId,
+            department,
+            faculty,
+            phone,
+          },
         },
-        body: JSON.stringify({
+      });
+
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Registration failed: No user returned');
+
+      // 2. Create Profile (Directly to avoid edge function latency)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: authData.user.id,
           email,
-          password,
-          fullName,
-          studentId,
+          full_name: fullName,
+          student_id: studentId,
           department,
           faculty,
           phone,
-        }),
-      });
+          role: 'buyer', // Default role
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
 
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || 'Registration failed');
+      if (profileError) {
+        // If profile creation fails, we should probably warn or try to clean up, 
+        // but for now let's just throw. The AuthUser is already created though.
+        console.error('Profile creation failed:', profileError);
+        throw new Error('Account created but profile setup failed. Please contact support.');
       }
 
       // Send Welcome SMS (Non-blocking)
@@ -291,7 +310,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .catch(err => console.error('Failed to send welcome SMS:', err));
       });
 
-      await signIn(email, password);
+      // 3. User is likely already signed in by signUp if email confirmation is off,
+      // but we explicitly call signIn to ensure session state is consistent if needed,
+      // or just refresh to get the profile.
+      // However, signUp usually returns a session.
+      if (authData.session) {
+        // Set context
+        setUser(authData.user);
+        // We just inserted the profile, so we can fetch it or construct it.
+        // Let's filter to ensure we drive the state update.
+        await refreshProfile();
+      } else {
+        // If email confirmation is enabled, we might not have a session.
+        // But for this use case, we assume immediate login or we force a login.
+        // If we want to force login:
+        await signIn(email, password);
+      }
+
     } catch (err: any) {
       setError(err.message || 'Failed to sign up');
       throw err;

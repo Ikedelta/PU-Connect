@@ -49,8 +49,13 @@ export default function SellerApplication() {
         .single();
 
       if (existingApp) {
-        alert('You already have a seller application. Redirecting to status page...');
-        navigate('/seller/status');
+        if (existingApp.status === 'approved') {
+          alert('You already have an active Seller Account. You are limited to one shop per user.');
+          navigate('/seller/dashboard');
+        } else {
+          alert('You already have a pending seller application. Please wait for the admin to approve your request.');
+          navigate('/seller/status');
+        }
         return;
       }
 

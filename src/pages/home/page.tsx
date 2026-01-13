@@ -85,36 +85,36 @@ export default function Home() {
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:40px_40px]"></div>
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-12 w-full pt-20">
+        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-12 w-full pt-16">
           <div className="max-w-4xl">
-            <h1 className="text-5xl sm:text-6xl lg:text-8xl font-bold text-white mb-6 md:mb-8 leading-[1.1] md:leading-[0.95] tracking-tight animate-fade-in-up">
+            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-white mb-4 md:mb-6 leading-[1.1] md:leading-[0.95] tracking-tight animate-fade-in-up">
               Connect.<br />
               <span className="text-blue-500">Succeed.</span>
             </h1>
 
-            <div className="flex flex-col md:flex-row md:items-start gap-8 md:gap-12 mb-10 md:mb-14 animate-fade-in-up delay-100">
-              <p className="text-lg md:text-2xl text-gray-300 font-medium max-w-xl leading-relaxed">
+            <div className="flex flex-col md:flex-row md:items-start gap-6 md:gap-10 mb-8 md:mb-10 animate-fade-in-up delay-100">
+              <p className="text-base md:text-xl text-gray-300 font-medium max-w-lg leading-relaxed">
                 The premier digital platform for campus commerce. <br className="hidden md:block" />
                 <span className="text-white font-bold">Secure</span> transactions within your student community.
               </p>
 
-              <div className="hidden md:flex flex-col border-l-2 border-blue-500 pl-6 mt-1">
-                <span className="text-3xl font-bold text-white tracking-tight">2.5K+</span>
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mt-1">Active Students</span>
+              <div className="hidden md:flex flex-col border-l-2 border-blue-500 pl-4 mt-1">
+                <span className="text-2xl font-bold text-white tracking-tight">2.5K+</span>
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mt-1">Active Students</span>
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 animate-fade-in-up delay-200">
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 animate-fade-in-up delay-200">
               <Link
                 to="/marketplace"
-                className="group px-8 py-5 bg-blue-600 text-white rounded-2xl hover:bg-blue-500 transition-all font-bold text-sm uppercase tracking-widest shadow-lg shadow-blue-900/20 flex items-center justify-center gap-3 active:scale-95"
+                className="group px-8 py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-500 transition-all font-bold text-xs uppercase tracking-widest shadow-lg shadow-blue-900/20 flex items-center justify-center gap-3 active:scale-95"
               >
                 Start Trading
                 <i className="ri-arrow-right-line text-lg group-hover:translate-x-1 transition-transform"></i>
               </Link>
               <Link
                 to={user ? "/seller/dashboard" : "/register"}
-                className="px-8 py-5 bg-white/5 backdrop-blur-md text-white border border-white/10 rounded-2xl hover:bg-white/10 transition-all font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-3 active:scale-95"
+                className="px-8 py-4 bg-white/5 backdrop-blur-md text-white border border-white/10 rounded-xl hover:bg-white/10 transition-all font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-3 active:scale-95"
               >
                 {user ? 'My Dashboard' : 'Join Community'}
                 <i className="ri-user-add-line text-lg"></i>
@@ -140,6 +140,8 @@ export default function Home() {
         </div>
       </section>
 
+
+
       {/* Stats Cluster - Catchy Overlay */}
       <section className="relative z-20 pb-12 bg-white dark:bg-gray-950">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
@@ -163,19 +165,19 @@ export default function Home() {
       </section>
 
       {/* Featured Collections - Redefined */}
-      <section className="py-24 md:py-48 bg-gray-50/50 dark:bg-gray-950/50 relative overflow-hidden">
+      <section className="py-12 md:py-24 bg-gray-50/50 dark:bg-gray-950/50 relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 md:mb-24 gap-8">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 md:mb-16 gap-8">
             <div>
-              <p className="text-blue-600 font-bold uppercase tracking-wide text-xs mb-4">Market Categories</p>
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white leading-[1] tracking-tight">University<br />Catalogue.</h2>
+              <p className="text-blue-600 font-bold uppercase tracking-wide text-xs mb-3">Market Categories</p>
+              <h2 className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-white leading-[1] tracking-tight">University<br />Catalogue.</h2>
             </div>
             <p className="text-gray-400 font-bold uppercase tracking-wide text-[10px] md:text-sm max-w-sm text-right">
               OFFICIAL CATEGORIES FOR STREAMLINED COMMERCE
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
             {[
               { id: 'electronics', name: 'Electronics', desc: 'Hardware & Gear', img: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&q=80&w=600', color: 'blue' },
               { id: 'books', name: 'Knowledge', desc: 'Books & Resources', img: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&q=80&w=600', color: 'indigo' },
@@ -185,7 +187,7 @@ export default function Home() {
               <div
                 key={cat.id}
                 onClick={() => handleProductClick(cat.id)}
-                className="group relative h-[450px] md:h-[550px] rounded-[2rem] overflow-hidden cursor-pointer shadow-lg hover:-translate-y-2 transition-all duration-700"
+                className="group relative h-[350px] md:h-[450px] rounded-[2rem] overflow-hidden cursor-pointer shadow-lg hover:-translate-y-2 transition-all duration-700"
               >
                 <img
                   src={getOptimizedImageUrl(cat.img, 800, 80)}
@@ -193,10 +195,10 @@ export default function Home() {
                   className="w-full h-full object-cover transition-all duration-[2s] group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-900/10 to-transparent"></div>
-                <div className="absolute bottom-0 left-0 p-10 w-full">
-                  <div className={`w-10 h-0.5 bg-${cat.color}-500 group-hover:w-full transition-all duration-700 mb-6`}></div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-300 group-hover:text-white transition-colors block mb-3">{cat.desc}</span>
-                  <h3 className="text-3xl font-bold text-white leading-tight tracking-tight group-hover:translate-x-2 transition-transform duration-700">{cat.name}</h3>
+                <div className="absolute bottom-0 left-0 p-8 w-full">
+                  <div className={`w-10 h-0.5 bg-${cat.color}-500 group-hover:w-full transition-all duration-700 mb-4`}></div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-300 group-hover:text-white transition-colors block mb-2">{cat.desc}</span>
+                  <h3 className="text-2xl font-bold text-white leading-tight tracking-tight group-hover:translate-x-2 transition-transform duration-700">{cat.name}</h3>
                 </div>
               </div>
             ))}
@@ -205,26 +207,26 @@ export default function Home() {
       </section>
 
       {/* Fresh Drops - Grid Layout Refined */}
-      <section className="py-24 md:py-48 bg-white dark:bg-gray-950">
+      <section className="py-12 md:py-24 bg-white dark:bg-gray-950">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-24 gap-12">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-8">
             <div>
-              <p className="text-gray-400 font-bold uppercase tracking-widest text-xs mb-6">Latest Additions</p>
-              <h2 className="text-5xl md:text-[5rem] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">New<br /><span className="text-blue-600">Listings.</span></h2>
+              <p className="text-gray-400 font-bold uppercase tracking-widest text-xs mb-4">Latest Additions</p>
+              <h2 className="text-4xl md:text-[4rem] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">New<br /><span className="text-blue-600">Listings.</span></h2>
             </div>
             <Link
               to="/marketplace"
-              className="group px-10 py-5 bg-gray-50 dark:bg-gray-900 border border-transparent dark:border-gray-800 text-gray-900 dark:text-white font-bold rounded-2xl hover:bg-gray-900 dark:hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-4 text-xs uppercase tracking-widest"
+              className="group px-8 py-4 bg-gray-50 dark:bg-gray-900 border border-transparent dark:border-gray-800 text-gray-900 dark:text-white font-bold rounded-2xl hover:bg-gray-900 dark:hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-4 text-xs uppercase tracking-widest"
             >
               Examine Full Catalogue
               <i className="ri-arrow-right-line group-hover:translate-x-2 transition-transform"></i>
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {isProductsLoading ? (
               [1, 2, 3, 4].map(i => (
-                <div key={i} className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-8 h-[500px] animate-pulse"></div>
+                <div key={i} className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-8 h-[400px] animate-pulse"></div>
               ))
             ) : (
               featuredProducts.map((product) => (
@@ -233,7 +235,7 @@ export default function Home() {
                   onClick={() => navigate(`/product/${product.id}`)}
                   className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-700 cursor-pointer group"
                 >
-                  <div className="relative h-64 w-full overflow-hidden rounded-xl mb-6 bg-gray-50 dark:bg-gray-800 shadow-inner">
+                  <div className="relative h-56 w-full overflow-hidden rounded-xl mb-4 bg-gray-50 dark:bg-gray-800 shadow-inner">
                     {product.images?.[0] ? (
                       <img
                         src={getOptimizedImageUrl(product.images[0], 600, 80)}
@@ -246,20 +248,20 @@ export default function Home() {
                       </div>
                     )}
                   </div>
-                  <div className="px-4 pb-4">
+                  <div className="px-2 pb-2">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-blue-500 mb-2 block">{product.category}</span>
-                    <h3 className="font-bold text-gray-900 dark:text-white text-xl mb-6 line-clamp-1 group-hover:text-blue-600 transition-colors tracking-tight">
+                    <h3 className="font-bold text-gray-900 dark:text-white text-lg mb-4 line-clamp-1 group-hover:text-blue-600 transition-colors tracking-tight">
                       {product.name}
                     </h3>
                     <div className="flex items-center justify-between">
                       <div className="flex flex-col">
                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Price</span>
-                        <span className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+                        <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
                           {product.price_type === 'fixed' ? `₵${product.price?.toLocaleString()}` : 'Contact'}
                         </span>
                       </div>
-                      <div className="h-12 w-12 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all">
-                        <i className="ri-arrow-right-line text-xl"></i>
+                      <div className="h-10 w-10 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all">
+                        <i className="ri-arrow-right-line text-lg"></i>
                       </div>
                     </div>
                   </div>
@@ -270,13 +272,13 @@ export default function Home() {
         </div>
       </section>
       {/* Campus Environment - Aerial Insight */}
-      <section className="py-24 md:py-48 bg-gray-50 dark:bg-gray-950 overflow-hidden">
+      <section className="py-12 md:py-24 bg-gray-50 dark:bg-gray-950 overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 md:gap-24 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 md:gap-16 items-center">
             <div className="order-2 lg:order-1">
-              <p className="text-blue-600 font-bold uppercase tracking-widest text-[10px] mb-4">Our Environment</p>
-              <h2 className="text-4xl md:text-7xl font-bold text-gray-900 dark:text-white tracking-tight leading-[0.9] mb-8">Academic<br /><span className="text-blue-600">Horizon.</span></h2>
-              <p className="text-gray-500 dark:text-gray-400 text-base md:text-xl font-medium leading-relaxed mb-10 max-w-xl">
+              <p className="text-blue-600 font-bold uppercase tracking-widest text-[10px] mb-3">Our Environment</p>
+              <h2 className="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white tracking-tight leading-[0.9] mb-6">Academic<br /><span className="text-blue-600">Horizon.</span></h2>
+              <p className="text-gray-500 dark:text-gray-400 text-base md:text-lg font-medium leading-relaxed mb-8 max-w-xl">
                 Experience the vibrant campus of Pentecost University. Our specialized digital infrastructure is built to serve this thriving academic community.
               </p>
               <div className="grid grid-cols-2 gap-8">
@@ -292,7 +294,7 @@ export default function Home() {
             </div>
             <div className="order-1 lg:order-2 relative group">
               <div className="absolute -inset-4 bg-blue-600/5 rounded-[2rem] md:rounded-[3rem] blur-2xl group-hover:bg-blue-600/10 transition-all duration-700"></div>
-              <div className="relative h-[350px] md:h-[650px] rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl skew-y-0 md:skew-y-1 md:group-hover:skew-y-0 transition-all duration-700">
+              <div className="relative h-[300px] md:h-[500px] rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl skew-y-0 md:skew-y-1 md:group-hover:skew-y-0 transition-all duration-700">
                 <img
                   src={heroAerial}
                   alt="Campus Aerial View"
@@ -306,20 +308,20 @@ export default function Home() {
       </section>
 
       {/* Campus News Slideshow - Immersive Focus */}
-      <section className="py-24 md:py-48 bg-gray-900 text-white overflow-hidden relative">
+      <section className="py-12 md:py-24 bg-gray-900 text-white overflow-hidden relative">
         <div className="absolute top-0 left-0 w-full h-[1px] bg-blue-500/20"></div>
         <div className="max-w-7xl mx-auto px-6 lg:px-12 relative z-10">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-24 px-2 gap-10">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 px-2 gap-8">
             <div>
-              <p className="text-blue-500 font-bold uppercase tracking-widest text-xs mb-6">University News</p>
-              <h2 className="text-6xl md:text-[6rem] font-bold text-white tracking-tight leading-[0.9]">Campus<br />Spotlight.</h2>
+              <p className="text-blue-500 font-bold uppercase tracking-widest text-xs mb-4">University News</p>
+              <h2 className="text-5xl md:text-[5rem] font-bold text-white tracking-tight leading-[0.9]">Campus<br />Spotlight.</h2>
             </div>
           </div>
 
           {isNewsLoading ? (
-            <div className="h-[600px] w-full bg-white/5 rounded-[2.5rem] animate-pulse"></div>
+            <div className="h-[400px] w-full bg-white/5 rounded-[2.5rem] animate-pulse"></div>
           ) : featuredNews.length > 0 ? (
-            <div className="relative h-[650px] md:h-[750px] rounded-[2.5rem] overflow-hidden shadow-2xl group border border-white/5">
+            <div className="relative h-[500px] md:h-[600px] rounded-[2.5rem] overflow-hidden shadow-2xl group border border-white/5">
               {featuredNews.map((news, index) => (
                 <div
                   key={news.id}
@@ -332,16 +334,16 @@ export default function Home() {
                     className="w-full h-full object-cover opacity-70"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-900/40 to-transparent"></div>
-                  <div className="absolute bottom-0 left-0 p-10 md:p-24 max-w-4xl">
-                    <span className="px-5 py-2 bg-blue-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-full mb-8 inline-block">
+                  <div className="absolute bottom-0 left-0 p-8 md:p-16 max-w-4xl">
+                    <span className="px-5 py-2 bg-blue-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-full mb-6 inline-block">
                       {news.category}
                     </span>
-                    <h3 className="text-4xl md:text-7xl font-bold text-white mb-12 leading-[1.1] tracking-tight">
+                    <h3 className="text-3xl md:text-5xl font-bold text-white mb-8 leading-[1.1] tracking-tight">
                       {news.title}
                     </h3>
                     <Link
                       to={`/news/${news.id}`}
-                      className="inline-flex items-center gap-4 px-10 py-5 bg-white text-gray-900 font-bold rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-xl active:scale-95 text-xs md:text-sm uppercase tracking-widest"
+                      className="inline-flex items-center gap-4 px-8 py-4 bg-white text-gray-900 font-bold rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-xl active:scale-95 text-xs md:text-sm uppercase tracking-widest"
                     >
                       Read Full Article
                       <i className="ri-arrow-right-line text-xl"></i>
@@ -353,17 +355,17 @@ export default function Home() {
               {/* Slider Controls */}
               {featuredNews.length > 1 && (
                 <div className="absolute bottom-12 right-12 hidden md:flex gap-4 z-10">
-                  <button onClick={prevSlide} className="h-16 w-16 bg-white/5 backdrop-blur-md border border-white/10 text-white rounded-xl flex items-center justify-center hover:bg-white hover:text-gray-900 transition-all group cursor-pointer">
-                    <i className="ri-arrow-left-s-line text-3xl"></i>
+                  <button onClick={prevSlide} className="h-14 w-14 bg-white/5 backdrop-blur-md border border-white/10 text-white rounded-xl flex items-center justify-center hover:bg-white hover:text-gray-900 transition-all group cursor-pointer">
+                    <i className="ri-arrow-left-s-line text-2xl"></i>
                   </button>
-                  <button onClick={nextSlide} className="h-16 w-16 bg-white/5 backdrop-blur-md border border-white/10 text-white rounded-xl flex items-center justify-center hover:bg-white hover:text-gray-900 transition-all group cursor-pointer">
-                    <i className="ri-arrow-right-s-line text-3xl"></i>
+                  <button onClick={nextSlide} className="h-14 w-14 bg-white/5 backdrop-blur-md border border-white/10 text-white rounded-xl flex items-center justify-center hover:bg-white hover:text-gray-900 transition-all group cursor-pointer">
+                    <i className="ri-arrow-right-s-line text-2xl"></i>
                   </button>
                 </div>
               )}
             </div>
           ) : (
-            <div className="h-[500px] flex items-center justify-center bg-white/5 rounded-[2.5rem] border border-white/5">
+            <div className="h-[400px] flex items-center justify-center bg-white/5 rounded-[2.5rem] border border-white/5">
               <p className="text-gray-500 font-bold uppercase tracking-widest text-lg">No Recent Updates</p>
             </div>
           )}
@@ -371,15 +373,14 @@ export default function Home() {
       </section>
 
       {/* Global Finishing - Professional Network */}
-      <footer className="bg-white dark:bg-gray-950 text-gray-900 dark:text-white pt-20 pb-12 border-t border-gray-100 dark:border-gray-900 relative overflow-hidden">
+      <footer className="bg-white dark:bg-gray-950 text-gray-900 dark:text-white pt-12 pb-8 border-t border-gray-100 dark:border-gray-900 relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 lg:px-12 relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-12 mb-16">
             <div className="md:col-span-6">
-              <div className="flex items-center space-x-3 mb-8">
-                <div className="w-12 h-12 bg-gray-900 dark:bg-white rounded-xl flex items-center justify-center shadow-lg">
-                  <i className="ri-store-3-line text-white dark:text-gray-900 text-2xl"></i>
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="w-16 h-16 flex items-center justify-center">
+                  <img src="/PU%20Connect%20logo.png" alt="PU Connect" className="w-full h-full object-contain" />
                 </div>
-                <h3 className="text-2xl font-bold tracking-tight uppercase leading-none">PU<br /><span className="text-blue-600">Connect</span></h3>
               </div>
               <p className="text-gray-500 dark:text-gray-400 text-lg font-medium leading-relaxed max-w-lg mb-10">
                 Providing specialized digital infrastructure for secure campus-based commerce and communication.
