@@ -6,6 +6,7 @@ import ProtectedRoute from './ProtectedRoute';
 
 const Home = lazy(() => import('../pages/home/page'));
 const Login = lazy(() => import('../pages/auth/Login'));
+const AdminLogin = lazy(() => import('../pages/auth/AdminLogin'));
 const Register = lazy(() => import('../pages/auth/Register'));
 const Marketplace = lazy(() => import('../pages/marketplace/Marketplace'));
 const ProductDetail = lazy(() => import('../pages/product/ProductDetail'));
@@ -43,6 +44,10 @@ const routes: RouteObject[] = [
   {
     path: '/login',
     element: <Login />,
+  },
+  {
+    path: '/admin/login',
+    element: <AdminLogin />,
   },
   {
     path: '/register',
@@ -127,7 +132,7 @@ const routes: RouteObject[] = [
   {
     path: '/admin',
     element: (
-      <ProtectedRoute allowedRoles={['admin']}>
+      <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
         <AdminDashboard />
       </ProtectedRoute>
     ),
@@ -135,7 +140,7 @@ const routes: RouteObject[] = [
   {
     path: '/admin/dashboard',
     element: (
-      <ProtectedRoute allowedRoles={['admin']}>
+      <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
         <AdminDashboard />
       </ProtectedRoute>
     ),
@@ -147,7 +152,7 @@ const routes: RouteObject[] = [
   {
     path: '/admin/users',
     element: (
-      <ProtectedRoute allowedRoles={['admin']}>
+      <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
         <UserManagement />
       </ProtectedRoute>
     ),
@@ -155,7 +160,7 @@ const routes: RouteObject[] = [
   {
     path: '/admin/news',
     element: (
-      <ProtectedRoute allowedRoles={['admin']}>
+      <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
         <NewsManagement />
       </ProtectedRoute>
     ),
@@ -163,7 +168,7 @@ const routes: RouteObject[] = [
   {
     path: '/admin/sms',
     element: (
-      <ProtectedRoute allowedRoles={['admin']}>
+      <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
         <SMSManagement />
       </ProtectedRoute>
     ),
@@ -171,7 +176,7 @@ const routes: RouteObject[] = [
   {
     path: '/admin/content',
     element: (
-      <ProtectedRoute allowedRoles={['admin']}>
+      <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
         <ContentManagement />
       </ProtectedRoute>
     ),
@@ -179,7 +184,7 @@ const routes: RouteObject[] = [
   {
     path: '/admin/settings',
     element: (
-      <ProtectedRoute allowedRoles={['admin']}>
+      <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
         <WebsiteSettings />
       </ProtectedRoute>
     ),
@@ -187,7 +192,7 @@ const routes: RouteObject[] = [
   {
     path: '/admin/activity',
     element: (
-      <ProtectedRoute allowedRoles={['admin']}>
+      <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
         <ActivityMonitor />
       </ProtectedRoute>
     ),
@@ -195,7 +200,7 @@ const routes: RouteObject[] = [
   {
     path: '/admin/messages',
     element: (
-      <ProtectedRoute allowedRoles={['admin']}>
+      <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
         <AdminMessages />
       </ProtectedRoute>
     ),
@@ -203,7 +208,7 @@ const routes: RouteObject[] = [
   {
     path: '/admin/subscriptions',
     element: (
-      <ProtectedRoute allowedRoles={['admin']}>
+      <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
         <SubscriptionManagement />
       </ProtectedRoute>
     ),
@@ -211,7 +216,7 @@ const routes: RouteObject[] = [
   {
     path: '/admin/roles',
     element: (
-      <ProtectedRoute allowedRoles={['admin']}>
+      <ProtectedRoute allowedRoles={['super_admin']}>
         <RoleManagement />
       </ProtectedRoute>
     ),
@@ -219,7 +224,7 @@ const routes: RouteObject[] = [
   {
     path: '/admin/seller-applications',
     element: (
-      <ProtectedRoute allowedRoles={['admin']}>
+      <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
         <SellerApplications />
       </ProtectedRoute>
     ),
@@ -227,7 +232,7 @@ const routes: RouteObject[] = [
   {
     path: '/admin/super-admins',
     element: (
-      <ProtectedRoute allowedRoles={['admin']}>
+      <ProtectedRoute allowedRoles={['super_admin']}>
         <SuperAdminManagement />
       </ProtectedRoute>
     ),

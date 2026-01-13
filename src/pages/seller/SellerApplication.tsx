@@ -76,6 +76,29 @@ export default function SellerApplication() {
 
       if (error) throw error;
 
+      // Notify Admins via SMS
+      try {
+        const { data: admins } = await supabase
+          .from('profiles')
+          .select('phone')
+          .in('role', ['admin', 'super_admin'])
+          .not('phone', 'is', null);
+
+        if (admins && admins.length > 0) {
+          const adminPhones = admins.map(a => a.phone).filter(p => p && p.length > 9); // Basic validation
+          if (adminPhones.length > 0) {
+            import('../../lib/arkesel').then(({ sendSMS }) => {
+              // Send mostly to unique numbers to save cost/avoid spam if duplicate admins
+              const uniquePhones = [...new Set(adminPhones)];
+              sendSMS(uniquePhones, `New Seller Application: ${formData.businessName} has applied to become a seller. Please check the Admin Portal for review.`)
+                .catch(err => console.error('Failed to notify admins:', err));
+            });
+          }
+        }
+      } catch (notifyError) {
+        console.error('Error fetching admins for notification:', notifyError);
+      }
+
       alert('Application submitted successfully! Redirecting to status page...');
       navigate('/seller/status');
     } catch (error: any) {

@@ -280,28 +280,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (authError) throw authError;
       if (!authData.user) throw new Error('Registration failed: No user returned');
 
-      // 2. Create Profile (Directly to avoid edge function latency)
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: authData.user.id,
-          email,
-          full_name: fullName,
-          student_id: studentId,
-          department,
-          faculty,
-          phone,
-          role: 'buyer', // Default role
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
+      // 2. Create Profile (Client-side)
+      // Only attempt if we have a session (user is logged in)
+      // If email confirmation is enabled, session might be null. In that case, we rely on metadata
+      // stored in auth.users and the fetchProfile self-healing or a database trigger.
+      if (authData.session) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            email,
+            full_name: fullName,
+            student_id: studentId,
+            department,
+            faculty,
+            phone,
+            role: 'buyer', // Default role
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
 
-      if (profileError) {
-        // If profile creation fails, we should probably warn or try to clean up, 
-        // but for now let's just throw. The AuthUser is already created though.
-        console.error('Profile creation failed:', profileError);
-        throw new Error('Account created but profile setup failed. Please contact support.');
+        if (profileError) {
+          // If profile already exists (e.g. created by trigger), ignore the error
+          if (profileError.code === '23505') { // unique_violation
+            console.log('Profile already exists, skipping creation.');
+          } else {
+            console.error('Profile creation failed:', profileError);
+            // We don't throw here to avoid blocking the user if the auth account is valid.
+            // The fetchProfile function has self-healing logic that might fix this later.
+          }
+        }
+      } else {
+        console.log('No session returned from signUp (email confirmation may be enabled). Profile creation deferred.');
       }
 
       // Send Welcome SMS (Non-blocking)
@@ -310,21 +321,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .catch(err => console.error('Failed to send welcome SMS:', err));
       });
 
-      // 3. User is likely already signed in by signUp if email confirmation is off,
-      // but we explicitly call signIn to ensure session state is consistent if needed,
-      // or just refresh to get the profile.
-      // However, signUp usually returns a session.
       if (authData.session) {
-        // Set context
         setUser(authData.user);
-        // We just inserted the profile, so we can fetch it or construct it.
-        // Let's filter to ensure we drive the state update.
         await refreshProfile();
       } else {
-        // If email confirmation is enabled, we might not have a session.
-        // But for this use case, we assume immediate login or we force a login.
-        // If we want to force login:
-        await signIn(email, password);
+        // If no session, try signing in manually (auto-login behavior)
+        // This might fail if email confirmation is strictly enforced
+        try {
+          await signIn(email, password);
+        } catch (loginError) {
+          console.log('Auto-login failed (expected if email confirmation is on):', loginError);
+          // Do not throw, just existing success flow (navigate to login or home)
+        }
       }
 
     } catch (err: any) {

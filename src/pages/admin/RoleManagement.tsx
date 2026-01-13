@@ -23,6 +23,7 @@ export default function RoleManagement() {
   const [showAddAdminModal, setShowAddAdminModal] = useState(false);
   const [newPublisherEmail, setNewPublisherEmail] = useState('');
   const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   useEffect(() => {
     if (!authLoading && profile?.role !== 'admin') {
@@ -33,6 +34,14 @@ export default function RoleManagement() {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  // Auto-hide notification
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   const fetchUsers = async () => {
     try {
@@ -52,7 +61,7 @@ export default function RoleManagement() {
 
   const handleAddNewsPublisher = async () => {
     if (!newPublisherEmail.trim()) {
-      alert('Please enter an email address');
+      setNotification({ type: 'error', message: 'Please enter an email address' });
       return;
     }
 
@@ -64,12 +73,12 @@ export default function RoleManagement() {
         .single();
 
       if (findError || !user) {
-        alert('User not found with this email address');
+        setNotification({ type: 'error', message: 'User not found with this email address' });
         return;
       }
 
       if (user.role === 'news_publisher') {
-        alert('This user is already a News Publisher');
+        setNotification({ type: 'error', message: 'This user is already a News Publisher' });
         return;
       }
 
@@ -83,16 +92,16 @@ export default function RoleManagement() {
       await fetchUsers();
       setShowAddPublisherModal(false);
       setNewPublisherEmail('');
-      alert('News Publisher role assigned successfully!');
+      setNotification({ type: 'success', message: 'News Publisher role assigned successfully!' });
     } catch (error) {
       console.error('Error adding news publisher:', error);
-      alert('Failed to assign News Publisher role');
+      setNotification({ type: 'error', message: 'Failed to assign News Publisher role' });
     }
   };
 
   const handleAddAdmin = async () => {
     if (!newAdminEmail.trim()) {
-      alert('Please enter an email address');
+      setNotification({ type: 'error', message: 'Please enter an email address' });
       return;
     }
 
@@ -104,20 +113,14 @@ export default function RoleManagement() {
         .single();
 
       if (findError || !user) {
-        alert('User not found with this email address');
+        setNotification({ type: 'error', message: 'User not found with this email address' });
         return;
       }
 
       if (user.role === 'admin') {
-        alert('This user is already an Administrator');
+        setNotification({ type: 'error', message: 'This user is already an Administrator' });
         return;
       }
-
-      const confirmed = confirm(
-        `Are you sure you want to grant Administrator privileges to ${user.full_name}? This will give them full access to the admin dashboard.`
-      );
-
-      if (!confirmed) return;
 
       const { error: updateError } = await supabase
         .from('profiles')
@@ -129,20 +132,14 @@ export default function RoleManagement() {
       await fetchUsers();
       setShowAddAdminModal(false);
       setNewAdminEmail('');
-      alert('Administrator role assigned successfully!');
+      setNotification({ type: 'success', message: 'Administrator role assigned successfully!' });
     } catch (error) {
       console.error('Error adding admin:', error);
-      alert('Failed to assign Administrator role');
+      setNotification({ type: 'error', message: 'Failed to assign Administrator role' });
     }
   };
 
   const handleRemoveRole = async (userId: string, userName: string, currentRole: string) => {
-    const roleDisplay = currentRole === 'admin' ? 'Administrator' : 'News Publisher';
-    
-    if (!confirm(`Remove ${roleDisplay} role from ${userName}? They will become a regular buyer.`)) {
-      return;
-    }
-
     try {
       const { error } = await supabase
         .from('profiles')
@@ -152,10 +149,10 @@ export default function RoleManagement() {
       if (error) throw error;
 
       await fetchUsers();
-      alert('Role removed successfully');
+      setNotification({ type: 'success', message: 'Role removed successfully' });
     } catch (error) {
       console.error('Error removing role:', error);
-      alert('Failed to remove role');
+      setNotification({ type: 'error', message: 'Failed to remove role' });
     }
   };
 
@@ -174,312 +171,223 @@ export default function RoleManagement() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <i className="ri-loader-4-line text-4xl text-sky-600 animate-spin"></i>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <div className="w-12 h-12 border-4 border-gray-200 border-t-amber-600 rounded-full animate-spin mb-4 mx-auto"></div>
+          <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Loading Access Control...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-[100dvh] bg-gray-50/50 dark:bg-gray-950 transition-colors duration-300 pb-20 font-sans">
       <Navbar />
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-between mb-8">
+
+      {/* Floating Notification */}
+      {notification && (
+        <div className={`fixed top-24 right-4 md:right-8 z-50 animate-in fade-in slide-in-from-right-8 duration-300 px-6 py-4 rounded-2xl shadow-2xl border flex items-center gap-3 backdrop-blur-md ${notification.type === 'success' ? 'bg-emerald-500/90 border-emerald-400/50 text-white' : 'bg-rose-500/90 border-rose-400/50 text-white'}`}>
+          <i className={`${notification.type === 'success' ? 'ri-checkbox-circle-fill' : 'ri-error-warning-fill'} text-xl`}></i>
+          <span className="font-bold text-sm tracking-wide">{notification.message}</span>
+        </div>
+      )}
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Role Management</h1>
-            <p className="mt-2 text-gray-600">Manage administrators and special permissions</p>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-[10px] font-bold uppercase tracking-widest border border-amber-200 dark:border-amber-800">
+                System Security
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 text-[10px] font-bold uppercase tracking-widest border border-cyan-200 dark:border-cyan-800">
+                Permissions
+              </span>
+            </div>
+            <h1 className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-white tracking-tight mb-2">
+              Roles & Access
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400 font-medium">
+              Manage administrators and special permissions assignments.
+            </p>
           </div>
           <div className="flex gap-3">
             <button
               onClick={() => setShowAddPublisherModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors whitespace-nowrap cursor-pointer"
+              className="px-5 py-2.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold uppercase tracking-wide hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm cursor-pointer"
             >
-              <i className="ri-newspaper-line"></i>
+              <i className="ri-newspaper-line mr-2"></i>
               Add Publisher
             </button>
             <button
               onClick={() => setShowAddAdminModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors whitespace-nowrap cursor-pointer"
+              className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 border border-transparent rounded-xl text-xs font-bold uppercase tracking-wide hover:bg-black dark:hover:bg-gray-100 transition-colors shadow-lg shadow-gray-200/50 dark:shadow-none cursor-pointer"
             >
-              <i className="ri-shield-user-line"></i>
+              <i className="ri-shield-user-line mr-2"></i>
               Add Admin
             </button>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm p-6 border-2 border-amber-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Administrators</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{admins.length}</p>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
+          {[
+            { label: 'Administrators', value: admins.length, icon: 'ri-shield-star-fill', color: 'bg-amber-500' },
+            { label: 'News Publishers', value: newsPublishers.length, icon: 'ri-newspaper-fill', color: 'bg-cyan-500' },
+            { label: 'Total Users', value: users.length, icon: 'ri-group-fill', color: 'bg-emerald-500' },
+          ].map((stat, i) => (
+            <div key={i} className="bg-white dark:bg-gray-900 p-6 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+              <div className={`absolute top-0 right-0 w-24 h-24 ${stat.color} opacity-[0.03] rounded-bl-full group-hover:scale-110 transition-transform`}></div>
+              <div className={`w-10 h-10 rounded-xl ${stat.color} bg-opacity-10 flex items-center justify-center mb-3 text-${stat.color.replace('bg-', '')} group-hover:scale-110 transition-transform`}>
+                <i className={`${stat.icon} text-lg ${stat.color.replace('bg-', 'text-')}`}></i>
               </div>
-              <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
-                <i className="ri-shield-user-line text-2xl text-amber-600"></i>
-              </div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1 tracking-tight">{stat.value}</div>
+              <div className="text-[10px] uppercase tracking-widest font-bold text-gray-400">{stat.label}</div>
             </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6 border-2 border-sky-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">News Publishers</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{newsPublishers.length}</p>
-              </div>
-              <div className="w-12 h-12 bg-sky-100 rounded-lg flex items-center justify-center">
-                <i className="ri-newspaper-line text-2xl text-sky-600"></i>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total Users</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{users.length}</p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <i className="ri-user-line text-2xl text-green-600"></i>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* Tab Navigation */}
-        <div className="bg-white rounded-xl border border-gray-200 p-2 mb-6">
-          <div className="flex space-x-2">
+        {/* Tab Navigation & Search */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div className="bg-white dark:bg-gray-900 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-800 inline-flex shadow-sm">
             <button
               onClick={() => setActiveTab('admins')}
-              className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap cursor-pointer transition-colors ${
-                activeTab === 'admins' 
-                  ? 'bg-amber-500 text-white' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
+              className={`px-6 py-2.5 text-xs font-bold uppercase tracking-widest rounded-xl transition-all ${activeTab === 'admins'
+                  ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800'
+                }`}
             >
-              <i className="ri-shield-user-line mr-2"></i>
-              Administrators ({admins.length})
+              Admins
             </button>
             <button
               onClick={() => setActiveTab('publishers')}
-              className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap cursor-pointer transition-colors ${
-                activeTab === 'publishers' 
-                  ? 'bg-sky-600 text-white' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
+              className={`px-6 py-2.5 text-xs font-bold uppercase tracking-widest rounded-xl transition-all ${activeTab === 'publishers'
+                  ? 'bg-cyan-500 text-white shadow-md shadow-cyan-500/20'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800'
+                }`}
             >
-              <i className="ri-newspaper-line mr-2"></i>
-              News Publishers ({newsPublishers.length})
+              Publishers
             </button>
           </div>
-        </div>
 
-        {/* Search */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <div className="relative">
-            <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+          <div className="flex-1 max-w-md relative">
+            <i className="ri-search-line absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={`Search ${activeTab === 'admins' ? 'administrators' : 'news publishers'}...`}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent text-sm"
+              className="w-full pl-11 pr-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl focus:ring-2 focus:ring-amber-500/20 font-medium text-sm text-gray-900 dark:text-white placeholder-gray-400 transition-all outline-none shadow-sm"
             />
           </div>
         </div>
 
-        {/* Administrators Tab */}
-        {activeTab === 'admins' && (
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-amber-50 to-white">
-              <h2 className="text-lg font-semibold text-gray-900">Administrators</h2>
-              <p className="text-sm text-gray-600 mt-1">Users with full platform management access</p>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      User
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Role
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Added On
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredAdmins.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center">
-                            <span className="text-white font-medium text-sm">
-                              {user.full_name.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{user.full_name}</div>
-                            <div className="text-sm text-gray-500">{user.email}</div>
-                          </div>
+        {/* Data Table */}
+        <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden min-h-[400px]">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                <tr>
+                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                    User Profile
+                  </th>
+                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                    Current Role
+                  </th>
+                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                    Assigned On
+                  </th>
+                  <th className="px-8 py-5 text-right text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {(activeTab === 'admins' ? filteredAdmins : filteredPublishers).map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors group">
+                    <td className="px-8 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-sm transition-transform group-hover:scale-110 ${activeTab === 'admins' ? 'bg-amber-500' : 'bg-cyan-500'}`}>
+                          {user.full_name.charAt(0).toUpperCase()}
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800">
-                          <i className="ri-shield-user-line mr-1"></i>
+                        <div className="ml-4">
+                          <div className="text-sm font-bold text-gray-900 dark:text-white">{user.full_name}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">{user.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-8 py-4 whitespace-nowrap">
+                      {activeTab === 'admins' ? (
+                        <span className="px-3 py-1 inline-flex text-[10px] font-bold uppercase tracking-widest rounded-full bg-amber-50 text-amber-700 border border-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-900/30">
                           Administrator
                         </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(user.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {user.id !== profile?.id ? (
-                          <button
-                            onClick={() => handleRemoveRole(user.id, user.full_name, user.role)}
-                            className="text-red-600 hover:text-red-800 font-medium cursor-pointer"
-                          >
-                            Remove Role
-                          </button>
-                        ) : (
-                          <span className="text-gray-400 text-xs">Current User</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {filteredAdmins.length === 0 && (
-              <div className="text-center py-12">
-                <i className="ri-shield-user-line text-5xl text-gray-300"></i>
-                <p className="mt-4 text-gray-500">No administrators found</p>
-                <button
-                  onClick={() => setShowAddAdminModal(true)}
-                  className="mt-4 text-amber-600 hover:text-amber-700 font-medium cursor-pointer"
-                >
-                  Add your first administrator
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* News Publishers Tab */}
-        {activeTab === 'publishers' && (
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-sky-50 to-white">
-              <h2 className="text-lg font-semibold text-gray-900">News Publishers</h2>
-              <p className="text-sm text-gray-600 mt-1">Users with permission to publish campus news</p>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      User
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Role
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Added On
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredPublishers.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="w-10 h-10 bg-gradient-to-br from-sky-500 to-sky-600 rounded-full flex items-center justify-center">
-                            <span className="text-white font-medium text-sm">
-                              {user.full_name.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{user.full_name}</div>
-                            <div className="text-sm text-gray-500">{user.email}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-sky-100 text-sky-800">
-                          <i className="ri-newspaper-line mr-1"></i>
+                      ) : (
+                        <span className="px-3 py-1 inline-flex text-[10px] font-bold uppercase tracking-widest rounded-full bg-cyan-50 text-cyan-700 border border-cyan-100 dark:bg-cyan-900/20 dark:text-cyan-300 dark:border-cyan-900/30">
                           News Publisher
                         </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(user.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      )}
+                    </td>
+                    <td className="px-8 py-4 whitespace-nowrap text-xs font-medium text-gray-500 dark:text-gray-400">
+                      {new Date(user.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-8 py-4 whitespace-nowrap text-right">
+                      {user.id !== profile?.id ? (
                         <button
                           onClick={() => handleRemoveRole(user.id, user.full_name, user.role)}
-                          className="text-red-600 hover:text-red-800 font-medium cursor-pointer"
+                          className="text-gray-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer p-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                          title="Remove Role"
                         >
-                          Remove Role
+                          <i className="ri-delete-bin-line text-lg"></i>
                         </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      ) : (
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-300 dark:text-gray-600">Current User</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
 
-            {filteredPublishers.length === 0 && (
-              <div className="text-center py-12">
-                <i className="ri-newspaper-line text-5xl text-gray-300"></i>
-                <p className="mt-4 text-gray-500">No news publishers found</p>
-                <button
-                  onClick={() => setShowAddPublisherModal(true)}
-                  className="mt-4 text-sky-600 hover:text-sky-700 font-medium cursor-pointer"
-                >
-                  Add your first news publisher
-                </button>
-              </div>
-            )}
+                {(activeTab === 'admins' ? filteredAdmins : filteredPublishers).length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-24 text-center">
+                      <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100 dark:border-gray-700">
+                        <i className={`${activeTab === 'admins' ? 'ri-shield-user-line' : 'ri-newspaper-line'} text-3xl text-gray-300 dark:text-gray-600`}></i>
+                      </div>
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">No users found</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-widest">
+                        {activeTab === 'admins' ? 'No administrators active' : 'No news publishers active'}
+                      </p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Add News Publisher Modal */}
       {showAddPublisherModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Add News Publisher</h3>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl max-w-md w-full p-8 border border-gray-100 dark:border-gray-800">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Add Publisher</h3>
               <button
                 onClick={() => {
                   setShowAddPublisherModal(false);
                   setNewPublisherEmail('');
                 }}
-                className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer"
               >
-                <i className="ri-close-line text-2xl"></i>
+                <i className="ri-close-line text-xl"></i>
               </button>
             </div>
 
-            <div className="mb-6">
-              <p className="text-sm text-gray-600 mb-4">
-                Enter the email address of the user you want to assign the News Publisher role to.
+            <div className="mb-8">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
+                Enter the email address of the user you want to assign permissions to publish campus news.
               </p>
-              
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2 ml-1">
                 User Email
               </label>
               <input
@@ -487,23 +395,23 @@ export default function RoleManagement() {
                 value={newPublisherEmail}
                 onChange={(e) => setNewPublisherEmail(e.target.value)}
                 placeholder="user@example.com"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent text-sm"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl focus:ring-2 focus:ring-cyan-500/20 font-medium text-sm text-gray-900 dark:text-white placeholder-gray-400 outline-none transition-all"
               />
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-4">
               <button
                 onClick={() => {
                   setShowAddPublisherModal(false);
                   setNewPublisherEmail('');
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap cursor-pointer"
+                className="flex-1 px-6 py-4 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors whitespace-nowrap cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddNewsPublisher}
-                className="flex-1 px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors whitespace-nowrap cursor-pointer"
+                className="flex-1 px-6 py-4 bg-cyan-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-cyan-700 transition-colors whitespace-nowrap cursor-pointer shadow-lg shadow-cyan-200 dark:shadow-none"
               >
                 Add Publisher
               </button>
@@ -514,35 +422,35 @@ export default function RoleManagement() {
 
       {/* Add Admin Modal */}
       {showAddAdminModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Add Administrator</h3>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl max-w-md w-full p-8 border border-gray-100 dark:border-gray-800">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Add Administrator</h3>
               <button
                 onClick={() => {
                   setShowAddAdminModal(false);
                   setNewAdminEmail('');
                 }}
-                className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer"
               >
-                <i className="ri-close-line text-2xl"></i>
+                <i className="ri-close-line text-xl"></i>
               </button>
             </div>
 
-            <div className="mb-6">
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+            <div className="mb-8">
+              <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20 rounded-2xl p-4 mb-6">
                 <div className="flex items-start gap-3">
-                  <i className="ri-alert-line text-amber-600 text-xl flex-shrink-0 mt-0.5"></i>
+                  <i className="ri-shield-alert-line text-amber-600 text-xl flex-shrink-0 mt-0.5"></i>
                   <div>
-                    <p className="text-sm font-medium text-amber-900 mb-1">Important</p>
-                    <p className="text-xs text-amber-800">
-                      Administrators have full access to manage users, products, news, subscriptions, and all platform settings. Only grant this role to trusted users.
+                    <p className="text-xs font-bold uppercase tracking-widest text-amber-800 dark:text-amber-400 mb-1">High Privilege Role</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-500/80 leading-relaxed">
+                      Administrators have full access to manage users, products, news, and system usage.
                     </p>
                   </div>
                 </div>
               </div>
-              
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2 ml-1">
                 User Email
               </label>
               <input
@@ -550,23 +458,23 @@ export default function RoleManagement() {
                 value={newAdminEmail}
                 onChange={(e) => setNewAdminEmail(e.target.value)}
                 placeholder="user@example.com"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl focus:ring-2 focus:ring-amber-500/20 font-medium text-sm text-gray-900 dark:text-white placeholder-gray-400 outline-none transition-all"
               />
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-4">
               <button
                 onClick={() => {
                   setShowAddAdminModal(false);
                   setNewAdminEmail('');
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap cursor-pointer"
+                className="flex-1 px-6 py-4 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors whitespace-nowrap cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddAdmin}
-                className="flex-1 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors whitespace-nowrap cursor-pointer"
+                className="flex-1 px-6 py-4 bg-amber-500 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-amber-600 transition-colors whitespace-nowrap cursor-pointer shadow-lg shadow-amber-200 dark:shadow-none"
               >
                 Add Admin
               </button>

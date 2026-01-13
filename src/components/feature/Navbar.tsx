@@ -12,6 +12,7 @@ export default function Navbar() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [hasApplication, setHasApplication] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleSignOut = async () => {
@@ -24,13 +25,47 @@ export default function Navbar() {
     }
   };
 
-  const getDashboardLink = () => {
-    if (profile?.role === 'super_admin') return '/admin/super-admins';
-    if (profile?.role === 'admin') return '/admin';
-    if (profile?.role === 'news_publisher') return '/publisher';
-    if (profile?.role === 'seller') return '/seller/dashboard';
-    return '/marketplace';
-  };
+  // Fetch unread message count and application status
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchData = async () => {
+      try {
+        // Fetch unread messages
+        const { count, error: msgError } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('receiver_id', user.id)
+          .eq('is_read', false);
+
+        if (!msgError && count !== null) {
+          setUnreadCount(count);
+        }
+
+        // Check for seller application if user is a buyer
+        if (profile?.role === 'buyer') {
+          const { data: app, error: appError } = await supabase
+            .from('seller_applications')
+            .select('id')
+            .eq('user_id', user.id)
+            .maybeSingle(); // Use maybeSingle to avoid 406 error if not found
+
+          if (!appError && app) {
+            setHasApplication(true);
+          } else {
+            setHasApplication(false);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching data:', err);
+      }
+    };
+
+    fetchData();
+
+    const interval = setInterval(fetchData, 10000);
+    return () => clearInterval(interval);
+  }, [user, profile?.role]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -48,31 +83,19 @@ export default function Navbar() {
     };
   }, [showDropdown]);
 
-  // Fetch unread message count
-  useEffect(() => {
-    if (!user) return;
+  const getDashboardItem = () => {
+    if (profile?.role === 'super_admin') return { label: 'Admin Dashboard', path: '/admin/super-admins', icon: 'ri-dashboard-line' };
+    if (profile?.role === 'admin') return { label: 'Admin Dashboard', path: '/admin', icon: 'ri-dashboard-line' };
+    if (profile?.role === 'news_publisher') return { label: 'Publisher Dashboard', path: '/publisher', icon: 'ri-article-line' };
+    if (profile?.role === 'seller') return { label: 'Seller Dashboard', path: '/seller/dashboard', icon: 'ri-store-3-line' };
 
-    const fetchUnreadCount = async () => {
-      try {
-        const { count, error } = await supabase
-          .from('messages')
-          .select('*', { count: 'exact', head: true })
-          .eq('receiver_id', user.id)
-          .eq('is_read', false);
+    // If buyer has pending/rejected application
+    if (hasApplication) return { label: 'Application Status', path: '/seller/status', icon: 'ri-file-list-3-line' };
 
-        if (!error && count !== null) {
-          setUnreadCount(count);
-        }
-      } catch (err) {
-        console.error('Error fetching unread count:', err);
-      }
-    };
+    return null; // Don't show anything for regular buyers
+  };
 
-    fetchUnreadCount();
-
-    const interval = setInterval(fetchUnreadCount, 10000);
-    return () => clearInterval(interval);
-  }, [user]);
+  const dashboardItem = getDashboardItem();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 transition-all duration-500">
@@ -163,8 +186,7 @@ export default function Navbar() {
                     )}
                   </Link>
 
-                  {/* Temporary Admin Setup Link - REMOVE IN PRODUCTION */}
-                  {/* Only show to admins/super_admins OR users who haven't been assigned a specific role yet (to allow self-setup in dev) */}
+                  {/* RESTORED: Admin Setup Link */}
                   {(!profile?.role || ['admin', 'super_admin'].includes(profile.role)) && (
                     <Link to="/admin/setup" className="hidden lg:flex relative group p-3 bg-purple-50 dark:bg-purple-900/20 rounded-2xl hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-all" title="Grant Admin Access">
                       <i className="ri-shield-keyhole-line text-xl md:text-2xl text-purple-900 dark:text-purple-300"></i>
@@ -197,7 +219,8 @@ export default function Navbar() {
                       <div className="space-y-1">
                         {[
                           { label: 'My Settings', path: '/profile', icon: 'ri-user-settings-line' },
-                          { label: 'Management Dashboard', path: getDashboardLink(), icon: 'ri-dashboard-line' },
+                          // Only spread dashboardItem if it exists
+                          ...(dashboardItem ? [dashboardItem] : []),
                           { label: 'Help Center', path: '/support', icon: 'ri-customer-service-2-line' },
                           { label: 'Saved Products', path: '/profile#favorites', icon: 'ri-heart-line' }
                         ].map((item) => (
@@ -309,7 +332,7 @@ export default function Navbar() {
               </Link>
             ))}
 
-            {/* Mobile Admin Setup Link */}
+            {/* RESTORED: Mobile Admin Setup Link */}
             {user && (!profile?.role || ['admin', 'super_admin'].includes(profile.role)) && (
               <Link
                 to="/admin/setup"
@@ -326,18 +349,18 @@ export default function Navbar() {
               </Link>
             )}
 
-            {user && (
+            {user && dashboardItem && (
               <Link
-                to={getDashboardLink()}
+                to={dashboardItem.path}
                 onClick={() => setShowMobileMenu(false)}
                 className="group flex items-center justify-between p-5 rounded-2xl hover:bg-white/5 active:scale-[0.98] transition-all border border-transparent hover:border-white/5"
               >
                 <div className="flex items-center gap-5">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gray-800 text-gray-300 shadow-lg ring-1 ring-white/5">
-                    <i className="ri-dashboard-line text-xl"></i>
+                    <i className={`${dashboardItem.icon} text-xl`}></i>
                   </div>
                   <div>
-                    <span className="text-lg font-bold text-gray-200 tracking-tight group-hover:text-white transition-colors">My Dashboard</span>
+                    <span className="text-lg font-bold text-gray-200 tracking-tight group-hover:text-white transition-colors">{dashboardItem.label}</span>
                     <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wide mt-1">Access Control</p>
                   </div>
                 </div>

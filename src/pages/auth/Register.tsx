@@ -7,12 +7,12 @@ export default function Register() {
   const { signUp } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     confirmPassword: '',
     fullName: '',
-    studentId: '',
     department: '',
     faculty: '',
     phone: '',
@@ -39,7 +39,7 @@ export default function Register() {
         formData.email,
         formData.password,
         formData.fullName,
-        formData.studentId,
+        '', // studentId (removed as requested)
         formData.department,
         formData.faculty,
         formData.phone
@@ -48,7 +48,6 @@ export default function Register() {
       navigate('/marketplace');
     } catch (err: any) {
       console.error('Registration error:', err);
-      // Check for specific Supabase "User already registered" error
       if (err.message && err.message.includes('User already registered')) {
         setError('This email address is already registered. Please sign in instead.');
       } else {
@@ -60,155 +59,234 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col md:flex-row overflow-hidden font-sans">
-      {/* Visual Identity Panel - Cinematic & Premium */}
-      <div className="hidden md:flex md:w-5/12 bg-[#0F172A] relative items-center justify-center p-20 overflow-hidden">
-        {/* Background Image */}
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex font-sans overflow-hidden">
+      {/* Visual Identity Panel - Hidden on Small Screens */}
+      <div className="hidden lg:flex lg:w-1/2 bg-slate-900 relative p-12 flex-col justify-between overflow-hidden">
+        {/* Background Image & Overlays */}
         <div className="absolute inset-0 z-0">
           <img
             src="/Pentecost-University-Sowutoum-Ghana-SchoolFinder-TortoisePathcom-11.jpeg"
             alt="Pentecost University"
-            className="w-full h-full object-cover opacity-50 mix-blend-overlay"
+            className="w-full h-full object-cover object-bottom opacity-40 scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/90 via-slate-900/80 to-transparent"></div>
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10 flex flex-col gap-2">
+          <Link to="/" className="w-48 h-48 transition-transform duration-500 hover:scale-110">
+            <img src="/PU%20Connect%20logo.png" alt="Logo" className="w-full h-full object-contain" />
+          </Link>
+
+          <div className="max-w-xl">
+            <h1 className="text-7xl font-extrabold text-white leading-[0.9] mb-6 tracking-tighter">
+              Build your <br />
+              <span className="text-blue-400">Campus Identity.</span>
+            </h1>
+            <p className="text-sm text-slate-400 font-medium leading-relaxed max-w-sm opacity-90 border-l-2 border-blue-500/50 pl-6">
+              Join thousands of students in the most trusted marketplace at Pentecost University. Sell, buy, and grow together.
+            </p>
+          </div>
+        </div>
+
+        {/* Mobile Mockup Image */}
+        <div className="relative z-10 mt-auto -mb-24 flex justify-center">
+          <img
+            src="/app_mobile_mockup_1768321221445.png"
+            alt="App Preview"
+            className="w-[80%] h-auto drop-shadow-2xl animate-in slide-in-from-bottom-20 duration-1000"
           />
         </div>
 
-        {/* Animated Background Elements */}
-        <div className="absolute top-0 left-0 w-full h-full z-0">
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-[#0F172A]/80 to-blue-900/40"></div>
-          <div className="absolute top-[-20%] right-[-20%] w-[80%] h-[80%] bg-blue-600/20 blur-[150px] rounded-full animate-pulse"></div>
-          <div className="absolute top-[-20%] right-[-20%] w-[80%] h-[80%] bg-blue-600/20 blur-[150px] rounded-full animate-pulse"></div>
-          <div className="absolute bottom-[-20%] left-[-20%] w-[80%] h-[80%] bg-indigo-600/20 blur-[150px] rounded-full animate-pulse delay-1000"></div>
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
-        </div>
-
-        <div className="relative z-10 max-w-lg text-center md:text-left">
-          <Link to="/" className="inline-flex items-center gap-4 mb-12 group">
-            <div className="w-64 h-64 bg-white/5 backdrop-blur-xl rounded-[3rem] flex items-center justify-center group-hover:scale-105 transition-all duration-500 border border-white/10 shadow-2xl shadow-blue-900/20">
-              <img src="/PU%20Connect%20logo.png" alt="PU Connect" className="w-[85%] h-[85%] object-contain drop-shadow-2xl" />
-            </div>
-          </Link>
-
-          <h1 className="text-5xl md:text-7xl font-bold text-white leading-[1.1] tracking-tight mb-8 drop-shadow-lg">
-            Join the <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Future.</span>
-          </h1>
-
-          <p className="text-lg text-blue-200/80 font-medium leading-relaxed max-w-md mb-12 border-l-2 border-blue-500/30 pl-6">
-            The official digital marketplace for Pentecost University students. Secure, fast, and built for your campus life.
-          </p>
-        </div>
+        {/* Decorative Elements */}
+        <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-blue-500/20 blur-[100px] rounded-full"></div>
       </div>
 
       {/* Auth Interface */}
-      <div className="flex-1 flex items-center justify-center p-6 md:p-20 bg-white dark:bg-gray-950 overflow-y-auto transition-colors duration-300">
-        <div className="max-w-xl w-full animate-in fade-in slide-in-from-bottom-8 duration-700">
-          <div className="mb-10 text-center md:text-left">
-            {/* Mobile Logo - Visible only on small screens */}
-            <div className="md:hidden flex justify-center mb-8">
-              <div className="w-24 h-24 bg-gray-50 dark:bg-gray-900 rounded-[1.5rem] flex items-center justify-center border border-gray-100 dark:border-gray-800 shadow-xl shadow-blue-900/10">
-                <img src="/PU%20Connect%20logo.png" alt="PU Connect" className="w-[85%] h-[85%] object-contain" />
-              </div>
-            </div>
+      <div className="flex-1 flex flex-col justify-center items-center p-4 lg:p-10 relative">
+        {/* Background Gradients for Mobile */}
+        <div className="lg:hidden absolute inset-0 -z-10 overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[80px] rounded-full"></div>
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/10 blur-[80px] rounded-full"></div>
+        </div>
 
-            <div className="flex items-center gap-3 mb-2 justify-center md:justify-start">
-              <span className="px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold uppercase tracking-widest border border-blue-100 dark:border-blue-800">New Account</span>
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white tracking-tight mb-3">Create Profile.</h2>
-            <p className="text-gray-500 dark:text-gray-400 text-lg">Enter your details to join the campus network.</p>
+        <div className="w-full max-w-xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+          {/* Mobile Logo */}
+          <div className="lg:hidden flex justify-center mb-8">
+            <Link to="/" className="w-20 h-20 transition-transform duration-500 active:scale-95">
+              <img src="/PU%20Connect%20logo.png" alt="Logo" className="w-full h-full object-contain" />
+            </Link>
           </div>
 
-          {error && (
-            <div className="mb-8 p-6 bg-rose-50 dark:bg-rose-900/10 border border-rose-200 dark:border-rose-900/30 rounded-2xl flex items-center gap-4 text-rose-700 dark:text-rose-300 shadow-sm animate-in fade-in slide-in-from-top-2">
-              <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center flex-shrink-0">
-                <i className="ri-error-warning-fill text-xl"></i>
-              </div>
-              <p className="font-bold text-sm">{error}</p>
+          <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/20 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-2xl shadow-blue-900/5 relative overflow-hidden">
+            <div className="mb-8 text-center lg:text-left">
+              <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">Create Profile.</h2>
+              <p className="text-slate-500 dark:text-slate-400 font-medium text-sm">Begin your academic journey with us.</p>
             </div>
-          )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-5">
-              {[
-                { label: 'Full Name', key: 'fullName', type: 'text', placeholder: 'John Doe', icon: 'ri-user-smile-line' },
-                { label: 'Email Address', key: 'email', type: 'email', placeholder: 'student@pentvars.edu.gh', icon: 'ri-mail-line' },
-                { label: 'Phone Number', key: 'phone', type: 'tel', placeholder: '055 123 4567', icon: 'ri-phone-line' },
-              ].map((field) => (
-                <div key={field.key} className="relative group">
-                  <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2 ml-1 group-focus-within:text-blue-600 dark:group-focus-within:text-blue-400 transition-colors">
-                    {field.label}
-                  </label>
-                  <div className="relative">
+            {error && (
+              <div className="mb-6 p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-900/30 rounded-2xl flex items-center gap-3 text-rose-600 dark:text-rose-300 animate-in shake duration-500">
+                <i className="ri-error-warning-fill text-xl shrink-0"></i>
+                <p className="font-bold text-xs tracking-tight">{error}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Full Name */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 ml-3">Full Name</label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <i className="ri-user-smile-line text-slate-400 group-focus-within:text-blue-500 transition-colors text-lg"></i>
+                    </div>
                     <input
                       required
-                      type={field.type}
-                      value={(formData as any)[field.key]}
-                      onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
-                      className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl py-4 pl-12 pr-6 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none font-medium text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 shadow-sm group-hover:bg-gray-100 dark:group-hover:bg-gray-800/80"
-                      placeholder={field.placeholder}
+                      type="text"
+                      value={formData.fullName}
+                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                      className="block w-full pl-12 pr-4 py-3.5 bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-semibold transition-all focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600 hover:bg-white dark:hover:bg-slate-900"
+                      placeholder="Enter your full name"
                     />
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors">
-                      <i className={`${field.icon} text-lg`}></i>
+                  </div>
+                </div>
+
+                {/* Phone */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 ml-3">Phone Number</label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <i className="ri-phone-line text-slate-400 group-focus-within:text-blue-500 transition-colors text-lg"></i>
+                    </div>
+                    <input
+                      required
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="block w-full pl-12 pr-4 py-3.5 bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-semibold transition-all focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600 hover:bg-white dark:hover:bg-slate-900"
+                      placeholder="e.g. 0551234567"
+                    />
+                  </div>
+                </div>
+
+                {/* Faculty */}
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 ml-3">Faculty</label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <i className="ri-community-line text-slate-400 group-focus-within:text-blue-500 transition-colors text-lg"></i>
+                    </div>
+                    <select
+                      required
+                      value={formData.faculty}
+                      onChange={(e) => setFormData({ ...formData, faculty: e.target.value })}
+                      className="block w-full pl-12 pr-10 py-3.5 bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-semibold focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none appearance-none hover:bg-white dark:hover:bg-slate-900 transition-all text-slate-600 dark:text-slate-300"
+                    >
+                      <option value="" disabled>Select your faculty</option>
+                      <option value="Faculty of Business">Faculty of Business</option>
+                      <option value="Faculty of Science & Computing">Faculty of Science & Computing</option>
+                      <option value="Faculty of Nursing & Midwifery">Faculty of Nursing & Midwifery</option>
+                      <option value="Faculty of Education">Faculty of Education</option>
+                      <option value="Faculty of Engineering">Faculty of Engineering</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                      <i className="ri-arrow-down-s-line text-slate-400"></i>
                     </div>
                   </div>
                 </div>
-              ))}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {[
-                  { label: 'Password', key: 'password', type: 'password', icon: 'ri-lock-2-line' },
-                  { label: 'Confirm Password', key: 'confirmPassword', type: 'password', icon: 'ri-shield-keyhole-line' }
-                ].map((field) => (
-                  <div key={field.key} className="relative group">
-                    <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2 ml-1 group-focus-within:text-blue-600 dark:group-focus-within:text-blue-400 transition-colors">
-                      {field.label}
-                    </label>
-                    <div className="relative">
-                      <input
-                        required
-                        type={field.type}
-                        value={(formData as any)[field.key]}
-                        onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
-                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl py-4 pl-12 pr-6 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none font-medium text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 shadow-sm"
-                        placeholder="••••••"
-                      />
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors">
-                        <i className={`${field.icon} text-lg`}></i>
-                      </div>
+                {/* Email Address */}
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 ml-3">Email Address</label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <i className="ri-mail-line text-slate-400 group-focus-within:text-blue-500 transition-colors text-lg"></i>
                     </div>
+                    <input
+                      required
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="block w-full pl-12 pr-4 py-3.5 bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-semibold transition-all focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600 hover:bg-white dark:hover:bg-slate-900"
+                      placeholder="Enter your email address"
+                    />
                   </div>
-                ))}
+                </div>
+
+                {/* Password */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 ml-3">Password</label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <i className="ri-lock-2-line text-slate-400 group-focus-within:text-blue-500 transition-colors text-lg"></i>
+                    </div>
+                    <input
+                      required
+                      type={showPassword ? "text" : "password"}
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className="block w-full pl-12 pr-12 py-3.5 bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-semibold transition-all focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600 hover:bg-white dark:hover:bg-slate-900"
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-blue-500 transition-colors cursor-pointer"
+                    >
+                      <i className={`ri-${showPassword ? 'eye-off' : 'eye'}-line text-lg`}></i>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Confirm Password */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 ml-3">Confirm</label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <i className="ri-shield-check-line text-slate-400 group-focus-within:text-blue-500 transition-colors text-lg"></i>
+                    </div>
+                    <input
+                      required
+                      type={showPassword ? "text" : "password"}
+                      value={formData.confirmPassword}
+                      onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                      className="block w-full pl-12 pr-4 py-3.5 bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-semibold transition-all focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600 hover:bg-white dark:hover:bg-slate-900"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div className="pt-4">
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-5 bg-gradient-to-r from-gray-900 to-black dark:from-white dark:to-gray-200 text-white dark:text-gray-900 rounded-2xl hover:shadow-2xl hover:shadow-gray-900/20 dark:hover:shadow-white/10 hover:-translate-y-1 transition-all duration-300 font-bold text-sm uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3 relative overflow-hidden group"
-              >
-                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 rounded-2xl"></div>
-                {loading ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white/30 dark:border-gray-900/30 border-t-white dark:border-t-gray-900 rounded-full animate-spin"></div>
-                    <span>Registering...</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="relative z-10">Create Account</span>
-                    <i className="ri-arrow-right-line relative z-10 group-hover:translate-x-1 transition-transform"></i>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+              <div className="pt-4">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-bold text-xs uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl shadow-blue-900/10 hover:shadow-blue-900/20 hover:-translate-y-0.5 transition-all duration-300 group relative overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-blue-600 translate-y-full group-hover:translate-y-0 transition-transform duration-300 -z-10"></div>
+                  {loading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white/20 dark:border-slate-900/20 border-t-white dark:border-t-slate-900 rounded-full animate-spin"></div>
+                      <span>Creating Profile...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Create Account</span>
+                      <i className="ri-arrow-right-line group-hover:translate-x-1 transition-transform text-lg"></i>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
 
-          <div className="mt-10 text-center border-t border-gray-100 dark:border-gray-800 pt-8">
-            <p className="text-gray-500 dark:text-gray-400 font-medium">
-              Already have an account?{' '}
-              <Link to="/login" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors ml-2 font-bold uppercase tracking-wide text-xs">
-                Sign In to Dashboard
-              </Link>
-            </p>
+            <div className="mt-8 text-center pt-2">
+              <p className="text-slate-500 dark:text-slate-400 font-medium text-xs">
+                Already have an account?{' '}
+                <Link to="/login" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors ml-1 font-bold">
+                  Sign In
+                </Link>
+              </p>
+            </div>
           </div>
         </div>
       </div>
