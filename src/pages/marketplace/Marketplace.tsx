@@ -90,7 +90,7 @@ function Marketplace() {
       <Navbar />
 
       {/* Hero Section - Marketplace Hub */}
-      <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden bg-gray-900">
+      <section className="relative pt-24 pb-12 md:pt-48 md:pb-32 overflow-hidden bg-gray-900">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-gray-900 to-gray-900 z-0"></div>
         {/* Animated Orbs */}
         <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[100px] opacity-40 animate-blob mix-blend-screen"></div>
@@ -105,7 +105,7 @@ function Marketplace() {
             <span className="text-[10px] font-bold uppercase tracking-widest text-white">Live Market</span>
           </div>
 
-          <h1 className="text-5xl md:text-8xl font-bold text-white mb-8 tracking-tight leading-none animate-fade-in-up delay-100 drop-shadow-2xl">
+          <h1 className="text-4xl sm:text-5xl md:text-8xl font-bold text-white mb-6 md:mb-8 tracking-tight leading-none animate-fade-in-up delay-100 drop-shadow-2xl">
             Campus <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">Commerce.</span>
           </h1>
@@ -127,7 +127,7 @@ function Marketplace() {
               />
               <button
                 type="submit"
-                className="px-8 h-12 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-900/20 active:scale-95 text-xs uppercase tracking-widest"
+                className="px-5 md:px-8 h-12 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-900/20 active:scale-95 text-[10px] md:text-xs uppercase tracking-widest"
               >
                 Search
               </button>
@@ -138,7 +138,7 @@ function Marketplace() {
 
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 -mt-10 relative z-20">
         {/* Category Pills - Floating Scroll */}
-        <div className="flex gap-4 overflow-x-auto pb-8 pt-4 no-scrollbar mask-gradient px-4 justify-start md:justify-center">
+        <div className="flex gap-3 md:gap-4 overflow-x-auto pb-6 md:pb-8 pt-4 no-scrollbar mask-gradient px-4 justify-start md:justify-center snap-x">
           {categories.map((category) => (
             <button
               key={category.id}
@@ -186,7 +186,7 @@ function Marketplace() {
 
           {/* Product Grid */}
           {productsLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
               {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
                 <div key={i} className="bg-white dark:bg-gray-900 rounded-[2rem] p-4 h-[450px] animate-pulse border border-gray-100 dark:border-gray-800">
                   <div className="bg-gray-100 dark:bg-gray-800 h-64 rounded-[1.5rem] mb-4"></div>
@@ -196,7 +196,7 @@ function Marketplace() {
               ))}
             </div>
           ) : filteredAndSortedProducts?.length ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
               {filteredAndSortedProducts.map((product) => {
                 const seller = product.seller as Profile;
                 return (
