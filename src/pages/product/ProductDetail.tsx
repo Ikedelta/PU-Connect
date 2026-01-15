@@ -102,7 +102,7 @@ export default function ProductDetail() {
   const seller = product.seller as Profile;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pt-20 transition-colors duration-300">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pt-24 pb-32 transition-colors duration-300">
       <Navbar />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -205,40 +205,37 @@ export default function ProductDetail() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-auto">
-                <button
-                  onClick={handleWhatsAppContact}
-                  className="w-full px-4 py-4.5 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 text-xs uppercase tracking-widest"
-                  disabled={!product?.whatsapp_number}
-                >
-                  <i className="ri-whatsapp-line text-xl"></i>
-                  <span>WhatsApp</span>
-                </button>
+              <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-100 dark:border-gray-800 z-50 lg:static lg:p-0 lg:bg-transparent lg:border-none shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] lg:shadow-none animate-slide-in-up">
+                <div className="max-w-6xl mx-auto grid grid-cols-3 gap-2 lg:gap-3">
+                  <button
+                    onClick={handleWhatsAppContact}
+                    className="w-full flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-2 lg:px-4 py-3 lg:py-4.5 bg-emerald-600 text-white font-bold rounded-xl lg:rounded-2xl hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer active:scale-95 text-[10px] lg:text-xs uppercase tracking-widest"
+                    disabled={!product?.whatsapp_number}
+                  >
+                    <i className="ri-whatsapp-line text-lg lg:text-xl"></i>
+                    <span className="hidden leading-none sm:inline">WhatsApp</span>
+                  </button>
 
-                <a
-                  href={`tel:${seller?.phone}`}
-                  className={`w-full px-4 py-4.5 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 text-xs uppercase tracking-widest ${!seller?.phone ? 'opacity-50 pointer-events-none' : ''}`}
-                >
-                  <i className="ri-phone-line text-xl"></i>
-                  <span>Call Seller</span>
-                </a>
+                  <a
+                    href={`tel:${seller?.phone}`}
+                    className={`w-full flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-2 lg:px-4 py-3 lg:py-4.5 bg-blue-600 text-white font-bold rounded-xl lg:rounded-2xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all cursor-pointer active:scale-95 text-[10px] lg:text-xs uppercase tracking-widest ${!seller?.phone ? 'opacity-50 pointer-events-none' : ''}`}
+                  >
+                    <i className="ri-phone-line text-lg lg:text-xl"></i>
+                    <span className="hidden leading-none sm:inline">Call</span>
+                  </a>
 
-                <button
-                  onClick={handleInAppMessage}
-                  className="w-full px-4 py-4.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-2xl hover:bg-black dark:hover:bg-gray-100 shadow-lg shadow-gray-900/20 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 text-xs uppercase tracking-widest"
-                  disabled={createConversationMutation.isPending}
-                >
-                  <i className="ri-message-3-line text-xl"></i>
-                  <span>{createConversationMutation.isPending ? 'Connecting...' : 'Message'}</span>
-                </button>
+                  <button
+                    onClick={handleInAppMessage}
+                    className="w-full flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-2 lg:px-4 py-3 lg:py-4.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-xl lg:rounded-2xl hover:bg-black dark:hover:bg-gray-100 shadow-lg shadow-gray-900/20 transition-all cursor-pointer active:scale-95 text-[10px] lg:text-xs uppercase tracking-widest"
+                    disabled={createConversationMutation.isPending}
+                  >
+                    <i className="ri-message-3-line text-lg lg:text-xl"></i>
+                    <span className="hidden leading-none sm:inline">{createConversationMutation.isPending ? '...' : 'Chat'}</span>
+                  </button>
+                </div>
               </div>
 
-              <div className="mt-8 pt-8 border-t border-gray-50 dark:border-gray-800 flex items-center justify-center gap-3 text-gray-400">
-                <i className="ri-shield-check-line text-blue-600"></i>
-                <p className="text-[10px] font-bold uppercase tracking-widest">
-                  Official Campus Verification Protected
-                </p>
-              </div>
+
             </div>
           </div>
         </div>

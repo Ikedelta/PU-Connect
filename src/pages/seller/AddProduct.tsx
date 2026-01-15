@@ -225,7 +225,7 @@ export default function AddProduct() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-5 gap-10">
+        <div className="flex flex-col-reverse xl:grid xl:grid-cols-5 gap-10">
           {/* Form Section */}
           <div className="xl:col-span-3 space-y-10">
             <div className="bg-white dark:bg-slate-900 rounded-[3rem] shadow-2xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 p-8 md:p-14 relative overflow-hidden">

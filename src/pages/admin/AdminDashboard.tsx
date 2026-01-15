@@ -26,7 +26,7 @@ type SMSHistory = {
 };
 
 export default function AdminDashboard() {
-  const { profile, loading: authLoading } = useAuth();
+  const { profile, loading: authLoading, refreshProfile } = useAuth();
   const navigate = useNavigate();
 
   const [applications, setApplications] = useState<(SellerApplication & { user: Profile })[]>([]);
@@ -74,12 +74,23 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (profile?.role !== 'admin' && profile?.role !== 'super_admin') {
-      navigate('/marketplace');
+
+    console.log('Admin Dashboard Access Check:', {
+      role: profile?.role,
+      id: profile?.id,
+      hasProfile: !!profile
+    });
+
+    // If no profile or not admin, show access denied instead of random redirect
+    if (!profile || (profile.role !== 'admin' && profile.role !== 'super_admin')) {
+      // navigate('/marketplace'); // Commented out to debug
       return;
     }
 
-    fetchData();
+    if (profile) {
+      refreshProfile();
+      fetchData();
+    }
 
     // Real-time subscriptions
     const channel = supabase
@@ -468,6 +479,27 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* Access Denied Guard */}
+      {(!profile || (profile.role !== 'admin' && profile.role !== 'super_admin')) && !authLoading && (
+        <div className="fixed inset-0 z-50 bg-slate-900 flex items-center justify-center p-6">
+          <div className="max-w-md w-full text-center">
+            <div className="w-20 h-20 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
+              <i className="ri-lock-2-line text-4xl text-rose-500"></i>
+            </div>
+            <h2 className="text-3xl font-black text-white mb-2">Access Restricted</h2>
+            <p className="text-slate-400 mb-8">You do not have permission to view the Admin Dashboard. Current Role: <span className="text-white font-bold">{profile?.role || 'Guest'}</span></p>
+            <div className="flex gap-4 justify-center">
+              <button onClick={() => navigate('/marketplace')} className="px-6 py-3 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-700 transition-colors">
+                Go to Marketplace
+              </button>
+              <button onClick={() => navigate('/login')} className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors">
+                Sign In
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Notifications */}
       {notification && (
         <div className="fixed top-32 right-6 z-50 animate-in slide-in-from-right fade-in duration-300">
@@ -824,8 +856,14 @@ export default function AdminDashboard() {
               ) : (
                 applications.map((app) => (
                   <div key={app.id} className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 flex flex-col xl:flex-row items-center gap-8 hover:border-slate-600 transition-all">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-600 to-blue-700 text-white flex items-center justify-center text-3xl font-black shadow-lg">
-                      {app.user?.full_name?.charAt(0) || 'U'}
+                    <div className="w-20 h-20 rounded-2xl bg-slate-700/50 overflow-hidden flex-shrink-0 shadow-lg border border-slate-600/50">
+                      {app.business_logo ? (
+                        <img src={getOptimizedImageUrl(app.business_logo, 100, 100)} alt={app.business_name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-600 to-blue-700 text-white text-3xl font-black">
+                          {app.user?.full_name?.charAt(0) || app.business_name?.charAt(0) || 'U'}
+                        </div>
+                      )}
                     </div>
                     <div className="flex-1 text-center xl:text-left min-w-0">
                       <div className="flex items-center gap-3 justify-center xl:justify-start mb-2">
@@ -837,7 +875,8 @@ export default function AdminDashboard() {
                           {app.status}
                         </span>
                       </div>
-                      <p className="text-slate-400 font-bold uppercase text-[10px] tracking-wider mb-3">{app.business_category || 'General'} • {new Date(app.created_at).toLocaleDateString()}</p>
+                      <p className="text-slate-400 font-bold uppercase text-[10px] tracking-wider mb-2">{app.business_category || 'General'} • {new Date(app.created_at).toLocaleDateString()}</p>
+                      <p className="text-slate-400 text-sm line-clamp-2 mb-4 max-w-2xl mx-auto xl:mx-0">{app.business_description}</p>
                       <div className="flex flex-wrap justify-center xl:justify-start gap-4">
                         <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><i className="ri-user-line text-blue-400"></i>{app.user?.full_name}</div>
                         <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><i className="ri-mail-line text-blue-400"></i>{app.contact_email}</div>
@@ -980,7 +1019,7 @@ export default function AdminDashboard() {
                   <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span> Live
                 </div>
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto pb-4">
                 <table className="w-full">
                   <thead className="bg-slate-900/50 border-b border-slate-700">
                     <tr className="text-[10px] font-black uppercase tracking-wider text-slate-400">

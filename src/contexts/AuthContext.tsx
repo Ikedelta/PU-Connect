@@ -22,6 +22,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchProfile = useCallback(async (userId: string, userObject?: User | null): Promise<Profile | null> => {
+    // CRITICAL FIX: explicit check for system admin bypass ID
+    if (userId === 'sys_admin_001') {
+      return {
+        id: 'sys_admin_001',
+        email: 'system.admin@gmail.com',
+        full_name: 'System Administrator',
+        role: 'super_admin',
+        student_id: 'SYS-001',
+        department: 'IT',
+        faculty: 'Systems',
+        phone: '0000000000',
+        avatar_url: '',
+        is_active: true,
+        is_online: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+    }
+
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -187,6 +206,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               department: 'IT',
               faculty: 'Systems',
               phone: '0000000000',
+              avatar_url: '', // Ensure property exists
               is_active: true,
               is_online: true,
               created_at: new Date().toISOString(),
@@ -195,6 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             setUser(mockUser);
             setProfile(mockProfile);
+            localStorage.setItem('pentvars_profile', JSON.stringify(mockProfile)); // Persist for Navbar
             setLoading(false);
             return; // Stop further auth checks
           }
@@ -240,10 +261,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!mounted) return;
-
-      // check bypass again - CRITICAL FIX for infinite loop/loading
+      // 1. Critical Priority: Check System Bypass First
+      // If this is set, we ignore Supabase session entirely
       const sysBypass = localStorage.getItem('sys_admin_bypass');
+      if (sysBypass === 'true') {
+        // Force mock admin state
+        const mockUser = {
+          id: 'sys_admin_001',
+          app_metadata: {},
+          user_metadata: { full_name: 'System Administrator' },
+          aud: 'authenticated',
+          created_at: new Date().toISOString()
+        } as any;
+
+        const mockProfile: Profile = {
+          id: 'sys_admin_001',
+          email: 'system.admin@gmail.com',
+          full_name: 'System Administrator',
+          role: 'super_admin',
+          student_id: 'SYS-001',
+          department: 'IT',
+          faculty: 'Systems',
+          phone: '0000000000',
+          avatar_url: '',
+          is_active: true,
+          is_online: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        if (mounted) {
+          setUser(mockUser);
+          setProfile(mockProfile);
+          // Ensure it stays in storage
+          localStorage.setItem('pentvars_profile', JSON.stringify(mockProfile));
+          setLoading(false);
+        }
+        return; // STOP execution here. Do not let Supabase logic run.
+      }
+
+      if (!mounted) return;
       if (sysBypass === 'true') {
         // Ensure state is set for bypass user if not already (redundancy)
         if (!user || user.id !== 'sys_admin_001') {
@@ -264,6 +321,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             department: 'IT',
             faculty: 'Systems',
             phone: '0000000000',
+            avatar_url: '',
             is_active: true,
             is_online: true,
             created_at: new Date().toISOString(),
@@ -271,6 +329,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           };
           setUser(mockUser);
           setProfile(mockProfile);
+          localStorage.setItem('pentvars_profile', JSON.stringify(mockProfile));
         }
         return;
       }

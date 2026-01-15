@@ -93,7 +93,7 @@ function Marketplace() {
       <Navbar />
 
       {/* Hero Section - Marketplace Hub */}
-      <section className="relative pt-24 pb-12 md:pt-48 md:pb-32 overflow-hidden bg-gray-900">
+      <section className="relative pt-28 pb-12 md:pt-48 md:pb-32 overflow-hidden bg-gray-900">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-gray-900 to-gray-900 z-0"></div>
         {/* Animated Orbs */}
         <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[100px] opacity-40 animate-blob mix-blend-screen"></div>
@@ -108,7 +108,7 @@ function Marketplace() {
             <span className="text-[10px] font-bold uppercase tracking-widest text-white">Live Market</span>
           </div>
 
-          <h1 className="text-5xl sm:text-6xl md:text-8xl font-black text-white mb-8 md:mb-12 tracking-tighter leading-[0.85] animate-fade-in-up delay-100 drop-shadow-2xl">
+          <h1 className="text-4xl sm:text-6xl md:text-8xl font-black text-white mb-8 md:mb-12 tracking-tighter leading-[0.85] animate-fade-in-up delay-100 drop-shadow-2xl">
             Campus <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">Market.</span>
           </h1>
@@ -173,13 +173,13 @@ function Marketplace() {
               </h2>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 w-full md:w-auto">
               {/* Sort Dropdown */}
-              <div className="relative group z-30">
+              <div className="relative group z-30 w-full md:w-auto">
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="appearance-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 py-3 pl-4 pr-10 rounded-xl font-bold text-xs uppercase tracking-wide focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-sm hover:shadow-md transition-all"
+                  className="appearance-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 py-3 pl-4 pr-10 rounded-xl font-bold text-xs uppercase tracking-wide focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-sm hover:shadow-md transition-all w-full md:w-auto"
                 >
                   <option value="newest">Newest First</option>
                   <option value="price-low">Price: Low to High</option>
@@ -192,7 +192,7 @@ function Marketplace() {
 
           {/* Product Grid */}
           {productsLoading ? (
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 lg:gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
               {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
                 <div key={i} className="bg-white dark:bg-gray-900 rounded-[2rem] p-4 h-[450px] animate-pulse border border-gray-100 dark:border-gray-800">
                   <div className="bg-gray-100 dark:bg-gray-800 h-64 rounded-[1.5rem] mb-4"></div>
@@ -202,7 +202,7 @@ function Marketplace() {
               ))}
             </div>
           ) : filteredAndSortedProducts?.length ? (
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 lg:gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
               {filteredAndSortedProducts.map((product) => {
                 const seller = product.seller as Profile;
                 return (
