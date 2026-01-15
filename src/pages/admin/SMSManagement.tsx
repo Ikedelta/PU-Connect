@@ -9,7 +9,37 @@ type User = {
   full_name: string;
   email: string;
   role: string;
+  faculty?: string; // Added faculty
 };
+
+type ScheduledSMS = {
+  id: string;
+  recipients: string[];
+  message: string;
+  scheduled_at: string;
+  status: string;
+  created_at: string;
+};
+
+type SMSHistoryItem = {
+  id: string;
+  created_at: string;
+  action_details: {
+    message: string;
+    recipient_count: number;
+    sent_at: string;
+  };
+  user?: {
+    full_name: string;
+  };
+};
+
+const SMS_TEMPLATES = [
+  { title: 'Meeting Reminder', text: 'Reminder: All staff meeting tomorrow at 10 AM at the main hall.' },
+  { title: 'Maintenance Alert', text: 'System Alert: PU Connect will undergoing scheduled maintenance tonight from 11 PM to 4 AM.' },
+  { title: 'Welcome Message', text: 'Welcome to PU Connect! We are glad to have you on board.' },
+  { title: 'Application Update', text: 'Update: Your seller application status has changed. Please check your dashboard.' },
+];
 
 export default function SMSManagement() {
   const { profile } = useAuth();
@@ -18,30 +48,86 @@ export default function SMSManagement() {
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'buyers' | 'sellers'>('all');
+
+  // Filters
+  const [filterRole, setFilterRole] = useState<'all' | 'buyer' | 'seller'>('all'); // Renamed for clarity vs DB values
+  const [filterFaculty, setFilterFaculty] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sentMessages, setSentMessages] = useState<any[]>([]);
+
+  const [activeTab, setActiveTab] = useState<'compose' | 'scheduled' | 'history'>('compose');
+  const [scheduledSMS, setScheduledSMS] = useState<ScheduledSMS[]>([]);
+  const [smsHistory, setSmsHistory] = useState<SMSHistoryItem[]>([]);
+  const [scheduledAt, setScheduledAt] = useState('');
+
+  const [smsBalance, setSmsBalance] = useState(0);
 
   useEffect(() => {
     if (profile?.role !== 'admin' && profile?.role !== 'super_admin') {
       navigate('/marketplace');
       return;
     }
-    setMessage("We are testing development");
     fetchUsers();
+    fetchScheduledSMS();
+    fetchHistory();
+    fetchBalance();
   }, [profile, navigate]);
+
+  const fetchBalance = async () => {
+    try {
+      const { getSMSBalance } = await import('../../lib/arkesel');
+      const balance = await getSMSBalance();
+      setSmsBalance(balance);
+    } catch (err) {
+      console.error('Failed to fetch SMS balance', err);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, email, role, phone')
+        .select('id, full_name, email, role, phone, faculty')
         .order('full_name');
 
       if (error) throw error;
       setUsers(data || []);
     } catch (error) {
       console.error('Error fetching users:', error);
+    }
+  };
+
+  const fetchScheduledSMS = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('scheduled_sms')
+        .select('*')
+        .order('scheduled_at', { ascending: true });
+
+      if (error) throw error;
+      setScheduledSMS(data || []);
+    } catch (error) {
+      console.error('Error fetching scheduled SMS:', error);
+    }
+  };
+
+  const fetchHistory = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('activity_logs')
+        .select(`
+          id,
+          created_at,
+          action_details,
+          user:user_id ( full_name )
+        `)
+        .eq('action_type', 'sms_sent') // Corrected to action_type
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setSmsHistory(data as any || []);
+    } catch (error) {
+      console.error('Error fetching SMS history:', error);
     }
   };
 
@@ -75,46 +161,60 @@ export default function SMSManagement() {
     setSending(true);
 
     try {
-      const recipients = users
-        .filter(u => selectedUsers.includes(u.id) && (u as any).phone)
-        .map(u => (u as any).phone);
+      const uniqueRecipients = new Set(
+        users
+          .filter(u => selectedUsers.includes(u.id) && (u as any).phone)
+          .map(u => (u as any).phone)
+      );
+      const recipients = Array.from(uniqueRecipients);
 
       if (recipients.length === 0) {
         throw new Error('Selected users do not have valid phone numbers');
       }
 
-      await import('../../lib/arkesel').then(({ sendSMS }) => {
-        return sendSMS(recipients, message);
-      });
+      if (scheduledAt) {
+        // Schedule Request
+        const { error } = await supabase.from('scheduled_sms').insert({
+          recipients: recipients,
+          message: message,
+          scheduled_at: new Date(scheduledAt).toISOString(),
+          status: 'pending',
+          created_by: profile?.id
+        });
 
-      const recipientUsers = users.filter(u => selectedUsers.includes(u.id));
+        if (error) throw error;
 
-      for (const user of recipientUsers) {
+        alert(`Message scheduled for ${new Date(scheduledAt).toLocaleString()}!`);
+        setScheduledAt('');
+        fetchScheduledSMS();
+      } else {
+        // Instant Send
+        await import('../../lib/arkesel').then(({ sendSMS }) => {
+          return sendSMS(recipients, message);
+        });
+
+        // Correct log entry
         await supabase.from('activity_logs').insert({
-          user_id: user.id,
-          action: 'sms_sent',
-          details: {
+          user_id: profile?.id, // Admin sent it
+          action_type: 'sms_sent',
+          action_details: {
             message: message,
-            sent_by: profile?.id,
+            recipient_count: recipients.length,
             sent_at: new Date().toISOString(),
           },
         });
+
+        // Update balance
+        fetchBalance();
+        fetchHistory(); // Refresh history
+
+        alert(`SMS sent successfully to ${recipients.length} user(s)!`);
       }
 
-      alert(`SMS sent successfully to ${recipients.length} user(s)!`);
-      setMessage('We are testing development');
+      // Reset Form part
+      setMessage('');
       setSelectedUsers([]);
 
-      // Add to sent messages
-      setSentMessages([
-        {
-          id: Date.now(),
-          message,
-          recipients: recipients.length,
-          sent_at: new Date().toISOString(),
-        },
-        ...sentMessages,
-      ]);
     } catch (error: any) {
       console.error('SMS Error:', error);
       alert(error.message || 'Failed to send SMS');
@@ -123,206 +223,405 @@ export default function SMSManagement() {
     }
   };
 
+  const handleDeleteScheduled = async (id: string) => {
+    if (!confirm('Are you sure you want to cancel this scheduled message?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('scheduled_sms')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      fetchScheduledSMS();
+    } catch (error: any) {
+      alert('Failed to delete: ' + error.message);
+    }
+  };
+
+  // Unique faculties for filter
+  const faculties = Array.from(new Set(users.map(u => u.faculty).filter(Boolean)));
+
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
       user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesFilter =
-      filter === 'all' ||
-      (filter === 'buyers' && user.role === 'buyer') ||
-      (filter === 'sellers' && user.role === 'seller');
+    const matchesRole =
+      filterRole === 'all' ||
+      user.role === filterRole;
 
-    return matchesSearch && matchesFilter;
+    const matchesFaculty =
+      filterFaculty === 'all' ||
+      user.faculty === filterFaculty;
+
+    return matchesSearch && matchesRole && matchesFaculty;
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 font-sans">
       <Navbar />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">SMS Management</h1>
-          <p className="text-gray-600 mt-2">Send notifications to users via SMS</p>
+      <div className="pt-28 pb-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">SMS Console</h1>
+            <p className="text-slate-500 font-medium">Broadcast System & Engagement</p>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="bg-gradient-to-r from-orange-500 to-red-500 px-5 py-3 rounded-2xl shadow-lg shadow-orange-500/20 flex items-center gap-4 text-white hover:scale-105 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                <i className="ri-coins-line text-xl"></i>
+              </div>
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-white/80">SMS Balance</div>
+                <div className="text-xl font-black">{smsBalance.toLocaleString()} <span className="text-xs font-bold text-white/60">UNITS</span></div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => navigate('/admin/dashboard')}
+              className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+              title="Back to Dashboard"
+            >
+              <i className="ri-arrow-left-line text-xl"></i>
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* User Selection */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-lg font-bold text-gray-900 mb-4">Select Recipients</h2>
+        {/* Tabs */}
+        <div className="flex space-x-1 bg-slate-200/50 dark:bg-slate-800 p-1 rounded-xl w-fit mb-6 overflow-x-auto">
+          {[
+            { id: 'compose', label: 'Compose', icon: 'ri-edit-box-line' },
+            { id: 'scheduled', label: `Scheduled (${scheduledSMS.length})`, icon: 'ri-calendar-event-line' },
+            { id: 'history', label: 'Sent History', icon: 'ri-history-line' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === tab.id
+                ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5 dark:bg-slate-700 dark:text-white'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                }`}
+            >
+              <i className={tab.icon}></i>
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-                {/* Filters */}
-                <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                  <div className="flex-1">
+        {activeTab === 'compose' ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* User Selection */}
+            <div className="lg:col-span-2">
+              <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm flex flex-col h-[600px]">
+                <div className="p-6 border-b border-slate-200 dark:border-slate-700 shrink-0">
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Select Recipients</h2>
+
+                  {/* Filters */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                     <div className="relative">
-                      <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                      <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
                       <input
                         type="text"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder="Search users..."
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent text-sm"
+                        className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none dark:text-white"
                       />
                     </div>
+                    <select
+                      value={filterRole}
+                      onChange={(e) => setFilterRole(e.target.value as any)}
+                      className="px-4 py-2 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-500 text-sm cursor-pointer outline-none dark:text-white"
+                    >
+                      <option value="all">All Roles</option>
+                      <option value="buyer">Buyers Only</option>
+                      <option value="seller">Sellers Only</option>
+                    </select>
+                    <select
+                      value={filterFaculty}
+                      onChange={(e) => setFilterFaculty(e.target.value)}
+                      className="px-4 py-2 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-500 text-sm cursor-pointer outline-none dark:text-white"
+                    >
+                      <option value="all">All Faculties</option>
+                      {faculties.map(f => (
+                        <option key={f} value={f}>{f}</option>
+                      ))}
+                    </select>
                   </div>
-                  <select
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value as any)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent text-sm cursor-pointer"
-                  >
-                    <option value="all">All Users</option>
-                    <option value="buyers">Buyers Only</option>
-                    <option value="sellers">Sellers Only</option>
-                  </select>
+
+                  {/* Select All */}
+                  <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-xl">
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedUsers.length === filteredUsers.length && filteredUsers.length > 0}
+                        onChange={handleSelectAll}
+                        className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span className="text-sm font-bold text-slate-900 dark:text-white">
+                        Select All ({filteredUsers.length})
+                      </span>
+                    </label>
+                    <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                      {selectedUsers.length} selected
+                    </span>
+                  </div>
                 </div>
 
-                {/* Select All */}
-                <div className="flex items-center justify-between mb-4 p-3 bg-gray-50 rounded-lg">
-                  <label className="flex items-center space-x-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedUsers.length === filteredUsers.length && filteredUsers.length > 0}
-                      onChange={handleSelectAll}
-                      className="w-5 h-5 text-sky-600 border-gray-300 rounded focus:ring-sky-500 cursor-pointer"
-                    />
-                    <span className="text-sm font-medium text-gray-900">
-                      Select All ({filteredUsers.length} users)
-                    </span>
-                  </label>
-                  <span className="text-sm text-gray-600">
-                    {selectedUsers.length} selected
-                  </span>
+                {/* User List */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+                  {filteredUsers.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-8">
+                      <i className="ri-user-search-line text-5xl text-slate-300 mb-4"></i>
+                      <p className="text-slate-500 font-medium">No users found matching your criteria</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {filteredUsers.map((user) => (
+                        <label
+                          key={user.id}
+                          className={`flex items-center space-x-4 p-3 rounded-xl cursor-pointer transition-all ${selectedUsers.includes(user.id)
+                              ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30'
+                              : 'hover:bg-slate-50 dark:hover:bg-slate-700/50 border border-transparent'
+                            }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedUsers.includes(user.id)}
+                            onChange={() => handleSelectUser(user.id)}
+                            className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+                          />
+                          <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-600">
+                            {user.full_name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                                {user.full_name}
+                              </p>
+                              <span className={`px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide rounded-md border ${user.role === 'seller' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-blue-50 text-blue-700 border-blue-100'
+                                }`}>
+                                {user.role}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-slate-400 truncate">
+                              <span>{user.email}</span>
+                              {user.faculty && (
+                                <>
+                                  <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                                  <span className="text-slate-500">{user.faculty}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
+            </div>
 
-              {/* User List */}
-              <div className="max-h-96 overflow-y-auto">
-                {filteredUsers.length === 0 ? (
-                  <div className="p-12 text-center">
-                    <i className="ri-user-search-line text-5xl text-gray-300 mb-4"></i>
-                    <p className="text-gray-600">No users found</p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-gray-200">
-                    {filteredUsers.map((user) => (
-                      <label
-                        key={user.id}
-                        className="flex items-center space-x-4 p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+            {/* Message Composer */}
+            <div className="lg:col-span-1">
+              <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 sticky top-28 shadow-sm">
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Compose Message</h2>
+
+                {/* Templates */}
+                <div className="mb-6">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">Quick Templates</p>
+                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    {SMS_TEMPLATES.map((tpl, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setMessage(tpl.text)}
+                        className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap transition-colors"
                       >
-                        <input
-                          type="checkbox"
-                          checked={selectedUsers.includes(user.id)}
-                          onChange={() => handleSelectUser(user.id)}
-                          className="w-5 h-5 text-sky-600 border-gray-300 rounded focus:ring-sky-500 cursor-pointer"
-                        />
-                        <div className="w-10 h-10 bg-gradient-to-br from-sky-500 to-amber-400 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-white font-bold text-sm">
-                            {user.full_name.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {user.full_name}
-                          </p>
-                          <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                        </div>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${user.role === 'seller'
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-sky-100 text-sky-700'
-                          }`}>
-                          {user.role}
-                        </span>
-                      </label>
+                        {tpl.title}
+                      </button>
                     ))}
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Message Composer */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl border border-gray-200 p-6 sticky top-8">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Compose Message</h2>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Message
-                </label>
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  rows={6}
-                  maxLength={160}
-                  placeholder="Type your message here... (max 160 characters)"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent resize-none text-sm"
-                />
-                <p className="text-xs text-gray-500 mt-1 text-right">
-                  {message.length}/160 characters
-                </p>
-              </div>
-
-              <div className="mb-6 p-4 bg-sky-50 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-600">Recipients:</span>
-                  <span className="text-sm font-bold text-gray-900">{selectedUsers.length}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Estimated Cost:</span>
-                  <span className="text-sm font-bold text-gray-900">
-                    ${(selectedUsers.length * 0.05).toFixed(2)}
-                  </span>
+
+                <div className="mb-6">
+                  <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">
+                    Message Content
+                  </label>
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    rows={6}
+                    maxLength={160}
+                    placeholder="Type your broadcast message..."
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none text-sm font-medium dark:text-white"
+                  />
+                  <div className="flex justify-between items-center mt-2">
+                    <p className="text-[10px] font-bold uppercase text-slate-400">1 credit per SMS</p>
+                    <p className={`text-xs font-bold ${message.length > 150 ? 'text-amber-500' : 'text-slate-400'}`}>
+                      {message.length}/160
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              <button
-                onClick={handleSendSMS}
-                disabled={sending || selectedUsers.length === 0 || !message.trim()}
-                className="w-full px-4 py-3 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap cursor-pointer"
-              >
-                {sending ? (
-                  <>
-                    <i className="ri-loader-4-line animate-spin mr-2"></i>
-                    Sending...
-                  </>
-                ) : (
-                  <>
-                    <i className="ri-send-plane-fill mr-2"></i>
-                    Send SMS
-                  </>
-                )}
-              </button>
+                <div className="mb-6">
+                  <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-2 flex items-center justify-between">
+                    <span>Schedule Delivery (Optional)</span>
+                    {scheduledAt && (
+                      <button onClick={() => setScheduledAt('')} className="text-[10px] text-rose-500 hover:underline uppercase">Clear</button>
+                    )}
+                  </label>
+                  <div className="relative">
+                    <i className="ri-calendar-event-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input
+                      type="datetime-local"
+                      value={scheduledAt}
+                      onChange={(e) => setScheduledAt(e.target.value)}
+                      className={`w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-500 text-sm font-medium outline-none ${scheduledAt ? 'text-blue-600' : 'text-slate-500'
+                        }`}
+                    />
+                  </div>
+                </div>
 
-              <p className="text-xs text-gray-500 mt-4 text-center">
-                <i className="ri-information-line mr-1"></i>
-                SMS will be sent to selected users
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Sent Messages History */}
-        {sentMessages.length > 0 && (
-          <div className="mt-8 bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Recent Messages</h2>
-            <div className="space-y-4">
-              {sentMessages.map((msg) => (
-                <div key={msg.id} className="p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-start justify-between mb-2">
-                    <p className="text-sm text-gray-900">{msg.message}</p>
-                    <span className="text-xs text-gray-500 whitespace-nowrap ml-4">
-                      {new Date(msg.sent_at).toLocaleString()}
+                <div className="mb-6 p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-slate-500 font-bold uppercase">Recipients:</span>
+                    <span className="text-sm font-black text-slate-900 dark:text-white">{selectedUsers.length}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-500 font-bold uppercase">Est. Cost:</span>
+                    <span className="text-sm font-black text-blue-600">
+                      {selectedUsers.length} CREDITS
                     </span>
                   </div>
-                  <p className="text-xs text-gray-600">
-                    <i className="ri-user-line mr-1"></i>
-                    Sent to {msg.recipients} user(s)
-                  </p>
                 </div>
-              ))}
+
+                <button
+                  onClick={handleSendSMS}
+                  disabled={sending || selectedUsers.length === 0 || !message.trim()}
+                  className={`w-full px-6 py-4 rounded-xl text-white font-bold text-sm tracking-wide disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap cursor-pointer transition-all shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:-translate-y-1 ${scheduledAt ? 'bg-gradient-to-r from-purple-600 to-indigo-600' : 'bg-gradient-to-r from-blue-600 to-cyan-600'
+                    }`}
+                >
+                  {sending ? (
+                    <>
+                      <i className="ri-loader-4-line animate-spin mr-2"></i>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <i className={`${scheduledAt ? 'ri-calendar-check-fill' : 'ri-send-plane-fill'} mr-2`}></i>
+                      {scheduledAt ? 'Schedule Message' : 'Send Campaign'}
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
+          </div>
+        ) : activeTab === 'scheduled' ? (
+          // SCHEDULED TAB
+          <div className="space-y-6">
+            {scheduledSMS.length === 0 ? (
+              <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-12 text-center">
+                <div className="w-20 h-20 bg-slate-50 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <i className="ri-calendar-todo-line text-4xl text-slate-300 dark:text-slate-500"></i>
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">No Scheduled Messages</h3>
+                <p className="text-slate-500 font-medium max-w-sm mx-auto">Messages scheduled for later delivery will appear here. You can cancel them any time before delivery.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {scheduledSMS.map((item) => (
+                  <div key={item.id} className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 hover:shadow-xl transition-all relative group overflow-hidden">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-bl-full -mr-4 -mt-4"></div>
+
+                    <div className="flex items-start justify-between mb-4 relative z-10">
+                      <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-widest rounded-md border ${item.status === 'pending' ? 'bg-purple-50 text-purple-700 border-purple-100' :
+                        item.status === 'sent' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-slate-50 text-slate-600 border-slate-100'
+                        }`}>
+                        {item.status}
+                      </span>
+                      <button
+                        onClick={() => handleDeleteScheduled(item.id)}
+                        className="w-8 h-8 rounded-full bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-colors flex items-center justify-center cursor-pointer"
+                        title="Cancel Schedule"
+                      >
+                        <i className="ri-delete-bin-line"></i>
+                      </button>
+                    </div>
+
+                    <div className="mb-4">
+                      <div className="text-[10px] font-bold uppercase text-slate-400 mb-1">Scheduled For</div>
+                      <div className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                        {new Date(item.scheduled_at).toLocaleDateString()}
+                      </div>
+                      <div className="text-sm font-medium text-purple-600">
+                        {new Date(item.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl mb-4 text-sm text-slate-600 dark:text-slate-300 italic border-l-2 border-purple-400">
+                      "{item.message}"
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-wide">
+                      <span><i className="ri-group-fill mr-1 text-slate-300"></i> {item.recipients.length} Recipient(s)</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          // HISTORY TAB
+          <div className="space-y-6">
+            {smsHistory.length === 0 ? (
+              <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-12 text-center">
+                <div className="w-20 h-20 bg-slate-50 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <i className="ri-history-line text-4xl text-slate-300 dark:text-slate-500"></i>
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">No Sent History</h3>
+                <p className="text-slate-500 font-medium max-w-sm mx-auto">Messages you send will appear here for audit purposes.</p>
+              </div>
+            ) : (
+              <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-100 dark:border-slate-700 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                        <th className="p-6">Date Sent</th>
+                        <th className="p-6">Message</th>
+                        <th className="p-6">Recipients</th>
+                        <th className="p-6">Sent By</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {smsHistory.map((log) => (
+                        <tr key={log.id} className="border-b border-slate-50 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                          <td className="p-6 text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                            {new Date(log.created_at).toLocaleString()}
+                          </td>
+                          <td className="p-6">
+                            <p className="text-sm text-slate-900 dark:text-white max-w-md">
+                              {log.action_details.message}
+                            </p>
+                          </td>
+                          <td className="p-6">
+                            <div className="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs font-bold">
+                              <i className="ri-user-line mr-1"></i> {log.action_details.recipient_count}
+                            </div>
+                          </td>
+                          <td className="p-6 text-sm text-slate-500">
+                            {log.user?.full_name || 'System'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

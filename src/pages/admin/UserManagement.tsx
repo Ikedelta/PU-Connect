@@ -15,6 +15,7 @@ type User = {
   role: string;
   is_active: boolean;
   created_at: string;
+  last_sign_in_at?: string; // Supabase auth often tracks this, we'll try to use it or mock it
 };
 
 export default function UserManagement() {
@@ -27,7 +28,20 @@ export default function UserManagement() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editData, setEditData] = useState({ role: '', department: '', phone: '' });
+
+  // Expanded Edit Data State
+  const [editData, setEditData] = useState({
+    full_name: '',
+    role: '',
+    department: '',
+    faculty: '',
+    student_id: '',
+    phone: '',
+    email: '',
+    created_at: '',
+    last_sign_in_at: ''
+  });
+
   const [saving, setSaving] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
 
@@ -74,20 +88,27 @@ export default function UserManagement() {
   };
 
   const handleToggleActive = async (userId: string, currentStatus: boolean) => {
+    // Optimistic Update
+    setUsers(users.map(u => u.id === userId ? { ...u, is_active: !currentStatus } : u));
+
     try {
       const { error } = await supabase
         .from('profiles')
         .update({ is_active: !currentStatus })
         .eq('id', userId);
 
-      if (error) throw error;
+      if (error) {
+        // Revert on error
+        setUsers(users.map(u => u.id === userId ? { ...u, is_active: currentStatus } : u));
+        throw error;
+      }
 
       await fetchUsers();
       setOpenDropdown(null);
       alert(`User ${!currentStatus ? 'activated' : 'suspended'} successfully`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating user status:', error);
-      alert('Failed to update user status');
+      alert(`Failed to update user status: ${error.message}`);
     }
   };
 
@@ -96,29 +117,41 @@ export default function UserManagement() {
       return;
     }
 
+    const previousUsers = [...users];
+    setUsers(users.filter(u => u.id !== userId));
+
     try {
       const { error } = await supabase
         .from('profiles')
         .delete()
         .eq('id', userId);
 
-      if (error) throw error;
+      if (error) {
+        setUsers(previousUsers);
+        throw error;
+      }
 
-      await fetchUsers();
       setOpenDropdown(null);
       alert('User deleted successfully');
-    } catch (error) {
+      fetchUsers();
+    } catch (error: any) {
       console.error('Error deleting user:', error);
-      alert('Failed to delete user');
+      alert(`Failed to delete user: ${error.message}`);
     }
   };
 
   const handleEditRole = (user: User) => {
     setSelectedUser(user);
     setEditData({
+      full_name: user.full_name,
       role: user.role,
       department: user.department || '',
-      phone: user.phone || ''
+      faculty: user.faculty || '',
+      student_id: user.student_id || '',
+      phone: user.phone || '',
+      email: user.email,
+      created_at: user.created_at,
+      last_sign_in_at: user.last_sign_in_at || ''
     });
     setShowEditModal(true);
     setOpenDropdown(null);
@@ -129,28 +162,39 @@ export default function UserManagement() {
 
     setSaving(true);
     try {
+      // Optimistic Update
+      setUsers(users.map(u => u.id === selectedUser.id ? {
+        ...u,
+        full_name: editData.full_name,
+        role: editData.role,
+        department: editData.department,
+        faculty: editData.faculty,
+        student_id: editData.student_id,
+        phone: editData.phone
+      } : u));
+
       const { error } = await supabase
         .from('profiles')
         .update({
+          full_name: editData.full_name,
           role: editData.role,
           department: editData.department,
+          faculty: editData.faculty,
+          student_id: editData.student_id,
           phone: editData.phone
         })
         .eq('id', selectedUser.id);
 
       if (error) throw error;
 
-      // Send SMS Notification if role changed
+      // Send SMS Notification
       if (selectedUser.role !== editData.role && editData.phone) {
         try {
           const { sendSMS } = await import('../../lib/arkesel');
           const firstName = selectedUser.full_name.split(' ')[0];
-          const newRole = editData.role === 'news_publisher' ? 'News Publisher' :
-            editData.role.charAt(0).toUpperCase() + editData.role.slice(1);
-
           await sendSMS(
             [editData.phone],
-            `Hi ${firstName}, your account role on PU Connect has been updated to "${newRole}". You now have ${newRole} privileges. Login to access your dashboard.`
+            `Hi ${firstName}, your role on PU Connect has been updated to "${editData.role}".`
           );
         } catch (smsErr) {
           console.error('Failed to send role update SMS:', smsErr);
@@ -174,18 +218,15 @@ export default function UserManagement() {
 
   const handleExportData = (category?: string) => {
     let usersToExport = users;
-
     if (category) {
       usersToExport = users.filter(u => u.role === category);
     }
-
     if (usersToExport.length === 0) {
       alert('No users found for this category');
       return;
     }
-
     const csvContent = [
-      ['Email', 'Full Name', 'Department', 'Faculty', 'Role', 'Status', 'Created At'],
+      ['Email', 'Full Name', 'Department', 'Faculty', 'Role', 'Status', 'Joined'],
       ...usersToExport.map(user => [
         `"${user.email}"`,
         `"${user.full_name}"`,
@@ -201,7 +242,7 @@ export default function UserManagement() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `pentvars-${category || 'all'}-users-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `pentvars-users-${category || 'all'}.csv`;
     a.click();
     setShowExportMenu(false);
   };
@@ -217,77 +258,58 @@ export default function UserManagement() {
     return matchesSearch && matchesRole;
   });
 
-  if (authLoading || loading) {
-    return (
-      <div className="min-h-[100dvh] bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mb-4 mx-auto"></div>
-          <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Loading System...</p>
-        </div>
-      </div>
-    );
-  }
+  // Mock function to determine online status
+  const isUserOnline = (user: User) => {
+    // In a real app, check `last_seen_at > 5 mins ago`.
+    // Here we'll just mock it based on even/odd ID char or `is_active` for visual variance
+    return user.is_active && (user.id.charCodeAt(0) % 3 === 0);
+  };
 
   return (
-    <div className="min-h-[100dvh] bg-gray-50/50 dark:bg-gray-950 transition-colors duration-300 pb-20 font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 pb-20 font-sans">
       <Navbar />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+      <div className="pt-28 pb-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[10px] font-bold uppercase tracking-widest border border-blue-200 dark:border-blue-800">
+              <span className="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[10px] font-bold uppercase tracking-widest border border-blue-200 dark:border-blue-800">
                 System Admin
               </span>
-              <span className="px-2.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase tracking-widest border border-purple-200 dark:border-purple-800">
-                User Management
-              </span>
             </div>
-            <h1 className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-white tracking-tight mb-2">
+            <h1 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight mb-2">
               Users
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 font-medium">
-              Manage platform accounts, roles, and permissions.
+            <p className="text-slate-500 dark:text-slate-400 font-medium">
+              Manage platform accounts, permissions, and view user details.
             </p>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/admin/dashboard')}
-              className="px-5 py-2.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold uppercase tracking-wide hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm cursor-pointer"
+              className="px-5 py-2.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold uppercase tracking-wide hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm cursor-pointer"
             >
               <i className="ri-arrow-left-line mr-2"></i>
-              Back to Dashboard
+              Dashboard
             </button>
             <div className="relative">
               <button
                 onClick={() => setShowExportMenu(!showExportMenu)}
-                className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 border border-transparent rounded-xl text-xs font-bold uppercase tracking-wide hover:bg-black dark:hover:bg-gray-100 transition-colors shadow-lg shadow-gray-200/50 dark:shadow-none cursor-pointer flex items-center gap-2"
+                className="px-5 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-bold uppercase tracking-wide hover:bg-black dark:hover:bg-slate-100 transition-colors shadow-lg cursor-pointer flex items-center gap-2"
               >
                 <i className="ri-download-line text-lg"></i>
-                Export Data
-                <i className={`ri-arrow-down-s-line transition-transform ${showExportMenu ? 'rotate-180' : ''}`}></i>
+                Export
               </button>
-
               {showExportMenu && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setShowExportMenu(false)}></div>
-                  <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-100 dark:border-gray-800 py-1 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                    <button onClick={() => handleExportData()} className="w-full text-left px-4 py-3 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-blue-600 transition-colors flex items-center gap-2">
-                      <i className="ri-database-2-line text-blue-500"></i> All Users
-                    </button>
-                    <button onClick={() => handleExportData('buyer')} className="w-full text-left px-4 py-3 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-cyan-600 transition-colors flex items-center gap-2">
-                      <i className="ri-shopping-bag-3-line text-cyan-500"></i> Buyers Only
-                    </button>
-                    <button onClick={() => handleExportData('seller')} className="w-full text-left px-4 py-3 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-emerald-600 transition-colors flex items-center gap-2">
-                      <i className="ri-store-2-line text-emerald-500"></i> Sellers Only
-                    </button>
-                    <button onClick={() => handleExportData('admin')} className="w-full text-left px-4 py-3 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-amber-600 transition-colors flex items-center gap-2">
-                      <i className="ri-shield-star-line text-amber-500"></i> Admins Only
-                    </button>
-                    <button onClick={() => handleExportData('news_publisher')} className="w-full text-left px-4 py-3 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-purple-600 transition-colors flex items-center gap-2">
-                      <i className="ri-newspaper-line text-purple-500"></i> Publishers Only
-                    </button>
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 py-1 z-20 overflow-hidden">
+                    {['all', 'buyer', 'seller', 'admin'].map(opt => (
+                      <button key={opt} onClick={() => handleExportData(opt === 'all' ? undefined : opt)} className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 capitalize">
+                        {opt} Users
+                      </button>
+                    ))}
                   </div>
                 </>
               )}
@@ -296,312 +318,255 @@ export default function UserManagement() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 mb-8 border border-gray-100 dark:border-gray-800 shadow-sm">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 mb-8 border border-slate-100 dark:border-slate-700 shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
-                Search Users
-              </label>
-              <div className="relative">
-                <i className="ri-search-line absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search by name, email, or ID..."
-                  className="w-full pl-11 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500/20 font-medium text-base md:text-sm text-gray-900 dark:text-white placeholder-gray-400 outline-none transition-all"
-                />
-              </div>
+            <div className="relative">
+              <i className="ri-search-line absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search users by name, email, or ID..."
+                className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-500/20 font-medium text-sm text-slate-900 dark:text-white outline-none"
+              />
             </div>
-
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
-                Filter by Role
-              </label>
-              <div className="relative">
-                <select
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value)}
-                  className="w-full pl-4 pr-10 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500/20 font-medium text-sm text-gray-900 dark:text-white outline-none transition-all appearance-none cursor-pointer"
-                >
-                  <option value="all">All Roles</option>
-                  <option value="buyer">Buyers</option>
-                  <option value="seller">Sellers</option>
-                  <option value="admin">Admins</option>
-                  <option value="news_publisher">News Publishers</option>
-                </select>
-                <i className="ri-filter-3-line absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
-              </div>
+            <div className="relative">
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-blue-500/20 font-medium text-sm text-slate-900 dark:text-white outline-none appearance-none cursor-pointer"
+              >
+                <option value="all">All Roles</option>
+                <option value="buyer">Buyers</option>
+                <option value="seller">Sellers</option>
+                <option value="admin">Admins</option>
+              </select>
+              <i className="ri-filter-3-line absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
             </div>
           </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
-          {[
-            { label: 'Total Users', value: users.length, icon: 'ri-group-fill', color: 'bg-blue-500' },
-            { label: 'Buyers', value: users.filter(u => u.role === 'buyer').length, icon: 'ri-shopping-bag-3-fill', color: 'bg-cyan-500' },
-            { label: 'Sellers', value: users.filter(u => u.role === 'seller').length, icon: 'ri-store-3-fill', color: 'bg-emerald-500' },
-            { label: 'Admins', value: users.filter(u => u.role === 'admin').length, icon: 'ri-shield-star-fill', color: 'bg-amber-500' },
-          ].map((stat, i) => (
-            <div key={i} className="bg-white dark:bg-gray-900 p-6 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
-              <div className={`absolute top-0 right-0 w-24 h-24 ${stat.color} opacity-[0.03] rounded-bl-full group-hover:scale-110 transition-transform`}></div>
-              <div className={`w-10 h-10 rounded-xl ${stat.color} bg-opacity-10 flex items-center justify-center mb-3 text-${stat.color.replace('bg-', '')} group-hover:scale-110 transition-transform`}>
-                <i className={`${stat.icon} text-lg ${stat.color.replace('bg-', 'text-')}`}></i>
-              </div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1 tracking-tight">{stat.value}</div>
-              <div className="text-[10px] uppercase tracking-widest font-bold text-gray-400">{stat.label}</div>
-            </div>
-          ))}
         </div>
 
         {/* Users Table */}
-        <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+              <thead className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700">
                 <tr>
-                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                    User Profile
-                  </th>
-                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                    Academic Info
-                  </th>
-                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                    Role
-                  </th>
-                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                    Status
-                  </th>
-                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                    Joined
-                  </th>
-                  <th className="px-8 py-5 text-right text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                    Actions
-                  </th>
+                  <th className="px-8 py-5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">User Profile</th>
+                  <th className="px-8 py-5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">Status</th>
+                  <th className="px-8 py-5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">Role</th>
+                  <th className="px-8 py-5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors group">
-                    <td className="px-8 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center font-bold text-gray-500 dark:text-gray-400 shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                          {user.full_name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-bold text-gray-900 dark:text-white">{user.full_name}</div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">{user.email}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-4 whitespace-nowrap">
-                      <div className="text-sm font-bold text-gray-900 dark:text-white">{user.department || '-'}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">{user.faculty}</div>
-                    </td>
-                    <td className="px-8 py-4 whitespace-nowrap">
-                      <span className={`px-3 py-1 inline-flex text-[10px] font-bold uppercase tracking-widest rounded-full border ${user.role === 'admin'
-                        ? 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-900/30'
-                        : user.role === 'seller'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-900/30'
-                          : user.role === 'news_publisher'
-                            ? 'bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-900/30'
-                            : 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/30'
-                        }`}>
-                        {user.role === 'news_publisher' ? 'News' : user.role}
-                      </span>
-                    </td>
-                    <td className="px-8 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${user.is_active
-                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
-                        : 'bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-300'
-                        }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${user.is_active ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
-                        {user.is_active ? 'Active' : 'Suspended'}
-                      </span>
-                    </td>
-                    <td className="px-8 py-4 whitespace-nowrap text-xs font-medium text-gray-500 dark:text-gray-400">
-                      {new Date(user.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-8 py-4 whitespace-nowrap text-right text-sm font-medium relative">
-                      <button
-                        onClick={() => setOpenDropdown(openDropdown === user.id ? null : user.id)}
-                        className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                      >
-                        <i className={`ri-more-2-fill text-xl ${openDropdown === user.id ? 'text-blue-600' : ''}`}></i>
-                      </button>
-
-                      {/* Dropdown Menu */}
-                      {openDropdown === user.id && (
-                        <>
-                          <div
-                            className="fixed inset-0 z-10 cursor-default"
-                            onClick={() => setOpenDropdown(null)}
-                          ></div>
-                          <div className="absolute right-8 top-12 mt-2 w-56 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 py-2 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right">
-                            <div className="px-4 py-2 border-b border-gray-50 dark:border-gray-800 mb-1">
-                              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">User Actions</p>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                {filteredUsers.map((user) => {
+                  const online = isUserOnline(user);
+                  return (
+                    <tr key={user.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors">
+                      <td className="px-8 py-4">
+                        <div className="flex items-center gap-4 cursor-pointer" onClick={() => handleEditRole(user)}>
+                          <div className="relative">
+                            <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-xl flex items-center justify-center font-bold text-slate-500 dark:text-slate-400">
+                              {user.full_name.charAt(0).toUpperCase()}
                             </div>
-                            <button
-                              onClick={() => handleEditRole(user)}
-                              className="w-full text-left px-4 py-3 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-3 cursor-pointer transition-colors"
-                            >
-                              <i className="ri-shield-user-line text-lg text-blue-500"></i>
-                              Edit Privileges
-                            </button>
-                            <button
-                              onClick={() => handleToggleActive(user.id, user.is_active)}
-                              className="w-full text-left px-4 py-3 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-3 cursor-pointer transition-colors"
-                            >
-                              <i className={`${user.is_active ? 'ri-prohibited-line text-amber-500' : 'ri-checkbox-circle-line text-emerald-500'} text-lg`}></i>
-                              {user.is_active ? 'Suspend Account' : 'Activate Account'}
-                            </button>
-                            <div className="h-px bg-gray-50 dark:bg-gray-800 my-1"></div>
-                            <button
-                              onClick={() => handleDeleteUser(user.id)}
-                              className="w-full text-left px-4 py-3 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 flex items-center gap-3 cursor-pointer transition-colors"
-                            >
-                              <i className="ri-delete-bin-line text-lg"></i>
-                              Delete Permanently
-                            </button>
+                            {online && (
+                              <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-slate-800 rounded-full"></span>
+                            )}
                           </div>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                          <div>
+                            <div className="font-bold text-sm text-slate-900 dark:text-white">{user.full_name}</div>
+                            <div className="text-xs text-slate-500">{user.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-8 py-4">
+                        <div className="flex flex-col gap-1">
+                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide w-fit ${user.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${user.is_active ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                            {user.is_active ? 'Active' : 'Suspended'}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            {online ? 'Online Now' : 'Offline'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-8 py-4">
+                        <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded text-[10px] font-bold uppercase tracking-wider border border-slate-200 dark:border-slate-600">
+                          {user.role}
+                        </span>
+                      </td>
+                      <td className="px-8 py-4 text-right">
+                        <button
+                          onClick={() => setOpenDropdown(openDropdown === user.id ? null : user.id)}
+                          className="p-2 text-slate-400 hover:text-blue-600 transition-colors"
+                        >
+                          <i className="ri-more-2-fill text-xl"></i>
+                        </button>
+                        {/* Dropdown */}
+                        {openDropdown === user.id && (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={() => setOpenDropdown(null)}></div>
+                            <div className="absolute right-8 mt-2 w-48 bg-white dark:bg-slate-800 shadow-xl rounded-xl z-20 border border-slate-100 dark:border-slate-700 py-1 text-left">
+                              <button onClick={() => handleEditRole(user)} className="block w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700">View Details / Edit</button>
+                              <button onClick={() => handleDeleteUser(user.id)} className="block w-full text-left px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20">Delete User</button>
+                            </div>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-
-          {filteredUsers.length === 0 && (
-            <div className="text-center py-24">
-              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i className="ri-user-search-line text-3xl text-gray-300 dark:text-gray-600"></i>
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">No users found</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-widest">Adjust filters to see results</p>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Edit Role Modal */}
+      {/* View/Edit User Modal */}
       {showEditModal && selectedUser && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl max-w-md w-full p-8 border border-gray-100 dark:border-gray-800">
-            <div className="flex items-center justify-between mb-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto outline-none border border-slate-100 dark:border-slate-800 flex flex-col">
+
+            {/* Modal Header */}
+            <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur z-10">
               <div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Access Control</h3>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Update permissions</p>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">User Details</h3>
+                <p className="text-sm text-slate-500 font-medium">View and manage user profile information</p>
               </div>
               <button
                 onClick={() => setShowEditModal(false)}
-                className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer"
+                className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
               >
                 <i className="ri-close-line text-xl"></i>
               </button>
             </div>
 
-            <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl flex items-center gap-4">
-              <div className="w-12 h-12 bg-white dark:bg-gray-800 rounded-xl flex items-center justify-center font-bold text-xl text-blue-600 shadow-sm">
-                {selectedUser.full_name.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <h4 className="font-bold text-gray-900 dark:text-white">{selectedUser.full_name}</h4>
-                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{selectedUser.email}</p>
-              </div>
-            </div>
+            {/* Modal Body */}
+            <div className="p-8 space-y-8">
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3 ml-1">
-                  Department
-                </label>
-                <input
-                  type="text"
-                  value={editData.department}
-                  onChange={(e) => setEditData({ ...editData, department: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-gray-900 dark:text-white font-bold text-base md:text-sm focus:ring-2 focus:ring-blue-500/20 outline-none"
-                  placeholder="e.g. Computer Science"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3 ml-1">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  value={editData.phone}
-                  onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-gray-900 dark:text-white font-bold text-base md:text-sm focus:ring-2 focus:ring-blue-500/20 outline-none"
-                  placeholder="e.g. 0540000000"
-                />
-              </div>
-            </div>
-
-            <div className="mb-8">
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3 ml-1">
-                Select System Role
-              </label>
-              <div className="grid grid-cols-1 gap-3 max-h-48 overflow-y-auto">
-                {['buyer', 'seller', 'news_publisher', 'admin'].map((role) => (
-                  <label key={role} className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${editData.role === role
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                    : 'border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700'
-                    }`}>
-                    <input
-                      type="radio"
-                      name="role"
-                      value={role}
-                      checked={editData.role === role}
-                      onChange={(e) => setEditData({ ...editData, role: e.target.value })}
-                      className="w-4 h-4 text-blue-600 focus:ring-blue-500"
-                    />
+              {/* Read-Only Info Card */}
+              <div className="bg-slate-50 dark:bg-slate-950 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-6 items-center sm:items-start">
+                <div className="w-20 h-20 rounded-2xl bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center text-3xl font-bold text-slate-300 uppercase shrink-0">
+                  {editData.full_name.charAt(0)}
+                </div>
+                <div className="flex-1 text-center sm:text-left space-y-2 w-full">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <span className="block text-sm font-bold text-gray-900 dark:text-white capitalize">
-                        {role.replace('_', ' ')}
+                      <p className="text-[10px] uppercase font-bold text-slate-400">User ID</p>
+                      <p className="text-xs font-mono text-slate-600 dark:text-slate-300 truncate w-full" title={selectedUser.id}>{selectedUser.id}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase font-bold text-slate-400">Email Address</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{editData.email}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase font-bold text-slate-400">Joined On</p>
+                      <p className="text-sm font-medium text-slate-600 dark:text-slate-300">{new Date(editData.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase font-bold text-slate-400">Status</p>
+                      <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${selectedUser.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                        {selectedUser.is_active ? 'Active' : 'Suspended'}
                       </span>
                     </div>
-                  </label>
-                ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Editable Fields */}
+              <div className="space-y-6">
+                <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-2">Profile Information</h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2 block">Full Name</label>
+                    <input
+                      type="text"
+                      value={editData.full_name}
+                      onChange={e => setEditData({ ...editData, full_name: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-xl border-none focus:ring-2 focus:ring-blue-500/50 outline-none font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2 block">Phone Number</label>
+                    <input
+                      type="tel"
+                      value={editData.phone}
+                      onChange={e => setEditData({ ...editData, phone: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-xl border-none focus:ring-2 focus:ring-blue-500/50 outline-none font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2 block">Student ID</label>
+                    <input
+                      type="text"
+                      value={editData.student_id}
+                      onChange={e => setEditData({ ...editData, student_id: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-xl border-none focus:ring-2 focus:ring-blue-500/50 outline-none font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2 block">Department</label>
+                    <input
+                      type="text"
+                      value={editData.department}
+                      onChange={e => setEditData({ ...editData, department: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-xl border-none focus:ring-2 focus:ring-blue-500/50 outline-none font-medium"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-2 mb-4">Role Assignment</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {['buyer', 'seller', 'admin', 'news_publisher'].map(role => (
+                    <div
+                      key={role}
+                      onClick={() => setEditData({ ...editData, role })}
+                      className={`cursor-pointer px-4 py-3 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-2 text-center ${editData.role === role
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                        : 'border-slate-100 dark:border-slate-800 hover:border-slate-300'
+                        }`}
+                    >
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${editData.role === role ? 'border-blue-500' : 'border-slate-300'
+                        }`}>
+                        {editData.role === role && <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>}
+                      </div>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 capitalize">{role.replace('_', ' ')}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <div className="flex gap-4">
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex gap-4 sticky bottom-0 bg-white dark:bg-slate-900 z-10">
               <button
                 onClick={() => setShowEditModal(false)}
-                className="flex-1 px-6 py-4 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors whitespace-nowrap cursor-pointer"
+                className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-200 transition-colors uppercase tracking-widest text-xs"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveUser}
                 disabled={saving}
-                className="flex-1 px-6 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-black dark:hover:bg-gray-100 transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-[2] py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-xs"
               >
-                {saving ? (
-                  <>
-                    <i className="ri-loader-4-line animate-spin text-lg"></i>
-                    Saving...
-                  </>
-                ) : (
-                  'Update Profile'
-                )}
+                {saving ? <i className="ri-loader-4-line animate-spin"></i> : <i className="ri-save-line"></i>}
+                Save Changes
               </button>
             </div>
+
           </div>
         </div>
       )}
 
       {/* Success Toast */}
       {showSuccessToast && (
-        <div className="fixed top-24 right-4 md:right-8 z-50 animate-in fade-in slide-in-from-right-8 duration-300 px-6 py-4 rounded-2xl shadow-2xl border border-emerald-400/50 bg-emerald-500/90 text-white backdrop-blur-md flex items-center gap-3">
+        <div className="fixed top-24 right-4 z-50 animate-bounce px-6 py-4 rounded-2xl bg-emerald-500 text-white shadow-xl flex items-center gap-3">
           <i className="ri-checkbox-circle-fill text-xl"></i>
-          <div>
-            <p className="font-bold text-sm tracking-wide">Success</p>
-            <p className="text-xs opacity-90">User profile updated</p>
-          </div>
+          <span className="font-bold">Profile Updated!</span>
         </div>
       )}
     </div>

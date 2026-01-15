@@ -146,6 +146,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Even if supabase errors (e.g. no session), we want to clear local state
       if (error) console.warn('Supabase signout warning:', error);
 
+      if (user) {
+        import('../lib/logger').then(({ logActivity }) => {
+          logActivity(user.id, 'logout', {});
+        });
+      }
       setUser(null);
       setProfile(null);
     } catch (err: any) {
@@ -293,6 +298,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      if (data.user) {
+        import('../lib/logger').then(({ logActivity }) => {
+          logActivity(data.user.id, 'login', { method: 'password', email });
+        });
+      }
       return data;
     } catch (err: any) {
       setError(err.message || 'Failed to sign in');
@@ -323,6 +333,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             faculty,
             phone,
           },
+          emailRedirectTo: window.location.origin,
         },
       });
 

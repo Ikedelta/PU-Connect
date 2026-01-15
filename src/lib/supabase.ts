@@ -39,6 +39,7 @@ export type SellerApplication = {
   admin_notes?: string;
   reviewed_by?: string;
   reviewed_at?: string;
+  business_logo?: string;
   created_at: string;
   updated_at: string;
 };
@@ -57,4 +58,30 @@ export type Product = {
   views_count: number;
   created_at: string;
   updated_at: string;
+};
+
+export type Advertisement = {
+  id: string;
+  title: string;
+  image_url: string;
+  destination_url?: string;
+  placement_area: 'home_hero' | 'marketplace_sidebar' | 'news_feed' | 'global_popup';
+  status: 'active' | 'paused' | 'expired';
+  start_date: string;
+  end_date?: string;
+  impressions_count: number;
+  clicks_count: number;
+  created_by: string;
+  created_at: string;
+};
+
+export type Notification = {
+  id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error' | 'system' | 'message' | 'order';
+  link_url?: string;
+  is_read: boolean;
+  created_at: string;
 };

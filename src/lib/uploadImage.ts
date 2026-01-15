@@ -13,7 +13,7 @@ export interface UploadResult {
  */
 export async function uploadImage(
   file: File,
-  folder: 'profiles' | 'products' | 'cms'
+  folder: 'profiles' | 'products' | 'cms' | 'ads'
 ): Promise<UploadResult> {
   try {
     // Validate file type

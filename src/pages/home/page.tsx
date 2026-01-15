@@ -211,6 +211,59 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Trending Now - Hot Items */}
+      <section className="py-12 bg-white dark:bg-slate-900 border-y border-slate-50 dark:border-slate-800">
+        <div className="max-w-7xl mx-auto px-6 lg:px-12">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-rose-100 dark:bg-rose-900/30 text-rose-600 rounded-lg">
+                <i className="ri-fire-fill text-xl"></i>
+              </div>
+              <div>
+                <h3 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white leading-none">Trending Now</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Most viewed on campus</p>
+              </div>
+            </div>
+            <Link to="/marketplace?sort=popular" className="hidden sm:flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors uppercase tracking-wide">
+              View Hot List <i className="ri-arrow-right-line"></i>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            {trendingProducts.length > 0 ? (
+              trendingProducts.map((product) => (
+                <Link
+                  key={product.id}
+                  to={`/product/${product.id}`}
+                  className="group relative bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden hover:shadow-lg transition-all"
+                >
+                  <div className="aspect-[1/1] overflow-hidden bg-slate-100 dark:bg-slate-900 relative">
+                    <img
+                      src={getOptimizedImageUrl(product.images?.[0] || '', 300, 80)}
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                    <div className="absolute top-2 right-2 bg-rose-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+                      <i className="ri-fire-line"></i> Hot
+                    </div>
+                  </div>
+                  <div className="p-3">
+                    <h4 className="font-bold text-slate-900 dark:text-white text-sm line-clamp-1 mb-1">{product.name}</h4>
+                    <p className="text-blue-600 font-black text-sm">
+                      {product.price_type === 'fixed' ? `₵${product.price}` : 'Contact'}
+                    </p>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              [1, 2, 3, 4].map(i => (
+                <div key={i} className="aspect-[4/3] bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse"></div>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
+
       {/* Fresh Drops - Grid Layout Refined */}
       <section className="py-12 md:py-24 bg-white dark:bg-gray-950">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">

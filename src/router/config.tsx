@@ -20,8 +20,9 @@ const UserManagement = lazy(() => import('../pages/admin/UserManagement'));
 const ActivityMonitor = lazy(() => import('../pages/admin/ActivityMonitor'));
 const AdminMessages = lazy(() => import('../pages/admin/AdminMessages'));
 const NewsManagement = lazy(() => import('../pages/admin/NewsManagement'));
-const NewsletterManagement = lazy(() => import('../pages/admin/NewsletterManagement'));
+const NewsletterSubscribers = lazy(() => import('../pages/admin/NewsletterSubscribers'));
 const SMSManagement = lazy(() => import('../pages/admin/SMSManagement'));
+const AdsManagement = lazy(() => import('../pages/admin/AdsManagement'));
 const WebsiteSettings = lazy(() => import('../pages/admin/WebsiteSettings'));
 const ContentManagement = lazy(() => import('../pages/admin/ContentManagement'));
 const CampusNews = lazy(() => import('../pages/news/CampusNews'));
@@ -35,6 +36,8 @@ const RoleManagement = lazy(() => import('../pages/admin/RoleManagement'));
 const NewsPublisherDashboard = lazy(() => import('../pages/publisher/NewsPublisherDashboard'));
 const Support = lazy(() => import('../pages/support/Support'));
 const Internships = lazy(() => import('../pages/internships/Internships'));
+const SupportTickets = lazy(() => import('../pages/admin/SupportTickets'));
+const PollManagement = lazy(() => import('../pages/admin/PollManagement'));
 
 const routes: RouteObject[] = [
   {
@@ -166,7 +169,7 @@ const routes: RouteObject[] = [
     path: '/admin/newsletter',
     element: (
       <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
-        <NewsletterManagement />
+        <NewsletterSubscribers />
       </ProtectedRoute>
     ),
   },
@@ -175,6 +178,14 @@ const routes: RouteObject[] = [
     element: (
       <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
         <SMSManagement />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/admin/ads',
+    element: (
+      <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+        <AdsManagement />
       </ProtectedRoute>
     ),
   },
@@ -231,6 +242,22 @@ const routes: RouteObject[] = [
     element: (
       <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
         <SellerApplications />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/admin/support',
+    element: (
+      <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+        <SupportTickets />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/admin/polls',
+    element: (
+      <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+        <PollManagement />
       </ProtectedRoute>
     ),
   },

@@ -7,8 +7,11 @@ import { type Profile } from '../../lib/supabase';
 import { getOptimizedImageUrl } from '../../lib/imageOptimization';
 import { useSiteContent, CONTENT_KEYS } from '../../hooks/useSiteContent';
 
+import AdSenseBanner from '../../components/feature/AdSenseBanner';
+
 function Marketplace() {
   const navigate = useNavigate();
+
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
 
@@ -156,6 +159,9 @@ function Marketplace() {
 
         {/* Main Content Area */}
         <div className="py-12">
+
+          <AdSenseBanner className="mb-10" />
+
           {/* Results Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
             <div>

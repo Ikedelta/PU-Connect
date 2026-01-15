@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/feature/Navbar';
 import ImageUploader from '../../components/base/ImageUploader';
 import { supabase } from '../../lib/supabase';
@@ -23,15 +25,50 @@ interface ContentSection {
 }
 
 export default function ContentManagement() {
+    const { profile } = useAuth();
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('images');
     const [config, setConfig] = useState<SiteConfig>({});
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
+    // Notifications
+    const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'info', message: string } | null>(null);
+
     // Fetch current config from Storage (site_config.json)
     useEffect(() => {
+        if (profile?.role !== 'admin' && profile?.role !== 'super_admin') {
+            navigate('/marketplace');
+            return;
+        }
         fetchConfig();
+
+        // Subscribe to Global Alerts
+        const presenceChannel = supabase.channel('online-users');
+        presenceChannel
+            .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+                const user = newPresences[0];
+                if (user && user.user_id !== profile?.id) {
+                    setNotification({
+                        type: 'info',
+                        message: `${user.full_name || 'A user'} came online`
+                    });
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(presenceChannel);
+        };
     }, []);
+
+    // Auto-hide notification
+    useEffect(() => {
+        if (notification) {
+            const timer = setTimeout(() => setNotification(null), 4000);
+            return () => clearTimeout(timer);
+        }
+    }, [notification]);
 
     const fetchConfig = async () => {
         try {
@@ -79,7 +116,7 @@ export default function ContentManagement() {
 
         } catch (err) {
             console.error('Failed to save config:', err);
-            alert('Failed to save changes. Please try again.');
+            setNotification({ type: 'error', message: 'Failed to save changes' });
         } finally {
             setSaving(false);
         }
@@ -119,72 +156,93 @@ export default function ContentManagement() {
     const activeSections = activeTab === 'images' ? imageSections : textSections;
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 pb-20 font-sans">
             <Navbar />
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16">
+            {/* Notification Toast */}
+            {notification && (
+                <div className={`fixed top-24 right-4 md:right-8 z-50 animate-in fade-in slide-in-from-right-8 duration-300 px-6 py-4 rounded-2xl shadow-2xl border flex items-center gap-3 backdrop-blur-md ${notification.type === 'success' ? 'bg-emerald-500/90 border-emerald-400/50 text-white' :
+                        notification.type === 'error' ? 'bg-rose-500/90 border-rose-400/50 text-white' :
+                            'bg-blue-500/90 border-blue-400/50 text-white'
+                    }`}>
+                    <i className={`${notification.type === 'success' ? 'ri-checkbox-circle-fill' : notification.type === 'error' ? 'ri-error-warning-fill' : 'ri-notification-3-fill'} text-xl`}></i>
+                    <span className="font-bold text-sm tracking-wide">{notification.message}</span>
+                </div>
+            )}
+
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 md:pt-40 pb-12 box-border">
                 <div className="mb-12">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-600 text-white text-[10px] font-bold uppercase tracking-[0.2em] rounded-full mb-6">
-                        <i className="ri-layout-masonry-line"></i>
-                        CMS Portal 1.0
-                    </div>
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                         <div>
-                            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight leading-none mb-4">
-                                Content<br /><span className="text-gray-400">Manager.</span>
+                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-cyan-600 dark:bg-cyan-500 text-white text-[10px] font-bold uppercase tracking-[0.2em] rounded-full mb-6">
+                                <i className="ri-layout-masonry-line"></i>
+                                CMS Portal 1.0
+                            </div>
+                            <h1 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-none mb-4">
+                                Content<br /><span className="text-slate-400 dark:text-slate-600">Manager.</span>
                             </h1>
-                            <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">
+                            <p className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-xs">
                                 Update site imagery and assets in real-time.
                             </p>
                         </div>
 
-                        {/* Tabs */}
-                        <div className="bg-white p-1 rounded-xl shadow-sm border border-gray-200 inline-flex">
+                        <div className="flex gap-3">
                             <button
-                                onClick={() => setActiveTab('images')}
-                                className={`px-6 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'images'
-                                    ? 'bg-purple-600 text-white shadow-md'
-                                    : 'text-gray-500 hover:bg-gray-50'
-                                    }`}
+                                onClick={() => navigate('/admin/dashboard')}
+                                className="px-6 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-xs font-bold uppercase tracking-wide whitespace-nowrap cursor-pointer flex items-center gap-2"
                             >
-                                <i className="ri-image-line mr-2"></i>
-                                Imagery
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('text')}
-                                className={`px-6 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'text'
-                                    ? 'bg-purple-600 text-white shadow-md'
-                                    : 'text-gray-500 hover:bg-gray-50'
-                                    }`}
-                            >
-                                <i className="ri-text mr-2"></i>
-                                Text Content
+                                <i className="ri-arrow-left-line text-lg"></i>
+                                Dashboard
                             </button>
                         </div>
+                    </div>
+
+                    {/* Tabs */}
+                    <div className="mt-8 bg-white dark:bg-slate-800 p-1 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 inline-flex">
+                        <button
+                            onClick={() => setActiveTab('images')}
+                            className={`px-6 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'images'
+                                ? 'bg-cyan-600 text-white shadow-md'
+                                : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
+                                }`}
+                        >
+                            <i className="ri-image-line mr-2"></i>
+                            Imagery
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('text')}
+                            className={`px-6 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'text'
+                                ? 'bg-cyan-600 text-white shadow-md'
+                                : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
+                                }`}
+                        >
+                            <i className="ri-text mr-2"></i>
+                            Text Content
+                        </button>
                     </div>
                 </div>
 
                 {loading ? (
                     <div className="py-20 text-center">
-                        <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Loading Configuration...</p>
+                        <div className="w-10 h-10 border-4 border-cyan-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Loading Configuration...</p>
                     </div>
                 ) : (
                     <div className="space-y-16">
                         {activeSections.map((section, idx) => (
-                            <div key={idx} className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-sm border border-gray-100">
+                            <div key={idx} className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-8 md:p-12 shadow-sm border border-slate-100 dark:border-slate-700">
                                 <div className="mb-10">
-                                    <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{section.title}</h2>
-                                    <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-2">{section.description}</p>
+                                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{section.title}</h2>
+                                    <p className="text-slate-400 dark:text-slate-500 text-xs font-bold uppercase tracking-widest mt-2">{section.description}</p>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                                     {section.items.map((item) => (
                                         <div key={item.key} className="space-y-6">
                                             <div className="flex items-center justify-between">
-                                                <span className="text-sm font-bold text-gray-700">{item.label}</span>
+                                                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{item.label}</span>
                                                 {config[item.key] && (
-                                                    <span className="text-[10px] font-bold text-emerald-500 bg-emerald-50 px-3 py-1 rounded-full uppercase tracking-wide">
+                                                    <span className="text-[10px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1 rounded-full uppercase tracking-wide">
                                                         Live
                                                     </span>
                                                 )}
@@ -199,7 +257,7 @@ export default function ContentManagement() {
                                                             folder="cms"
                                                             size="large"
                                                             shape="square"
-                                                            className="w-full aspect-video h-auto"
+                                                            className="w-full aspect-video h-auto rounded-2xl overflow-hidden"
                                                         />
                                                         {saving && (
                                                             <div className="absolute top-4 right-4 bg-black/80 text-white text-[10px] font-bold px-3 py-1 rounded-full animate-pulse">
@@ -207,9 +265,9 @@ export default function ContentManagement() {
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <div className="bg-gray-50 p-4 rounded-xl break-all">
-                                                        <p className="text-[10px] font-mono text-gray-400 mb-1 uppercase">Asset URL</p>
-                                                        <p className="text-xs text-gray-600 line-clamp-2">
+                                                    <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl break-all border border-slate-100 dark:border-slate-700">
+                                                        <p className="text-[10px] font-mono text-slate-400 mb-1 uppercase">Asset URL</p>
+                                                        <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2">
                                                             {config[item.key] || 'Using System Default'}
                                                         </p>
                                                     </div>
@@ -221,9 +279,9 @@ export default function ContentManagement() {
                                                         onChange={(e) => updateConfig(item.key, e.target.value)}
                                                         placeholder={item.placeholder}
                                                         rows={4}
-                                                        className="w-full p-4 bg-gray-50 border-none rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:bg-white transition-all resize-none"
+                                                        className="w-full p-4 bg-slate-50 dark:bg-slate-900 border-none rounded-xl text-sm font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500/20 focus:bg-white dark:focus:bg-slate-800 transition-all resize-none"
                                                     />
-                                                    <p className="text-xs text-gray-400 mt-2 text-right">
+                                                    <p className="text-xs text-slate-400 mt-2 text-right">
                                                         {config[item.key]?.length || 0} characters
                                                     </p>
                                                 </div>

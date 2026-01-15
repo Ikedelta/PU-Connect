@@ -4,6 +4,7 @@ import Navbar from '../../components/feature/Navbar';
 import { getOptimizedImageUrl } from '../../lib/imageOptimization';
 import { useNews } from '../../hooks/useNews';
 import { useSiteContent, CONTENT_KEYS } from '../../hooks/useSiteContent';
+import AdSenseBanner from '../../components/feature/AdSenseBanner';
 
 export default function CampusNews() {
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -92,6 +93,9 @@ export default function CampusNews() {
       </section>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-12 md:py-20">
+
+        {/* Google AdSense Banner */}
+        <AdSenseBanner className="mb-12" />
 
         {/* Matrix Categories */}
         <div className="mb-20 overflow-x-auto pb-4 no-scrollbar">

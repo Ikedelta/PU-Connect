@@ -5,7 +5,7 @@ import { sendSMS } from '../../lib/arkesel';
 
 export default function Register() {
   const navigate = useNavigate();
-  const { signUp } = useAuth();
+  const { signUp, signIn } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -36,6 +36,20 @@ export default function Register() {
 
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters');
+      return;
+    }
+
+    // Email Validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    // Phone Validation (Ghana format: 02... or 05... followed by 8 digits)
+    const phoneRegex = /^0(2|3|5)\d{8}$/;
+    if (!phoneRegex.test(formData.phone)) {
+      setError('Please enter a valid 10-digit Ghana phone number (starting with 02, 03, or 05)');
       return;
     }
 
@@ -73,6 +87,7 @@ export default function Register() {
     setLoading(true);
 
     try {
+      // 1. Create Account (and sending Welcome SMS)
       await signUp(
         formData.email,
         formData.password,
@@ -83,7 +98,19 @@ export default function Register() {
         formData.phone
       );
 
-      navigate('/marketplace');
+      // 2. Explicitly sign in to ensure session is active
+      // This solves the issue where users weren't being auto-logged in
+      try {
+        await signIn(formData.email, formData.password);
+        navigate('/marketplace');
+      } catch (loginErr) {
+        console.warn('Auto-login failed after registration:', loginErr);
+        // If login fails (likely due to email confirmation being enabled),
+        // we redirect to login page with a message
+        navigate('/login');
+        alert('Account created! Please sign in. You may need to verify your email first.');
+      }
+
     } catch (err: any) {
       console.error('Registration error:', err);
       if (err.message && err.message.includes('User already registered')) {

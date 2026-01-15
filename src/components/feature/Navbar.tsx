@@ -15,6 +15,37 @@ export default function Navbar() {
   const [hasApplication, setHasApplication] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Realtime Presence Tracking
+  useEffect(() => {
+    if (!user || !profile) return;
+
+    const channel = supabase.channel('online-users', {
+      config: {
+        presence: {
+          key: user.id,
+        },
+      },
+    });
+
+    channel.on('presence', { event: 'sync' }, () => {
+      // Just syncing state, no local action needed in Navbar
+    }).subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        const presenceState = {
+          user_id: user.id,
+          full_name: profile.full_name,
+          role: profile.role,
+          online_at: new Date().toISOString(),
+        };
+        await channel.track(presenceState);
+      }
+    });
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [user, profile]);
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -105,7 +136,7 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-20">
           {/* Logo Section */}
           <Link to="/" className="flex items-center gap-2 group relative z-10">
-            <div className="h-10 w-auto md:h-12 flex items-center justify-center">
+            <div className="h-8 w-auto md:h-10 flex items-center justify-center">
               <img
                 src="/PU%20Connect%20logo.png"
                 alt="PU Connect"
@@ -197,37 +228,43 @@ export default function Navbar() {
                     </button>
 
                     {/* Dropdown Menu */}
-                    <div className={`absolute top-full right-0 mt-4 w-60 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 py-2 transition-all duration-200 origin-top-right z-50 ${showDropdown ? 'opacity-100 scale-100 visible' : 'opacity-0 scale-95 invisible'}`}>
-                      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 mb-1">
+                    <div className={`absolute top-full right-0 mt-3 w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-900 rounded-2xl shadow-xl shadow-gray-200/20 dark:shadow-black/40 border border-gray-100 dark:border-gray-800 py-3 transition-all duration-200 origin-top-right z-50 overflow-hidden ${showDropdown ? 'opacity-100 scale-100 visible' : 'opacity-0 scale-95 invisible'}`}>
+                      <div className="px-5 py-4 border-b border-gray-50 dark:border-gray-800/50 mb-2 bg-gray-50/50 dark:bg-gray-800/30">
                         <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{profile?.full_name}</p>
-                        <p className="text-xs text-gray-500 truncate">{profile?.email}</p>
+                        <p className="text-xs text-gray-500 truncate font-medium">{profile?.email}</p>
                       </div>
 
-                      {[
-                        { label: 'My Profile', path: '/profile', icon: 'ri-user-line' },
-                        ...(dashboardItem ? [dashboardItem] : []),
-                        { label: 'Help Center', path: '/support', icon: 'ri-question-line' }
-                      ].map((item) => (
-                        <Link
-                          key={item.label}
-                          to={item.path}
-                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                          onClick={() => setShowDropdown(false)}
-                        >
-                          <i className={`${item.icon} text-lg opacity-70`}></i>
-                          {item.label}
-                        </Link>
-                      ))}
+                      <div className="px-2">
+                        {[
+                          { label: 'My Profile', path: '/profile', icon: 'ri-user-smile-line' },
+                          ...(dashboardItem ? [{ ...dashboardItem }] : []),
+                          { label: 'Help Center', path: '/support', icon: 'ri-question-line' }
+                        ].map((item) => (
+                          <Link
+                            key={item.label}
+                            to={item.path}
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                            onClick={() => setShowDropdown(false)}
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                              <i className={`${item.icon} text-lg`}></i>
+                            </div>
+                            {item.label}
+                          </Link>
+                        ))}
+                      </div>
 
-                      <div className="border-t border-gray-100 dark:border-gray-800 mt-1 pt-1">
+                      <div className="border-t border-gray-50 dark:border-gray-800/50 mt-2 pt-2 px-2">
                         <button
                           onClick={() => {
                             setShowDropdown(false);
                             handleSignOut();
                           }}
-                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-left"
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-left group"
                         >
-                          <i className="ri-logout-box-line text-lg opacity-70"></i>
+                          <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-500 group-hover:text-red-600 transition-colors">
+                            <i className="ri-logout-box-line text-lg"></i>
+                          </div>
                           Sign Out
                         </button>
                       </div>

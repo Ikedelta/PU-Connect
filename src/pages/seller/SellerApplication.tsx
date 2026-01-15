@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/feature/Navbar';
+import ImageUploader from '../../components/base/ImageUploader';
 
 export default function SellerApplication() {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export default function SellerApplication() {
     contactPhone: '',
     whatsappNumber: '',
     contactEmail: user?.email || '',
+    businessLogo: '',
   });
 
   const categories = [
@@ -71,6 +73,7 @@ export default function SellerApplication() {
             business_description: `${formData.businessDescription}\n\n[WhatsApp Contact: ${formData.whatsappNumber}]`,
             contact_phone: formData.contactPhone,
             contact_email: formData.contactEmail,
+            business_logo: formData.businessLogo,
             status: 'pending'
           }
         ]);
@@ -144,7 +147,7 @@ export default function SellerApplication() {
                 {[
                   { label: 'Registration Fee', value: 'GH₵ 50 / Mo', desc: 'Secure platform listing rights' },
                   { label: 'Validity Period', value: '30 Days', desc: 'Renewable monthly cycle' },
-                  { label: 'Product Limit', value: 'Unlimited', desc: 'No restrictions on listings' },
+                  { label: 'Review Time', value: '24 Hours', desc: 'Application processing time' },
                   { label: 'Verification', value: 'Required', desc: 'Official student status' }
                 ].map((item, i) => (
                   <li key={i} className="group">
@@ -169,6 +172,25 @@ export default function SellerApplication() {
           <div className="lg:col-span-8 animate-slide-in-right delay-200">
             <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-xl shadow-gray-200/40 dark:shadow-none border border-gray-100 dark:border-gray-800 p-8 md:p-12 transition-colors duration-300">
               <form onSubmit={handleSubmit} className="space-y-10">
+                <div className="space-y-4">
+                  <label className="block text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">
+                    Business Logo
+                  </label>
+                  <div className="flex items-center gap-6">
+                    <div className="w-24 h-24 flex-shrink-0">
+                      <ImageUploader
+                        folder="profiles"
+                        onImageUploaded={(url) => setFormData({ ...formData, businessLogo: url })}
+                        className="w-full h-full rounded-2xl bg-gray-50 dark:bg-gray-800 border-2 border-dashed border-gray-200 dark:border-gray-700 hover:border-blue-500 transition-colors cursor-pointer flex items-center justify-center"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">Upload Logo</p>
+                      <p className="text-xs text-gray-500">Recommended size: 500x500px. <br /> Supports JPG, PNG.</p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-2">
                     <label className="block text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">

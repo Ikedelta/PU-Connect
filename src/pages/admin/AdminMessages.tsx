@@ -17,12 +17,32 @@ export default function AdminMessages() {
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // New Chat State
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [recipients, setRecipients] = useState<any[]>([]);
+
   useEffect(() => {
     if (profile?.role !== 'admin' && profile?.role !== 'super_admin' && profile?.role !== 'news_publisher') {
       // Allow access to all staff roles for now, or restrict as needed
       // navigate('/marketplace');
     }
   }, [profile, navigate]);
+
+  // Fetch Potential Recipients for New Chat
+  useEffect(() => {
+    if (showNewChatModal) {
+      const fetchRecipients = async () => {
+        const { data } = await import('../../lib/supabase').then(({ supabase }) =>
+          supabase.from('profiles')
+            .select('id, full_name, role, avatar_url')
+            .in('role', ['admin', 'super_admin', 'news_publisher'])
+            .neq('id', user?.id)
+        );
+        if (data) setRecipients(data);
+      };
+      fetchRecipients();
+    }
+  }, [showNewChatModal, user?.id]);
 
   // Handle Mark as Read
   useEffect(() => {
@@ -62,18 +82,41 @@ export default function AdminMessages() {
     });
   };
 
-  const getOnlineStatus = (user: any) => {
-    if (!user) return { isOnline: false, text: 'Offline' };
-    if (user.is_online) return { isOnline: true, text: 'Online' };
-    return { isOnline: false, text: 'Offline' };
+  const startNewChat = (recipient: any) => {
+    // Check if conversation exists (client-side check for now)
+    const existing = conversations.find(c =>
+      c.buyer_id === recipient.id || c.seller_id === recipient.id
+    );
+
+    if (existing) {
+      setSelectedConversation(existing);
+    } else {
+      // Create conversation immediately
+      import('../../lib/supabase').then(async ({ supabase }) => {
+        const { data, error } = await supabase.from('conversations').insert({
+          buyer_id: user?.id,
+          seller_id: recipient.id,
+        }).select().single();
+
+        if (data) {
+          // @ts-ignore
+          setSelectedConversation(data);
+          // Force reload to refresh SWR or react-query cache if possible, or just let realtime handle it
+          window.location.reload();
+        } else if (error) {
+          console.error(error);
+        }
+      });
+    }
+    setShowNewChatModal(false);
   };
 
   return (
     <div className="min-h-screen bg-gray-50/50 dark:bg-gray-950 transition-colors duration-300">
       <Navbar />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-10 md:py-16">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 pt-28 pb-10 md:pt-32 md:pb-16">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>
             <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gray-900 dark:bg-blue-600 text-white text-[10px] font-bold uppercase tracking-wide rounded-full mb-6 shadow-lg shadow-gray-200/20 dark:shadow-blue-900/40">
               <i className="ri-team-line text-blue-400 dark:text-white"></i>
@@ -82,10 +125,14 @@ export default function AdminMessages() {
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white tracking-tight leading-tight">
               Team<br /><span className="text-blue-600 dark:text-blue-400">Chat.</span>
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wide text-[10px] mt-4">
-              Collaborate with other admins and staff
-            </p>
           </div>
+          <button
+            onClick={() => setShowNewChatModal(true)}
+            className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-blue-700 transition-all flex items-center gap-2"
+          >
+            <i className="ri-add-line text-lg"></i>
+            New Chat
+          </button>
         </div>
 
         <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-xl shadow-gray-200/40 dark:shadow-none overflow-hidden transition-colors duration-300" style={{ height: 'calc(100vh - 350px)' }}>
@@ -279,6 +326,34 @@ export default function AdminMessages() {
           </div>
         </div>
       </div>
+
+      {/* New Chat Modal */}
+      {showNewChatModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
+              <h3 className="font-bold text-lg dark:text-white">New Message</h3>
+              <button onClick={() => setShowNewChatModal(false)} className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center transition-colors">
+                <i className="ri-close-line text-xl"></i>
+              </button>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto p-4 space-y-2">
+              {recipients.map(r => (
+                <div key={r.id} onClick={() => startNewChat(r)} className="flex items-center gap-4 p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl cursor-pointer transition-colors">
+                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center font-bold">
+                    {r.full_name[0]}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm dark:text-white">{r.full_name}</h4>
+                    <p className="text-xs text-gray-500 uppercase">{r.role.replace('_', ' ')}</p>
+                  </div>
+                </div>
+              ))}
+              {recipients.length === 0 && <p className="text-center text-gray-500 py-4">No other admins found.</p>}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

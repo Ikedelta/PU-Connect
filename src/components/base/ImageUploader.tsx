@@ -4,7 +4,7 @@ import { uploadImage, compressImage } from '../../lib/uploadImage';
 interface ImageUploaderProps {
   currentImage?: string;
   onImageUploaded: (url: string) => void;
-  folder: 'profiles' | 'products' | 'cms';
+  folder: 'profiles' | 'products' | 'cms' | 'ads';
   className?: string;
   shape?: 'circle' | 'square';
   size?: 'small' | 'medium' | 'large';
