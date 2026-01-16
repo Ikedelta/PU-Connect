@@ -2,20 +2,24 @@
 
 export const getOptimizedImageUrl = (url: string | undefined, width?: number, quality: number = 80): string => {
   if (!url) return '';
-  
-  // If it's a Supabase storage URL, add transformation parameters
-  if (url.includes('supabase')) {
+
+  // Supabase transformation requires a specific Pro-tier endpoint (/render/image)
+  // Appending query params to standard public URLs can break them on the free tier.
+  if (url.includes('supabase') && !url.includes('/render/image')) {
+    return url;
+  }
+
+  // For other providers or if transformation is already set up
+  if (url.includes('supabase') || url.includes('cloudinary') || url.includes('imgix')) {
     const separator = url.includes('?') ? '&' : '?';
     const params = [];
-    
-    if (width) {
-      params.push(`width=${width}`);
-    }
+
+    if (width) params.push(`width=${width}`);
     params.push(`quality=${quality}`);
-    
+
     return `${url}${separator}${params.join('&')}`;
   }
-  
+
   return url;
 };
 

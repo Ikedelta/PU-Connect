@@ -19,7 +19,7 @@ function App() {
         <I18nextProvider i18n={i18n}>
           <AuthProvider>
             <BrowserRouter basename={__BASE_PATH__}>
-              <SystemAnnouncement />
+              {/* <SystemAnnouncement /> */}
               <ErrorBoundary>
                 <Suspense fallback={
                   <div className="min-h-screen flex items-center justify-center bg-gray-50">

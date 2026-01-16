@@ -183,27 +183,20 @@ export default function Navbar() {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 transition-all duration-300">
-      {newsNotification && (
-        <div className="absolute top-20 left-0 right-0 z-40 flex justify-center animate-in slide-in-from-top-4 duration-500">
-          <div className="bg-blue-600/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-3 cursor-pointer hover:bg-blue-600 transition-colors"
-            onClick={() => { setNewsNotification(null); navigate('/news'); }}>
-            <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
-            <p className="text-sm font-bold">New: {newsNotification.title}</p>
-            <i className="ri-arrow-right-line text-xs opacity-70"></i>
-          </div>
-        </div>
-      )}
-      <div className="absolute inset-0 bg-white/90 dark:bg-gray-950/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 shadow-sm"></div>
+      <div className={`absolute inset-0 transition-colors duration-500 ${showMobileMenu
+        ? 'bg-transparent'
+        : 'bg-white/90 dark:bg-gray-950/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 shadow-sm'
+        }`}></div>
 
-      <div className="max-w-[1440px] mx-auto px-6 lg:px-12 relative">
+      <div className="max-w-[1440px] mx-auto px-6 lg:px-12 relative z-[60]">
         <div className="flex justify-between items-center h-20">
           {/* Logo Section */}
-          <Link to="/" className="flex items-center gap-2 group relative z-10">
+          <Link to="/" className="flex items-center gap-2 group relative z-10" onClick={() => setShowMobileMenu(false)}>
             <div className="h-8 w-auto md:h-10 flex items-center justify-center">
               <img
                 src="/PU%20Connect%20logo.png"
                 alt="PU Connect"
-                className="w-full h-full object-contain"
+                className={`w-full h-full object-contain transition-all duration-500 ${showMobileMenu ? 'brightness-0 invert' : ''}`}
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
                   e.currentTarget.parentElement?.classList.add('bg-blue-600', 'rounded-xl', 'text-white', 'p-2');
@@ -270,7 +263,10 @@ export default function Navbar() {
             </div>
 
             {/* Auth/User Section */}
-            <div className="flex items-center gap-4 relative z-10 pl-6 border-l border-gray-200 dark:border-gray-800">
+            <div className={`flex items-center gap-4 relative z-10 transition-all duration-300 ${showMobileMenu
+              ? 'opacity-0 pointer-events-none translate-x-4 invisible'
+              : 'opacity-100 pl-6 border-l border-gray-200 dark:border-gray-800'
+              }`}>
               {/* Dark Mode Toggle */}
               <button
                 onClick={toggleTheme}
@@ -299,12 +295,19 @@ export default function Navbar() {
                       onClick={() => setShowDropdown(!showDropdown)}
                       className="flex items-center gap-2"
                     >
-                      <div className="w-9 h-9 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700">
-                        <img
-                          src={getOptimizedImageUrl(profile?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200", 80, 80)}
-                          alt=""
-                          className="w-full h-full object-cover"
-                        />
+                      <div className="w-9 h-9 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                        {profile?.avatar_url ? (
+                          <img
+                            src={getOptimizedImageUrl(profile.avatar_url, 80, 80)}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold relative overflow-hidden">
+                            <i className="ri-user-3-fill absolute text-3xl opacity-20 translate-y-1"></i>
+                            <span className="relative z-10">{profile?.full_name?.charAt(0).toUpperCase() || 'U'}</span>
+                          </div>
+                        )}
                       </div>
                     </button>
 
@@ -372,14 +375,18 @@ export default function Navbar() {
                 </div>
               )}
 
-              {/* Mobile Toggle */}
-              <button
-                onClick={() => setShowMobileMenu(!showMobileMenu)}
-                className="lg:hidden p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              >
-                <i className={`ri-${showMobileMenu ? 'close' : 'menu-4'}-line text-2xl`}></i>
-              </button>
             </div>
+
+            {/* Mobile Toggle */}
+            <button
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className={`lg:hidden p-3 rounded-xl transition-all duration-300 relative z-[70] ${showMobileMenu
+                ? 'text-white bg-white/10 hover:bg-white/20 shadow-lg'
+                : 'text-gray-900 dark:text-white bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+            >
+              <i className={`ri-${showMobileMenu ? 'close' : 'menu-4'}-line text-2xl`}></i>
+            </button>
           </div>
         </div>
       </div>
@@ -393,11 +400,11 @@ export default function Navbar() {
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none"></div>
 
-        <div className={`relative h-full flex flex-col p-8 pt-32 overflow-y-auto transition-transform duration-500 ease-out ${showMobileMenu ? 'translate-y-0' : '-translate-y-12'
+        <div className={`relative h-full flex flex-col p-8 pt-12 overflow-y-auto transition-transform duration-500 ease-out ${showMobileMenu ? 'translate-y-0' : '-translate-y-12'
           }`}>
-          <div className="space-y-2">
-            {/* Mobile Menu Logo */}
-            <div className="flex items-center gap-4 mb-8 pl-2">
+          {/* Mobile Menu Header with Brand and Manual Close */}
+          <div className="flex items-center justify-between mb-10 pl-2">
+            <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/40">
                 <img src="/PU%20Connect%20logo.png" alt="PU Connect" className="w-8 h-8 object-contain brightness-0 invert" />
               </div>
@@ -406,7 +413,9 @@ export default function Navbar() {
                 <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Student Portal</p>
               </div>
             </div>
+          </div>
 
+          <div className="space-y-2">
             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.3em] mb-4 pl-2">Navigation Terminal</p>
             {[
               { label: 'Home Terminal', path: '/', icon: 'ri-home-5-line', color: 'text-blue-400', bg: 'bg-blue-900/20' },
@@ -469,12 +478,19 @@ export default function Navbar() {
                   onClick={() => setShowMobileMenu(false)}
                   className="flex items-center gap-4 p-4 rounded-xl bg-gray-900 border border-white/5 hover:border-blue-500/50 transition-all"
                 >
-                  <div className="w-10 h-10 rounded-full bg-gray-800 overflow-hidden">
-                    <img
-                      src={getOptimizedImageUrl(profile?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200", 80, 80)}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
+                  <div className="w-10 h-10 rounded-full bg-gray-800 overflow-hidden flex items-center justify-center">
+                    {profile?.avatar_url ? (
+                      <img
+                        src={getOptimizedImageUrl(profile.avatar_url, 80, 80)}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-blue-600 flex items-center justify-center text-white text-[10px] font-bold relative overflow-hidden">
+                        <i className="ri-user-3-fill absolute text-2xl opacity-20 translate-y-1"></i>
+                        <span className="relative z-10">{profile?.full_name?.charAt(0).toUpperCase()}</span>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm font-bold text-white">{profile?.full_name}</p>

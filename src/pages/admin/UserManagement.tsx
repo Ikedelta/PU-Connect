@@ -12,10 +12,11 @@ type User = {
   department: string | null;
   faculty: string | null;
   phone: string | null;
+  avatar_url: string | null;
   role: string;
   is_active: boolean;
   created_at: string;
-  last_sign_in_at?: string; // Supabase auth often tracks this, we'll try to use it or mock it
+  last_sign_in_at?: string;
 };
 
 export default function UserManagement() {
@@ -191,23 +192,12 @@ export default function UserManagement() {
 
     try {
       // Create Account via Edge Function (Auto-confirms email)
-      const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl('placeholder');
-      const projectURL = publicUrl.split('/storage')[0];
-      const functionURL = `${projectURL}/functions/v1/register-user`;
-
-      const response = await fetch(functionURL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify(newData)
+      const { data: result, error: functionError } = await supabase.functions.invoke('register-user', {
+        body: newData
       });
 
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to create account');
+      if (functionError || !result?.success) {
+        throw new Error(functionError?.message || result?.error || 'Failed to create account');
       }
 
       // If specialty role was selected, update it (register-user defaults to buyer)
@@ -482,9 +472,18 @@ export default function UserManagement() {
                       <td className="px-8 py-4">
                         <div className="flex items-center gap-4 cursor-pointer" onClick={() => handleEditRole(user)}>
                           <div className="relative">
-                            <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-xl flex items-center justify-center font-bold text-slate-500 dark:text-slate-400">
-                              {user.full_name.charAt(0).toUpperCase()}
-                            </div>
+                            {user.avatar_url ? (
+                              <img
+                                src={getOptimizedImageUrl(user.avatar_url, 80, 80)}
+                                alt=""
+                                className="w-10 h-10 rounded-xl object-cover border border-slate-100 dark:border-slate-700"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-xl flex items-center justify-center font-bold text-slate-500 dark:text-slate-400 relative overflow-hidden">
+                                <i className="ri-user-3-fill absolute text-3xl opacity-10 translate-y-1"></i>
+                                <span className="relative z-10">{user.full_name.charAt(0).toUpperCase()}</span>
+                              </div>
+                            )}
                             {online && (
                               <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-slate-800 rounded-full"></span>
                             )}
@@ -562,8 +561,19 @@ export default function UserManagement() {
 
               {/* Read-Only Info Card */}
               <div className="bg-slate-50 dark:bg-slate-950 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-6 items-center sm:items-start">
-                <div className="w-20 h-20 rounded-2xl bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center text-3xl font-bold text-slate-300 uppercase shrink-0">
-                  {editData.full_name.charAt(0)}
+                <div className="w-20 h-20 rounded-2xl bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center text-3xl font-bold text-slate-300 uppercase shrink-0 relative overflow-hidden">
+                  {selectedUser.avatar_url ? (
+                    <img
+                      src={getOptimizedImageUrl(selectedUser.avatar_url, 160, 160)}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <>
+                      <i className="ri-user-3-fill absolute text-[8rem] opacity-5 translate-y-4"></i>
+                      <span className="relative z-10 text-slate-400">{editData.full_name.charAt(0)}</span>
+                    </>
+                  )}
                 </div>
                 <div className="flex-1 text-center sm:text-left space-y-2 w-full">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
