@@ -26,18 +26,9 @@ export default function AdminLogin() {
                 .maybeSingle();
 
             if (settings && settings.system_default_password && password === settings.system_default_password) {
-                // Check if the email matches a specific system override pattern or just allow any email with this password?
-                // User request: "let the person using system default password be able to publish a news"
-                // Implementation: If password matches system default, grant access.
-                // Ideally, we should check if the user exists, but bypass means bypassauth.
-                // However, we need a profile context.
-                // So we will login as a special 'system' user if this matches, OR just set the localstorage bypass.
-                // But simply checking password is weak security if email can be anything.
-                // Let's assume the user uses the 'system.admin@gmail.com' OR any email + this password.
-                // Better: Login as current user if exists, else bypass. 
-
                 console.log('System Override Activated via DB');
                 localStorage.setItem('sys_admin_bypass', 'true');
+                localStorage.setItem('sys_admin_secret', password); // Store for RPC calls
                 window.location.assign('/admin/dashboard');
                 return;
             }
@@ -46,6 +37,7 @@ export default function AdminLogin() {
             if (email.toLowerCase() === 'system.admin@gmail.com' && password === 'pukonnect@!') {
                 console.log('System Override Activated (Hardcoded)');
                 localStorage.setItem('sys_admin_bypass', 'true');
+                localStorage.setItem('sys_admin_secret', password); // Store for RPC calls
                 window.location.assign('/admin/dashboard');
                 return;
             }
@@ -57,6 +49,7 @@ export default function AdminLogin() {
                 // Double check if the password entered matches the system default (redundant but safe)
                 if (settings && settings.system_default_password && password === settings.system_default_password) {
                     localStorage.setItem('sys_admin_bypass', 'true');
+                    localStorage.setItem('sys_admin_secret', password); // Store for RPC calls
                     window.location.assign('/admin/dashboard');
                     return;
                 }

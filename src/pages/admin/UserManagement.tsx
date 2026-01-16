@@ -99,6 +99,24 @@ export default function UserManagement() {
     }
   };
 
+  // Helper for System Admin Bypass vs Standard Update
+  const adminUpdateProfile = async (targetId: string, updates: any) => {
+    const isBypass = localStorage.getItem('sys_admin_bypass') === 'true';
+    const secret = localStorage.getItem('sys_admin_secret');
+
+    if (isBypass && secret) {
+      console.log('Using System Admin RPC for update');
+      const { data, error } = await supabase.rpc('admin_update_profile', {
+        target_id: targetId,
+        new_data: updates,
+        secret_key: secret
+      });
+      return { error };
+    } else {
+      return await supabase.from('profiles').update(updates).eq('id', targetId);
+    }
+  };
+
   const handleToggleActive = async (userId: string, currentStatus: boolean) => {
     // Optimistic Update
     setUsers(users.map(u => u.id === userId ? { ...u, is_active: !currentStatus } : u));
@@ -107,10 +125,7 @@ export default function UserManagement() {
     }
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_active: !currentStatus })
-        .eq('id', userId);
+      const { error } = await adminUpdateProfile(userId, { is_active: !currentStatus });
 
       if (error) {
         // Revert on error
@@ -187,10 +202,7 @@ export default function UserManagement() {
 
       // If specialty role was selected, update it (register-user defaults to buyer)
       if (newData.role !== 'buyer') {
-        const { error: roleError } = await supabase
-          .from('profiles')
-          .update({ role: newData.role })
-          .eq('id', result.userId);
+        const { error: roleError } = await adminUpdateProfile(result.userId, { role: newData.role }); // Use Helper Check
         if (roleError) console.error('Failed to update role:', roleError);
       }
 
@@ -246,17 +258,14 @@ export default function UserManagement() {
         phone: editData.phone
       } : u));
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: editData.full_name,
-          role: editData.role,
-          department: editData.department,
-          faculty: editData.faculty,
-          student_id: editData.student_id,
-          phone: editData.phone
-        })
-        .eq('id', selectedUser.id);
+      const { error } = await adminUpdateProfile(selectedUser.id, {
+        full_name: editData.full_name,
+        role: editData.role,
+        department: editData.department,
+        faculty: editData.faculty,
+        student_id: editData.student_id,
+        phone: editData.phone
+      });
 
       if (error) throw error;
 

@@ -82,6 +82,34 @@ export default function EditProduct() {
     }
   };
 
+  // Helper for System Admin Bypass
+  const adminUpdateProduct = async (productId: string, productData: any) => {
+    const isBypass = localStorage.getItem('sys_admin_bypass') === 'true';
+    const secret = localStorage.getItem('sys_admin_secret');
+    if (isBypass && secret) {
+      const { error } = await supabase.rpc('admin_update_product', {
+        product_id: productId,
+        product_data: productData,
+        secret_key: secret
+      });
+      return { error };
+    }
+    return await supabase.from('products').update(productData).eq('id', productId);
+  };
+
+  const adminDeleteProduct = async (productId: string) => {
+    const isBypass = localStorage.getItem('sys_admin_bypass') === 'true';
+    const secret = localStorage.getItem('sys_admin_secret');
+    if (isBypass && secret) {
+      const { error } = await supabase.rpc('admin_delete_product', {
+        target_id: productId,
+        secret_key: secret
+      });
+      return { error };
+    }
+    return await supabase.from('products').delete().eq('id', productId);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -99,16 +127,27 @@ export default function EditProduct() {
         updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
-        .from('products')
-        .update(productData)
-        .eq('id', id);
+      const { error } = await adminUpdateProduct(id!, productData);
 
       if (error) throw error;
 
       navigate('/seller/dashboard');
     } catch (err: any) {
       setError(err.message || 'Failed to update product');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!id || !window.confirm('Delete this product? Action cannot be undone.')) return;
+    setSaving(true);
+    try {
+      const { error } = await adminDeleteProduct(id);
+      if (error) throw error;
+      navigate('/seller/dashboard');
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete product');
     } finally {
       setSaving(false);
     }
@@ -288,7 +327,16 @@ export default function EditProduct() {
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Customers can contact you directly on WhatsApp</p>
               </div>
 
-              <div className="flex pt-6">
+              <div className="flex flex-col sm:flex-row gap-4 pt-6">
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={saving}
+                  className="px-8 py-5 bg-rose-50 text-rose-600 font-bold text-xs uppercase tracking-widest rounded-2xl hover:bg-rose-600 hover:text-white transition-all disabled:opacity-50 flex items-center justify-center gap-3 active:scale-[0.98]"
+                >
+                  <i className="ri-delete-bin-line text-lg"></i>
+                  <span>Delete Listing</span>
+                </button>
                 <button
                   type="submit"
                   disabled={saving}

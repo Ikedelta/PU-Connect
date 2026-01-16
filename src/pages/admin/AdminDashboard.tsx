@@ -261,15 +261,22 @@ export default function AdminDashboard() {
     }
   };
 
+  const adminUpdateSettings = async (settingKey: string, value: boolean) => {
+    const isBypass = localStorage.getItem('sys_admin_bypass') === 'true';
+    const secret = localStorage.getItem('sys_admin_secret');
+    if (isBypass && secret) {
+      const { error } = await supabase.rpc('admin_update_settings', { setting_key: settingKey, setting_value: value, secret_key: secret });
+      return { error };
+    }
+    return await supabase.from('website_settings').update({ [settingKey]: value }).eq('site_name', 'Campus Marketplace');
+  };
+
   const toggleSMS = async () => {
     try {
       const newValue = !stats.smsEnabled;
       setStats(prev => ({ ...prev, smsEnabled: newValue })); // Optimistic update
 
-      const { error } = await supabase
-        .from('website_settings')
-        .update({ enable_sms: newValue })
-        .eq('site_name', 'Campus Marketplace'); // Assuming single row
+      const { error } = await adminUpdateSettings('enable_sms', newValue);
 
       if (error) throw error;
 
@@ -284,29 +291,51 @@ export default function AdminDashboard() {
     }
   };
 
+  // Helpers for System Admin Bypass
+  const adminUpdateProfile = async (targetId: string, updates: any) => {
+    const isBypass = localStorage.getItem('sys_admin_bypass') === 'true';
+    const secret = localStorage.getItem('sys_admin_secret');
+    if (isBypass && secret) {
+      const { error } = await supabase.rpc('admin_update_profile', { target_id: targetId, new_data: updates, secret_key: secret });
+      return { error };
+    }
+    return await supabase.from('profiles').update(updates).eq('id', targetId);
+  };
+
+  const adminUpdateApplication = async (appId: string, status: string) => {
+    const isBypass = localStorage.getItem('sys_admin_bypass') === 'true';
+    const secret = localStorage.getItem('sys_admin_secret');
+    if (isBypass && secret) {
+      const { error } = await supabase.rpc('admin_update_application', { app_id: appId, new_status: status, secret_key: secret });
+      return { error };
+    }
+    return await supabase.from('seller_applications').update({ status, updated_at: new Date().toISOString() }).eq('id', appId);
+  };
+
+  const adminUpsertSellerProfile = async (targetUserId: string, businessName: string) => {
+    const isBypass = localStorage.getItem('sys_admin_bypass') === 'true';
+    const secret = localStorage.getItem('sys_admin_secret');
+    if (isBypass && secret) {
+      const { error } = await supabase.rpc('admin_upsert_seller_profile', { target_user_id: targetUserId, initial_name: businessName, secret_key: secret });
+      return { error };
+    }
+    return await supabase.from('seller_profiles').upsert({ user_id: targetUserId, business_name: businessName, created_at: new Date().toISOString() }, { onConflict: 'user_id' });
+  };
+
   const handleApprove = async (applicationId: string, userId: string) => {
     setProcessing(applicationId);
     try {
       // 1. Approve Application
-      const { error: appError } = await supabase
-        .from('seller_applications')
-        .update({ status: 'approved', updated_at: new Date().toISOString() })
-        .eq('id', applicationId);
-
+      const { error: appError } = await adminUpdateApplication(applicationId, 'approved');
       if (appError) throw appError;
 
       // 2. Grant Seller Role
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ role: 'seller' })
-        .eq('id', userId);
-
+      const { error: profileError } = await adminUpdateProfile(userId, { role: 'seller' });
       if (profileError) throw profileError;
 
       // 3. Create Seller Profile Entry (if it doesn't exist)
-      const { error: sellerProfileError } = await supabase
-        .from('seller_profiles')
-        .upsert({ user_id: userId, business_name: 'New Business', created_at: new Date().toISOString() }, { onConflict: 'user_id' });
+      const { error: sellerProfileError } = await adminUpsertSellerProfile(userId, 'New Business');
+      if (sellerProfileError) throw sellerProfileError;
 
       // 4. Send Notification
       const { data: userData } = await supabase.from('profiles').select('phone, full_name').eq('id', userId).single();
@@ -336,10 +365,7 @@ export default function AdminDashboard() {
     if (!confirm('Reject this application?')) return;
     setProcessing(applicationId);
     try {
-      const { error } = await supabase
-        .from('seller_applications')
-        .update({ status: 'rejected', updated_at: new Date().toISOString() })
-        .eq('id', applicationId);
+      const { error } = await adminUpdateApplication(applicationId, 'rejected');
 
       if (error) throw error;
 
@@ -394,7 +420,7 @@ export default function AdminDashboard() {
   const handleAddAdmin = async () => {
     if (!selectedAdminUser) return;
     try {
-      const { error } = await supabase.from('profiles').update({ role: 'admin' }).eq('id', selectedAdminUser.id);
+      const { error } = await adminUpdateProfile(selectedAdminUser.id, { role: 'admin' });
       if (error) throw error;
 
       // Notify new admin

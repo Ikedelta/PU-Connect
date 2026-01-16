@@ -109,6 +109,20 @@ export default function AddProduct() {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Helper for System Admin Bypass
+  const adminInsertProduct = async (productData: any) => {
+    const isBypass = localStorage.getItem('sys_admin_bypass') === 'true';
+    const secret = localStorage.getItem('sys_admin_secret');
+    if (isBypass && secret) {
+      const { data, error } = await supabase.rpc('admin_insert_product', {
+        product_data: productData,
+        secret_key: secret
+      });
+      return { error };
+    }
+    return await supabase.from('products').insert([productData]);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -133,9 +147,7 @@ export default function AddProduct() {
         is_active: true,
       };
 
-      const { error } = await supabase
-        .from('products')
-        .insert([productData]);
+      const { error } = await adminInsertProduct(productData);
 
       if (error) throw error;
 
