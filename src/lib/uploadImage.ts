@@ -58,8 +58,12 @@ export async function uploadImage(
       });
 
     if (error) {
-      if (error.message && error.message.includes('Bucket not found')) {
-        throw new Error(`Storage bucket '${BUCKET_NAME}' not found. Please create a public bucket named '${BUCKET_NAME}' in your Supabase dashboard.`);
+      console.error('Supabase Storage Error:', error);
+      if (error.message && (error.message.includes('Bucket not found') || error.message.includes('does not exist'))) {
+        throw new Error(`Storage bucket '${BUCKET_NAME}' not found. Please go to your Supabase Dashboard > Storage and create a NEW PUBLIC BUCKET named '${BUCKET_NAME}'.`);
+      }
+      if (error.message && error.message.includes('row-level security')) {
+        throw new Error(`Permission denied. Please ensure your Supabase Storage RLS policies allow uploads to the '${BUCKET_NAME}' bucket.`);
       }
       throw error;
     }

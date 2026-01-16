@@ -16,6 +16,7 @@ export default {
         "fade-in-up": "fadeInUp 0.5s ease-out forwards",
         "fade-in": "fadeIn 0.5s ease-out forwards",
         "slide-in-right": "slideInRight 0.5s ease-out forwards",
+        "progress": "progress 2s ease-in-out infinite",
       },
       keyframes: {
         blob: {
@@ -55,6 +56,11 @@ export default {
             opacity: "1",
             transform: "translateX(0)",
           },
+        },
+        progress: {
+          "0%": { transform: "translateX(-100%)" },
+          "50%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(100%)" },
         },
       },
     },

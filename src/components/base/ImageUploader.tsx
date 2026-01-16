@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { uploadImage, compressImage } from '../../lib/uploadImage';
 
 interface ImageUploaderProps {
@@ -8,6 +8,11 @@ interface ImageUploaderProps {
   className?: string;
   shape?: 'circle' | 'square';
   size?: 'small' | 'medium' | 'large';
+  noBorder?: boolean;
+  onPreview?: (url: string) => void;
+  onFileSelected?: (file: File) => void;
+  hideInternalUI?: boolean;
+  autoUpload?: boolean;
 }
 
 export default function ImageUploader({
@@ -17,12 +22,22 @@ export default function ImageUploader({
   className = '',
   shape = 'square',
   size = 'medium',
+  noBorder = false,
+  onPreview,
+  onFileSelected,
+  hideInternalUI = false,
+  autoUpload = true,
 }: ImageUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | undefined>(currentImage);
   const [error, setError] = useState<string>('');
   const [progress, setProgress] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync preview if currentImage changes externally
+  useEffect(() => {
+    setPreview(currentImage);
+  }, [currentImage]);
 
   const sizeClasses = {
     small: 'w-20 h-20',
@@ -35,17 +50,26 @@ export default function ImageUploader({
     if (!file) return;
 
     setError('');
+
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      setPreview(result);
+      if (onPreview) onPreview(result);
+    };
+    reader.readAsDataURL(file);
+
+    // Call onFileSelected immediately
+    if (onFileSelected) onFileSelected(file);
+
+    // Stop here if autoUpload is disabled
+    if (!autoUpload) return;
+
     setUploading(true);
     setProgress('Preparing...');
 
     try {
-      // Show preview immediately
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-
       // Compress image with progress
       setProgress('Optimizing image...');
       const compressedFile = await compressImage(file);
@@ -80,45 +104,65 @@ export default function ImageUploader({
         className={`
           ${sizeClasses[size]}
           ${shape === 'circle' ? 'rounded-full' : 'rounded-xl'}
-          border-2 border-dashed border-gray-300
-          hover:border-teal-500
+          ${noBorder ? '' : 'border-2 border-dashed border-gray-300'}
+          hover:border-blue-500
           transition-all duration-200
           overflow-hidden
-          bg-gray-50
           cursor-pointer
           group
           relative
         `}
         onClick={handleClick}
       >
-        {preview ? (
-          <>
-            <img
-              src={preview}
-              alt="Upload preview"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-              <div className="text-white text-center">
-                <i className="ri-upload-cloud-line text-2xl mb-1"></i>
-                <p className="text-xs font-medium">Change Image</p>
+        {!hideInternalUI && (
+          preview ? (
+            <>
+              <img
+                src={preview}
+                alt="Upload preview"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <div className="text-white text-center">
+                  <i className="ri-upload-cloud-line text-2xl mb-1"></i>
+                  <p className="text-xs font-medium">Change Image</p>
+                </div>
               </div>
+            </>
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 dark:text-gray-600 group-hover:text-blue-500 transition-colors relative overflow-hidden bg-gray-50 dark:bg-gray-800">
+              {folder === 'profiles' ? (
+                <>
+                  <i className="ri-user-3-fill absolute text-[10rem] opacity-10 translate-y-6"></i>
+                  <i className="ri-image-add-line text-3xl mb-2 relative z-10"></i>
+                  <p className="text-xs font-bold uppercase tracking-widest relative z-10">Add Photo</p>
+                </>
+              ) : (
+                <>
+                  <i className="ri-image-add-line text-3xl mb-2"></i>
+                  <p className="text-xs font-medium px-2 text-center">Upload Image</p>
+                </>
+              )}
             </div>
-          </>
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 group-hover:text-teal-500 transition-colors">
-            <i className="ri-image-add-line text-3xl mb-2"></i>
-            <p className="text-xs font-medium px-2 text-center">Upload Image</p>
-          </div>
+          )
         )}
 
         {uploading && (
-          <div className="absolute inset-0 bg-white/95 flex items-center justify-center">
-            <div className="text-center">
-              <i className="ri-loader-4-line text-2xl text-teal-600 animate-spin"></i>
-              <p className="text-xs text-gray-600 mt-2 font-medium">{progress}</p>
+          hideInternalUI ? (
+            <div className="absolute inset-x-0 bottom-0 h-1 bg-gray-200 overflow-hidden">
+              <div className="h-full bg-blue-600 animate-progress origin-left"></div>
+              <div className="absolute top-[-20px] right-2 bg-blue-600 text-white rounded-full p-1 shadow-lg">
+                <i className="ri-loader-4-line text-[10px] animate-spin"></i>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="absolute inset-0 bg-white/95 flex items-center justify-center">
+              <div className="text-center">
+                <i className="ri-loader-4-line text-2xl text-teal-600 animate-spin"></i>
+                <p className="text-xs text-gray-600 mt-2 font-medium">{progress}</p>
+              </div>
+            </div>
+          )
         )}
       </div>
 
@@ -131,10 +175,15 @@ export default function ImageUploader({
       />
 
       {error && (
-        <p className="mt-2 text-xs text-red-600 flex items-center">
-          <i className="ri-error-warning-line mr-1"></i>
-          {error}
-        </p>
+        <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+          <i className="ri-error-warning-fill text-red-500 text-lg shrink-0"></i>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-1">Upload Error</p>
+            <p className="text-xs font-bold text-red-700 dark:text-red-400">
+              {error}
+            </p>
+          </div>
+        </div>
       )}
 
       <p className="mt-2 text-xs text-gray-500">

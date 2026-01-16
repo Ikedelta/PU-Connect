@@ -72,6 +72,7 @@ function Marketplace() {
       .sort((a, b) => {
         if (sortBy === 'price-low') return (a.price || 0) - (b.price || 0);
         if (sortBy === 'price-high') return (b.price || 0) - (a.price || 0);
+        if (sortBy === 'popular') return (b.views_count || 0) - (a.views_count || 0);
         if (sortBy === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         return 0;
       });
@@ -140,7 +141,7 @@ function Marketplace() {
       </section>
 
       {/* Sticky Categories Bar - Premium Navigation */}
-      <div className="sticky top-20 z-40 bg-white/95 dark:bg-gray-950/95 backdrop-blur-2xl border-b border-gray-100 dark:border-gray-800/60 shadow-sm overflow-hidden">
+      <div className="sticky top-20 z-40 bg-gray-50/95 dark:bg-gray-950/95 backdrop-blur-2xl border-b border-gray-100 dark:border-gray-800/60 shadow-sm overflow-hidden">
         <div className="max-w-[1600px] mx-auto">
           <div className="flex items-center gap-4 overflow-x-auto py-5 px-4 md:px-8 no-scrollbar snap-x scroll-smooth">
             {categories.map((category) => (
@@ -151,16 +152,16 @@ function Marketplace() {
               >
                 {/* Icon Wrapper */}
                 <div className={`w-14 h-14 md:w-11 md:h-11 rounded-[1.25rem] flex items-center justify-center transition-all duration-500 shadow-lg ${selectedCategory === category.id
-                    ? 'bg-blue-600 text-white shadow-blue-600/30 scale-110 ring-4 ring-blue-600/10'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 group-hover:text-blue-600'
+                  ? 'bg-blue-600 text-white shadow-blue-600/30 scale-110 ring-4 ring-blue-600/10'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 group-hover:text-blue-600'
                   }`}>
                   <i className={`${category.icon} text-2xl md:text-xl`}></i>
                 </div>
 
                 {/* Label */}
                 <span className={`text-[9px] md:text-[11px] font-bold uppercase tracking-wide text-center leading-tight transition-colors duration-300 max-w-[80px] md:max-w-none ${selectedCategory === category.id
-                    ? 'text-blue-600 dark:text-blue-400'
-                    : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-900 dark:group-hover:text-white'
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-900 dark:group-hover:text-white'
                   }`}>
                   {category.name}
                 </span>
@@ -201,6 +202,7 @@ function Marketplace() {
                   className="appearance-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 py-3 pl-4 pr-10 rounded-xl font-bold text-xs uppercase tracking-wide focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-sm hover:shadow-md transition-all"
                 >
                   <option value="newest">Newest First</option>
+                  <option value="popular">Most Popular</option>
                   <option value="price-low">Price: Low to High</option>
                   <option value="price-high">Price: High to Low</option>
                 </select>

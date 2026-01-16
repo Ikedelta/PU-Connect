@@ -234,12 +234,19 @@ export default function Navbar() {
                       onClick={() => setShowDropdown(!showDropdown)}
                       className="flex items-center gap-2"
                     >
-                      <div className="w-9 h-9 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700">
-                        <img
-                          src={getOptimizedImageUrl(profile?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200", 80, 80)}
-                          alt=""
-                          className="w-full h-full object-cover"
-                        />
+                      <div className="w-9 h-9 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                        {profile?.avatar_url ? (
+                          <img
+                            src={getOptimizedImageUrl(profile.avatar_url, 80, 80)}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold relative overflow-hidden">
+                            <i className="ri-user-3-fill absolute text-3xl opacity-20 translate-y-1"></i>
+                            <span className="relative z-10">{profile?.full_name?.charAt(0).toUpperCase() || 'U'}</span>
+                          </div>
+                        )}
                       </div>
                     </button>
 
@@ -406,12 +413,19 @@ export default function Navbar() {
                   onClick={() => setShowMobileMenu(false)}
                   className="flex items-center gap-4 p-4 rounded-xl bg-gray-900 border border-white/5 hover:border-blue-500/50 transition-all"
                 >
-                  <div className="w-10 h-10 rounded-full bg-gray-800 overflow-hidden">
-                    <img
-                      src={getOptimizedImageUrl(profile?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200", 80, 80)}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
+                  <div className="w-10 h-10 rounded-full bg-gray-800 overflow-hidden flex items-center justify-center">
+                    {profile?.avatar_url ? (
+                      <img
+                        src={getOptimizedImageUrl(profile.avatar_url, 80, 80)}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-blue-600 flex items-center justify-center text-white text-[10px] font-bold relative overflow-hidden">
+                        <i className="ri-user-3-fill absolute text-2xl opacity-20 translate-y-1"></i>
+                        <span className="relative z-10">{profile?.full_name?.charAt(0).toUpperCase()}</span>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm font-bold text-white">{profile?.full_name}</p>

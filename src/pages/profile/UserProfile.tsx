@@ -13,6 +13,7 @@ export default function UserProfile() {
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     full_name: '',
     student_id: '',
@@ -45,39 +46,81 @@ export default function UserProfile() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!profile?.id) return;
+
     setLoading(true);
     setError(null);
 
+    // Guard for mock user
+    if (profile.id === 'sys_admin_001') {
+      setTimeout(() => {
+        setLoading(false);
+        setEditing(false);
+        const warnMsg = document.createElement('div');
+        warnMsg.className = 'fixed top-6 right-6 bg-amber-500 text-white px-8 py-4 rounded-2xl shadow-2xl z-50 flex items-center font-bold animate-fade-in-up';
+        warnMsg.innerHTML = '<i class="ri-alert-line mr-3 text-xl"></i>Bypass User: Changes not saved to DB';
+        document.body.appendChild(warnMsg);
+        setTimeout(() => warnMsg.remove(), 3000);
+      }, 1000);
+      return;
+    }
+
     try {
-      const { error } = await supabase
+      let finalAvatarUrl = formData.avatar_url;
+
+      // 1. Upload file if a new one was selected
+      if (selectedFile) {
+        console.log('Uploading new avatar...');
+        const { uploadImage, compressImage } = await import('../../lib/uploadImage');
+        const compressed = await compressImage(selectedFile);
+        const { url } = await uploadImage(compressed, 'profiles');
+        finalAvatarUrl = url;
+        console.log('Avatar uploaded successfully:', url);
+      }
+
+      // 2. Update profiles table
+      console.log('Updating profile in database...', formData);
+      const { data, error: updateError } = await supabase
         .from('profiles')
-        .update({
+        .upsert({
+          id: profile.id,
+          email: profile.email, // Include email to satisfy not-null constraint on new rows
           full_name: formData.full_name,
           student_id: formData.student_id,
           department: formData.department,
           faculty: formData.faculty,
-          avatar_url: formData.avatar_url,
+          avatar_url: finalAvatarUrl,
           phone: formData.phone,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', profile?.id);
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+      if (!data) throw new Error('No data returned after update');
 
+      console.log('Profile updated successfully:', data);
+
+      setSelectedFile(null);
       await refreshProfile();
 
       const successMsg = document.createElement('div');
-      successMsg.className = 'fixed top-6 right-6 bg-blue-600 text-white px-8 py-4 rounded-2xl shadow-2xl z-50 flex items-center font-bold animate-slide-in';
-      successMsg.innerHTML = '<i class="ri-checkbox-circle-fill mr-3 text-xl"></i>Profile updated successfully!';
+      successMsg.className = 'fixed top-6 right-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-4 rounded-2xl shadow-2xl z-50 flex items-center font-bold animate-fade-in-up border border-white/10 dark:border-slate-200';
+      successMsg.innerHTML = `
+        <div class="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center mr-3">
+          <i class="ri-check-line text-white"></i>
+        </div>
+        Profile updated & saved!
+      `;
       document.body.appendChild(successMsg);
 
       setTimeout(() => {
         successMsg.remove();
         setEditing(false);
       }, 2000);
-    } catch (error: any) {
-      console.error('Error updating profile:', error);
-      setError(error.message || 'Failed to update profile');
+    } catch (err: any) {
+      console.error('Error updating profile:', err);
+      setError(err.message || 'Failed to update profile');
     } finally {
       setLoading(false);
     }
@@ -89,34 +132,6 @@ export default function UserProfile() {
       navigate('/login');
     } catch (error) {
       console.error('Error signing out:', error);
-    }
-  };
-
-  const handleAvatarUpload = async (url: string) => {
-    setFormData(prev => ({ ...prev, avatar_url: url }));
-
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          avatar_url: url,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', profile?.id);
-
-      if (error) throw error;
-      await refreshProfile();
-
-      const successMsg = document.createElement('div');
-      successMsg.className = 'fixed top-6 right-6 bg-emerald-500 text-white px-8 py-4 rounded-2xl shadow-2xl z-50 flex items-center font-bold animate-slide-in';
-      successMsg.innerHTML = '<i class="ri-user-smile-fill mr-3 text-xl"></i>Avatar updated!';
-      document.body.appendChild(successMsg);
-
-      setTimeout(() => {
-        successMsg.remove();
-      }, 2000);
-    } catch (error) {
-      console.error('Error auto-saving avatar:', error);
     }
   };
 
@@ -177,7 +192,21 @@ export default function UserProfile() {
             </div>
 
             <button
-              onClick={() => setEditing(!editing)}
+              onClick={() => {
+                if (editing) {
+                  // Revert changes on cancel
+                  setFormData({
+                    full_name: profile.full_name || '',
+                    student_id: profile.student_id || '',
+                    department: profile.department || '',
+                    faculty: profile.faculty || '',
+                    avatar_url: profile.avatar_url || '',
+                    phone: profile.phone || '',
+                  });
+                  setSelectedFile(null);
+                }
+                setEditing(!editing);
+              }}
               className={`group px-8 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all flex items-center gap-3 shadow-xl animate-fade-in-up delay-200 cursor-pointer ${editing
                 ? 'bg-white text-gray-900 hover:bg-gray-100'
                 : 'bg-blue-600 text-white hover:bg-blue-500 shadow-blue-900/20'}`}
@@ -197,34 +226,56 @@ export default function UserProfile() {
               <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-gray-50 to-transparent dark:from-gray-800/50"></div>
 
               <div className="relative z-10 text-center">
-                <div className="w-48 h-48 mx-auto rounded-[2rem] overflow-hidden bg-gray-100 dark:bg-gray-800 shadow-2xl mb-8 relative group/avatar ring-4 ring-white dark:ring-gray-900">
-                  {editing ? (
-                    <ImageUploader
-                      currentImage={formData.avatar_url}
-                      onImageUploaded={handleAvatarUpload}
-                      folder="profiles"
-                      shape="square"
-                      size="large"
-                      className="w-full h-full"
-                    />
-                  ) : (
+                <div className="w-48 h-48 mx-auto rounded-[2rem] overflow-hidden bg-gray-100 dark:bg-gray-800 shadow-2xl mb-8 relative group/avatar ring-4 ring-white dark:ring-gray-900 flex items-center justify-center">
+                  {(editing ? formData.avatar_url : profile.avatar_url) ? (
                     <img
-                      src={getOptimizedImageUrl(profile.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=400", 400, 85)}
-                      alt={profile.full_name}
+                      src={getOptimizedImageUrl(editing ? formData.avatar_url : profile.avatar_url, 400, 85)}
+                      alt={formData.full_name}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover/avatar:scale-110"
                     />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-700 flex flex-col items-center justify-center text-white relative overflow-hidden">
+                      <i className="ri-user-3-fill absolute text-[12rem] opacity-10 translate-y-8"></i>
+                      <span className="relative z-10 text-6xl font-black">
+                        {(editing ? formData.full_name : profile.full_name || 'U').charAt(0).toUpperCase()}
+                      </span>
+                    </div>
                   )}
-                  {!editing && (
-                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                      <i className="ri-user-smile-line text-4xl text-white"></i>
+
+                  {editing && (
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] opacity-100 transition-all duration-300 flex items-center justify-center cursor-pointer group/upload">
+                      <ImageUploader
+                        currentImage={formData.avatar_url}
+                        onImageUploaded={() => { }} // Not used because autoUpload is false
+                        onPreview={(url) => setFormData(prev => ({ ...prev, avatar_url: url }))}
+                        onFileSelected={(file) => setSelectedFile(file)}
+                        folder="profiles"
+                        shape="square"
+                        size="large"
+                        noBorder={true}
+                        hideInternalUI={true}
+                        autoUpload={false}
+                        className="w-full h-full"
+                      />
+                      <div className="absolute pointer-events-none text-white text-center group-hover/upload:scale-110 transition-transform duration-300">
+                        <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-2 shadow-lg">
+                          <i className="ri-camera-lens-line text-2xl"></i>
+                        </div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] drop-shadow-md">Change Photo</p>
+                      </div>
                     </div>
                   )}
                 </div>
 
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{profile.full_name}</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{editing ? formData.full_name : profile.full_name}</h2>
                 <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6">{profile.role?.replace('_', ' ')}</p>
 
                 <div className="flex justify-center gap-3 mb-8">
+                  {editing && formData.avatar_url !== profile.avatar_url && (
+                    <span className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-widest rounded-xl border border-amber-100 dark:border-amber-900/30 animate-pulse">
+                      <i className="ri-eye-line mr-1"></i> Preview Mode
+                    </span>
+                  )}
                   <span className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-bold uppercase tracking-widest rounded-xl">
                     Verified Student
                   </span>
