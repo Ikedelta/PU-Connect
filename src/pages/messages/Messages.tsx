@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/feature/Navbar';
 import { getOptimizedImageUrl } from '../../lib/imageOptimization';
@@ -45,13 +46,21 @@ export default function Messages() {
     };
   }, []);
 
+  const [searchParams] = useSearchParams();
+  const deepLinkConversationId = searchParams.get('conversationId');
+
   useEffect(() => {
-    if (conversations.length > 0 && !selectedConversation && !showNewChatModal) {
+    if (deepLinkConversationId && conversations.length > 0) {
+      const target = conversations.find(c => c.id === deepLinkConversationId);
+      if (target) {
+        setSelectedConversation(target);
+      }
+    } else if (conversations.length > 0 && !selectedConversation && !showNewChatModal && !deepLinkConversationId) {
       if (window.innerWidth >= 1024) {
         setSelectedConversation(conversations[0]);
       }
     }
-  }, [conversations, selectedConversation]);
+  }, [conversations, selectedConversation, deepLinkConversationId, showNewChatModal]);
 
   useEffect(() => {
     if (selectedConversation && messages.length > 0) {

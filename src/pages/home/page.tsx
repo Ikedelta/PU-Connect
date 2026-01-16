@@ -1,6 +1,7 @@
 import { useNavigate, Link } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 import { useFeaturedNews } from '../../hooks/useNews';
 import { useProducts } from '../../hooks/useProducts';
 import { getOptimizedImageUrl } from '../../lib/imageOptimization';
@@ -59,6 +60,36 @@ export default function Home() {
     setCurrentSlide((prev) => (prev - 1 + featuredNews.length) % featuredNews.length);
   }, [featuredNews.length]);
 
+  const [stats, setStats] = useState({
+    products: 0,
+    students: 0,
+    verified: true
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      const { count: productCount } = await supabase.from('products').select('id', { count: 'exact', head: true }).eq('is_active', true);
+      const { count: userCount } = await supabase.from('profiles').select('id', { count: 'exact', head: true });
+
+      setStats(prev => ({
+        ...prev,
+        products: productCount || 0,
+        students: userCount || 0
+      }));
+    };
+
+    fetchStats();
+
+    const channel = supabase.channel('home-realtime-stats')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, fetchStats)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, fetchStats)
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950 transition-colors duration-300">
       <Navbar />
@@ -102,7 +133,7 @@ export default function Home() {
               </p>
 
               <div className="hidden md:flex flex-col border-l-2 border-blue-500/50 pl-4 mt-1 backdrop-blur-sm bg-black/20 p-4 rounded-r-2xl border-y border-r border-white/5">
-                <span className="text-2xl font-bold text-white tracking-tight">2.5K+</span>
+                <span className="text-2xl font-bold text-white tracking-tight">{stats.students > 0 ? `${(stats.students / 1000).toFixed(1)}K+` : '...'}</span>
                 <span className="text-[9px] font-bold text-gray-300 uppercase tracking-wide mt-1">Active Students</span>
               </div>
             </div>
@@ -151,7 +182,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               { label: 'Network Security', value: 'Verified', detail: 'Student Identity Protection', icon: 'ri-shield-check-line', color: 'blue' },
-              { label: 'Active Listings', value: '450+', detail: 'Live Campus Postings', icon: 'ri-compass-line', color: 'indigo' },
+              { label: 'Active Listings', value: stats.products > 0 ? `${stats.products}+` : 'Loading...', detail: 'Live Campus Postings', icon: 'ri-compass-line', color: 'indigo' },
               { label: 'Community Growth', value: 'Daily', detail: 'Increasing Daily Trades', icon: 'ri-line-chart-line', color: 'emerald' }
             ].map((stat, i) => (
               <div key={i} className="bg-gray-50 dark:bg-gray-900 p-10 rounded-[2rem] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.05)] border border-gray-100 dark:border-gray-800 group hover:shadow-xl transition-all duration-500">
@@ -334,10 +365,10 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 md:gap-16 items-center">
             <div className="order-2 lg:order-1">
-              <p className="text-blue-600 font-bold uppercase tracking-widest text-[10px] mb-3">Our Environment</p>
-              <h2 className="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white tracking-tight leading-[0.9] mb-6">Academic<br /><span className="text-blue-600">Horizon.</span></h2>
+              <p className="text-blue-600 font-bold uppercase tracking-widest text-[10px] mb-3">Campus Life</p>
+              <h2 className="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white tracking-tight leading-[0.9] mb-6">Pentecost<br /><span className="text-blue-600">University.</span></h2>
               <p className="text-gray-500 dark:text-gray-400 text-base md:text-lg font-medium leading-relaxed mb-8 max-w-xl">
-                Experience the vibrant campus of Pentecost University. Our specialized digital infrastructure is built to serve this thriving academic community.
+                Join a vibrant network of scholars, innovators, and friends. Pentecost University isn't just a place to study—it's a home where lifelong connections are forged and dreams take flight.
               </p>
               <div className="grid grid-cols-2 gap-8">
                 <div>
@@ -352,13 +383,15 @@ export default function Home() {
             </div>
             <div className="order-1 lg:order-2 relative group">
               <div className="absolute -inset-4 bg-blue-600/5 rounded-[2rem] md:rounded-[3rem] blur-2xl group-hover:bg-blue-600/10 transition-all duration-700"></div>
-              <div className="relative h-[300px] md:h-[500px] rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl skew-y-0 md:skew-y-1 md:group-hover:skew-y-0 transition-all duration-700">
+              <div className="relative h-[300px] md:h-[500px] rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl skew-y-0 md:skew-y-1 md:group-hover:skew-y-0 transition-all duration-700 group-hover:rotate-1 group-hover:shadow-[0_20px_50px_rgba(37,99,235,0.2)]">
                 <img
-                  src={heroAerial}
-                  alt="Campus Aerial View"
-                  className="w-full h-full object-cover scale-105 group-hover:scale-100 transition-all duration-1000"
+                  src="/image 5.jpg"
+                  alt="Campus Community"
+                  className="w-full h-full object-cover scale-105 group-hover:scale-110 transition-all duration-1000 group-hover:brightness-110"
                 />
-                <div className="absolute inset-0 bg-gradient-to-tr from-gray-950/20 to-transparent"></div>
+                {/* Shine Effect */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000 ease-in-out skew-x-12 z-20"></div>
+                <div className="absolute inset-0 bg-gradient-to-tr from-gray-950/40 to-transparent z-10"></div>
               </div>
             </div>
           </div>

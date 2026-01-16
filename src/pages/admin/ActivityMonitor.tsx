@@ -131,11 +131,11 @@ export default function ActivityMonitor() {
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-2 mb-8 shadow-sm overflow-x-auto">
           <div className="flex items-center space-x-2">
             {[
-              { id: 'all', label: 'All Events' },
-              { id: 'login', label: 'Logins' },
-              { id: 'product_created', label: 'Products' },
-              { id: 'sms_sent', label: 'SMS' },
-              { id: 'message_sent', label: 'Messages' }
+              { id: 'all', label: 'All History' },
+              { id: 'login', label: 'Login History' },
+              { id: 'product_created', label: 'Product History' },
+              { id: 'sms_sent', label: 'SMS History' },
+              { id: 'message_sent', label: 'Message History' }
             ].map(filter => (
               <button
                 key={filter.id}
