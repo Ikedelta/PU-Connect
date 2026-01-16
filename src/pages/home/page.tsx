@@ -238,11 +238,17 @@ export default function Home() {
                   className="group relative bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden hover:shadow-lg transition-all"
                 >
                   <div className="aspect-[1/1] overflow-hidden bg-slate-100 dark:bg-slate-900 relative">
-                    <img
-                      src={getOptimizedImageUrl(product.images?.[0] || '', 300, 80)}
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
+                    {product.images?.[0] ? (
+                      <img
+                        src={getOptimizedImageUrl(product.images[0], 300, 80)}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-700">
+                        <i className="ri-image-2-line text-4xl"></i>
+                      </div>
+                    )}
                     <div className="absolute top-2 right-2 bg-rose-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
                       <i className="ri-fire-line"></i> Hot
                     </div>
@@ -386,11 +392,17 @@ export default function Home() {
                   className={`absolute inset-0 transition-all duration-[1.2s] ease-in-out transform ${index === currentSlide ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-105 pointer-events-none'
                     }`}
                 >
-                  <img
-                    src={getOptimizedImageUrl(news.image_url, 1920, 85)}
-                    alt={news.title}
-                    className="w-full h-full object-cover opacity-70"
-                  />
+                  {news.image_url ? (
+                    <img
+                      src={getOptimizedImageUrl(news.image_url, 1920, 85)}
+                      alt={news.title}
+                      className="w-full h-full object-cover opacity-70"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-slate-800 flex items-center justify-center">
+                      <i className="ri-newspaper-line text-9xl text-white/5"></i>
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-900/40 to-transparent"></div>
                   <div className="absolute bottom-0 left-0 p-8 md:p-16 max-w-4xl">
                     <span className="px-5 py-2 bg-blue-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-full mb-6 inline-block">
