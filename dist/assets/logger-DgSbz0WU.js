@@ -1,0 +1,2 @@
+import{s as a}from"./index-DVwrR-_V.js";import"./query-vendor-Cpskl8RO.js";import"./react-vendor-Bsfkyusf.js";import"./i18n-vendor-CQdsz7qV.js";import"./supabase-vendor-C3liu3n-.js";const p=async(r,t,i)=>{try{const{error:o}=await a.from("activity_logs").insert({user_id:r,action_type:t,action_details:i});o&&console.error("Failed to log activity:",o)}catch(o){console.error("Error logging activity:",o)}};export{p as logActivity};
+//# sourceMappingURL=logger-DgSbz0WU.js.map

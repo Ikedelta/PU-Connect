@@ -24,33 +24,41 @@ export function useSiteContent(key: string) {
 
         async function checkContent() {
             try {
-                // Try to get from localStorage first for speed
-                const local = localStorage.getItem(`site_content_${key}`);
-                if (local && mounted) {
-                    setUrl(local);
-                    setLoading(false);
+                // 1. Check persistent cache
+                const cached = localStorage.getItem(`site_content_${key}`);
+                if (cached && mounted) {
+                    setUrl(cached);
                 }
 
-                // Then fetch fresh config from server
-                const { data, error } = await supabase.storage
+                // 2. Silently check for config file existence to avoid noisy 400 errors
+                const { data: files } = await supabase.storage
+                    .from('uploads')
+                    .list('', { limit: 1, search: 'site_config.json' });
+
+                if (!files || files.length === 0) {
+                    if (mounted) setLoading(false);
+                    return;
+                }
+
+                // 3. Download and parse
+                const { data: blob, error: downloadError } = await supabase.storage
                     .from('uploads')
                     .download('site_config.json');
 
-                if (error) throw error;
+                if (downloadError) throw downloadError;
 
-                if (data && mounted) {
-                    const text = await data.text();
+                if (blob && mounted) {
+                    const text = await blob.text();
                     const config = JSON.parse(text);
                     const remoteUrl = config[key];
 
-                    if (remoteUrl) {
+                    if (remoteUrl && remoteUrl !== cached) {
                         setUrl(remoteUrl);
-                        // Update local cache
                         localStorage.setItem(`site_content_${key}`, remoteUrl);
                     }
                 }
             } catch (err) {
-                // Silent fail, keep default or local
+                // Completely silent for site content - defaults are fine
             } finally {
                 if (mounted) setLoading(false);
             }

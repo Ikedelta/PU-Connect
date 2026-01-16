@@ -50,8 +50,8 @@ export function useConversations() {
         .from('conversations')
         .select(`
           *,
-          buyer:profiles!buyer_id(id, full_name, email, avatar_url, is_online),
-          seller:profiles!seller_id(id, full_name, email, avatar_url, is_online),
+          buyer:profiles!buyer_id(id, full_name, email, avatar_url, is_online, last_seen),
+          seller:profiles!seller_id(id, full_name, email, avatar_url, is_online, last_seen),
           product:products(id, name)
         `)
         .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)

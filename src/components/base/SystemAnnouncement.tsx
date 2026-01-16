@@ -25,7 +25,7 @@ export default function SystemAnnouncement() {
         fetchAnnouncement();
     }, [user]); // Re-check on user change just in case, though it's global
 
-    if (!message) return null;
+    if (!message || !message.trim()) return null;
 
     return (
         <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-4 py-2 text-center relative z-[60] text-xs md:text-sm font-bold tracking-wide shadow-md animate-fade-in-down">
