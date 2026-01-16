@@ -60,6 +60,7 @@ export default function SMSManagement() {
   const [scheduledAt, setScheduledAt] = useState('');
 
   const [smsBalance, setSmsBalance] = useState(0);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(true);
   const [showBuyModal, setShowBuyModal] = useState(false);
   const [buyingUnits, setBuyingUnits] = useState(false);
   const [topupHistory, setTopupHistory] = useState<any[]>([]);
@@ -85,6 +86,7 @@ export default function SMSManagement() {
   }, [profile, navigate]);
 
   const fetchBalance = async () => {
+    setIsLoadingBalance(true);
     try {
       // Import once at the top to make it faster
       const { getSMSBalance } = await import('../../lib/arkesel');
@@ -93,6 +95,8 @@ export default function SMSManagement() {
       setSmsBalance(balance);
     } catch (err) {
       console.error('Failed to fetch SMS balance', err);
+    } finally {
+      setIsLoadingBalance(false);
     }
   };
 
@@ -333,9 +337,13 @@ export default function SMSManagement() {
               </div>
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">SMS Balance</div>
-                <div className="text-2xl font-black text-slate-900 dark:text-white leading-none">
-                  {smsBalance.toLocaleString()} <span className="text-xs font-bold text-slate-400 ml-1">UNITS</span>
-                </div>
+                {isLoadingBalance ? (
+                  <div className="h-6 w-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                ) : (
+                  <div className="text-2xl font-black text-slate-900 dark:text-white leading-none">
+                    {smsBalance.toLocaleString()} <span className="text-xs font-bold text-slate-400 ml-1">UNITS</span>
+                  </div>
+                )}
               </div>
             </div>
 

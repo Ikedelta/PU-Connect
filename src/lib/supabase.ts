@@ -22,6 +22,7 @@ export type Profile = {
   is_active: boolean;
   last_seen?: string;
   is_online?: boolean;
+  active_session_id?: string;
   created_at: string;
   updated_at: string;
 };

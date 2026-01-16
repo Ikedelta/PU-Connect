@@ -1,7 +1,20 @@
+import { supabase } from './supabase';
+
 const API_KEY = import.meta.env.VITE_ARKESEL_API_KEY || 'RHNPVVNWaU5uYW1hcllVVXJvZlY';
 
 export const sendSMS = async (recipients: string[], message: string) => {
     try {
+        // Check Global Toggle
+        const { data: settings } = await supabase
+            .from('website_settings')
+            .select('enable_sms')
+            .single();
+
+        if (settings && settings.enable_sms === false) {
+            console.log('🚫 SMS Blocked: Feature is disabled globally in settings.');
+            return { success: true, status: 'skipped', message: 'SMS disabled globally' };
+        }
+
         const response = await fetch('https://sms.arkesel.com/api/v2/sms/send', {
             method: 'POST',
             headers: {
@@ -9,7 +22,7 @@ export const sendSMS = async (recipients: string[], message: string) => {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                sender: 'PU Connect',
+                sender: 'CampConnect',
                 message: message,
                 recipients: recipients,
             }),

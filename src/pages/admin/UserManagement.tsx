@@ -265,10 +265,9 @@ export default function UserManagement() {
         try {
           const { sendSMS } = await import('../../lib/arkesel');
           const firstName = selectedUser.full_name.split(' ')[0];
-          await sendSMS(
-            [editData.phone],
-            `Hi ${firstName}, your role on PU Connect has been updated to "${editData.role}".`
-          );
+          const smsMessage = `Hi ${firstName}, your role on Campus Connect has been updated to "${editData.role.replace('_', ' ')}".`;
+
+          await sendSMS([editData.phone], smsMessage);
         } catch (smsErr) {
           console.error('Failed to send role update SMS:', smsErr);
         }

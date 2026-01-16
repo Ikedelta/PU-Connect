@@ -141,7 +141,7 @@ ON campus_news FOR SELECT USING (is_published = true);
 -- Admins can manage all news
 CREATE POLICY "Admins manage news" 
 ON campus_news FOR ALL USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'super_admin', 'news_publisher'))
 );
 
 

@@ -66,10 +66,16 @@ export default function NewsPublisherDashboard() {
         setLoading(true);
 
         try {
-            const { data: articles, error } = await supabase
+            let statsQuery = supabase
                 .from('campus_news')
-                .select('is_published, views_count')
-                .eq('author_id', profile.id);
+                .select('is_published, views_count');
+
+            // Only filter by author if NOT a super_admin (System Admin sees all)
+            if (profile.role !== 'super_admin') {
+                statsQuery = statsQuery.eq('author_id', profile.id);
+            }
+
+            const { data: articles, error } = await statsQuery;
 
             if (error) throw error;
 
@@ -81,12 +87,17 @@ export default function NewsPublisherDashboard() {
                 });
             }
 
-            const { data: recent, error: recentError } = await supabase
+            let recentQuery = supabase
                 .from('campus_news')
                 .select('id, title, views_count, is_published, created_at, category')
-                .eq('author_id', profile.id)
                 .order('created_at', { ascending: false })
                 .limit(5);
+
+            if (profile.role !== 'super_admin') {
+                recentQuery = recentQuery.eq('author_id', profile.id);
+            }
+
+            const { data: recent, error: recentError } = await recentQuery;
 
             if (recentError) throw recentError;
             setRecentArticles(recent || []);

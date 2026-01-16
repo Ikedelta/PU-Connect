@@ -49,7 +49,8 @@ export default function AdminDashboard() {
     tickets: 0,
     smsBalance: 0,
     smsSent: 0,
-    onlineUsers: 0
+    onlineUsers: 0,
+    smsEnabled: true
   });
 
   const [analyticsData, setAnalyticsData] = useState<{
@@ -75,22 +76,13 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (authLoading) return;
 
-    console.log('Admin Dashboard Access Check:', {
-      role: profile?.role,
-      id: profile?.id,
-      hasProfile: !!profile
-    });
-
     // If no profile or not admin, show access denied instead of random redirect
     if (!profile || (profile.role !== 'admin' && profile.role !== 'super_admin')) {
-      // navigate('/marketplace'); // Commented out to debug
       return;
     }
 
-    if (profile) {
-      refreshProfile();
-      fetchData();
-    }
+    // Initial load: Show loaders
+    fetchData(false);
 
     // Real-time subscriptions
     const channel = supabase
@@ -100,13 +92,12 @@ export default function AdminDashboard() {
         if (payload.eventType === 'INSERT') {
           setNotification({ type: 'info', message: '🔔 New seller application received!' });
         }
-        fetchData();
+        fetchData(true); // Real-time update: Silent
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => fetchData(true))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs' }, () => fetchActivityLogs())
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_logs', filter: `action_type=eq.sms_sent` }, () => fetchSMSHistory())
       .subscribe((status) => {
-        console.log('Real-time subscription status:', status);
         setIsConnected(status === 'SUBSCRIBED');
       });
 
@@ -119,7 +110,7 @@ export default function AdminDashboard() {
       .subscribe();
 
     const interval = setInterval(() => {
-      fetchData();
+      fetchData(true); // Background refresh: Silent
       setLastUpdate(new Date());
     }, 30000);
 
@@ -128,7 +119,7 @@ export default function AdminDashboard() {
       supabase.removeChannel(presenceChannel);
       clearInterval(interval);
     };
-  }, [profile, authLoading]);
+  }, [profile?.id, authLoading]);
 
   useEffect(() => {
     if (notification) {
@@ -137,11 +128,58 @@ export default function AdminDashboard() {
     }
   }, [notification]);
 
-  const fetchData = async () => {
-    try {
-      console.log('📊 Fetching dashboard data...');
+  const [isSmsLoading, setIsSmsLoading] = useState(true);
 
-      const [appsRes, usersRes, sellersRes, adminsRes, publishersRes, productsCountRes, servicesCountRes, newsRes, ticketsRes, logsRes, analyticsRes, allProductsRes] = await Promise.all([
+  const fetchSMSBalance = async (silent = false) => {
+    if (!silent) setIsSmsLoading(true);
+    try {
+      const { getSMSBalance } = await import('../../lib/arkesel');
+      const balance = await getSMSBalance();
+      console.log('📱 SMS Balance:', balance);
+      setStats(prev => ({ ...prev, smsBalance: balance }));
+    } catch (err) {
+      console.error('SMS balance error:', err);
+    } finally {
+      if (!silent) setIsSmsLoading(false);
+    }
+  };
+
+  const fetchSMSHistory = async () => {
+    try {
+      const { data } = await supabase
+        .from('activity_logs')
+        .select('*, user:profiles!user_id(full_name)')
+        .eq('action_type', 'sms_sent')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (data) {
+        setSmsHistory(data as any);
+        setStats(prev => ({ ...prev, smsSent: data.length }));
+      }
+    } catch (err) {
+      console.error('SMS history error:', err);
+    }
+  };
+
+  const fetchActivityLogs = async () => {
+    try {
+      const { data } = await supabase
+        .from('activity_logs')
+        .select('*, user:profiles!user_id(full_name)')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (data) setRecentLogs(data);
+    } catch (err) {
+      console.error('Activity logs error:', err);
+    }
+  };
+
+  const fetchData = async (isBackground = false) => {
+    try {
+      if (!isBackground) console.log('📊 Fetching dashboard data...');
+
+      const [appsRes, usersRes, sellersRes, adminsRes, publishersRes, productsCountRes, servicesCountRes, newsRes, ticketsRes, logsRes, analyticsRes, allProductsRes, settingsRes] = await Promise.all([
         supabase.from('seller_applications').select('*, user:profiles!user_id(*)').order('created_at', { ascending: false }).limit(100),
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
         supabase.from('seller_profiles').select('id', { count: 'exact', head: true }),
@@ -153,99 +191,29 @@ export default function AdminDashboard() {
         supabase.from('support_tickets').select('id', { count: 'exact', head: true }).in('status', ['open', 'in_progress']),
         supabase.from('activity_logs').select('*, user:profiles!user_id(full_name)').order('created_at', { ascending: false }).limit(20),
         supabase.from('profiles').select('faculty, department, created_at'),
-        // Fetch ALL products for admin management
-        supabase.from('products').select('*, seller:profiles!products_seller_id_fkey(full_name, email, phone)').order('created_at', { ascending: false }).limit(200)
-      ])
-      setRecentLogs(logsRes.data || []);
+        supabase.from('products').select('*, seller:profiles!products_seller_id_fkey(full_name, email, phone)').order('created_at', { ascending: false }).limit(200),
+        supabase.from('website_settings').select('enable_sms').single()
+      ]);
 
-      // Set Products Data
-      if (allProductsRes && allProductsRes.data) {
+      if (logsRes.data) setRecentLogs(logsRes.data);
+
+      if (allProductsRes.data) {
         setAllProducts(allProductsRes.data as any || []);
-      } else {
-        // Fallback if index shifted (it shouldn't if added at end)
-        // Actually Promise.all returns array in order. The last item is the new one (index 11).
-        // But typescript inference might be tricky here.
-        // Let's use a separate query or trust the array index 11.
-        // Wait, I added it as the 12th element (index 11).
-        // Let's be safe and refetch active products separately? No, that's wasteful.
-        // I'll cast the 12th result.
       }
 
-      console.log('📋 Applications response:', {
-        error: appsRes.error,
-        count: appsRes.data?.length
-      });
-
-      // TEST: Try a simple query without join
-      const testQuery = await supabase.from('seller_applications').select('*');
-      console.log('🧪 TEST - Simple query (no join):', {
-        error: testQuery.error,
-        count: testQuery.data?.length,
-        data: testQuery.data
-      });
-
-      // Handle applications - robust fallback mechanism
-      if (appsRes.error) {
-        console.warn('⚠️ Applications fetch with join failed, using fallback:', appsRes.error.message);
-
-        const { data: simpleApps, error: simpleError } = await supabase
-          .from('seller_applications')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(100);
-
-        if (simpleError) {
-          console.error('❌ Simple applications fetch failed:', simpleError);
-          setApplications([]);
-        } else if (simpleApps && simpleApps.length > 0) {
-          console.log(`✅ Fetched ${simpleApps.length} applications without join`);
-
-          const userIds = simpleApps.map(a => a.user_id).filter(Boolean);
-          if (userIds.length > 0) {
-            const { data: profiles } = await supabase.from('profiles').select('*').in('id', userIds);
-
-            const appsWithUsers = simpleApps.map(app => ({
-              ...app,
-              user: (profiles || []).find(p => p.id === app.user_id) || {
-                full_name: 'Unknown User',
-                email: 'no-email@example.com',
-                id: app.user_id
-              }
-            }));
-
-            console.log(`✅ Mapped ${appsWithUsers.length} applications with user data`);
-            setApplications(appsWithUsers as any);
-          } else {
-            setApplications(simpleApps.map(app => ({
-              ...app,
-              user: { full_name: 'Unknown User', email: 'no-email@example.com', id: app.user_id }
-            })) as any);
-          }
-        } else {
-          console.log('ℹ️ No applications found');
-          setApplications([]);
-        }
-      } else {
-        console.log(`✅ Fetched ${appsRes.data?.length || 0} applications with join`);
-        setApplications(appsRes.data || []);
-      }
-
-      // Use the fetched applications for stats calculation
+      // Handle Applications
       let fetchedApps = appsRes.data || [];
-
-      // If we had to use fallback, get the applications from state after setting them
       if (appsRes.error) {
-        // We'll calculate from the fallback data we just set
-        fetchedApps = applications;
+        if (!isBackground) console.warn('Applications fetch error, defaulting to empty:', appsRes.error);
+        fetchedApps = [];
       }
+      setApplications(fetchedApps as any);
 
+      // Stats Calculation
       const totalUsers = usersRes.count || 0;
-
       const pendingCount = fetchedApps.filter(a => a.status?.toLowerCase() === 'pending').length;
       const approvedCount = fetchedApps.filter(a => a.status?.toLowerCase() === 'approved').length;
       const rejectedCount = fetchedApps.filter(a => a.status?.toLowerCase() === 'rejected').length;
-
-      console.log(`📊 Applications stats - Pending: ${pendingCount}, Approved: ${approvedCount}, Rejected: ${rejectedCount}`);
 
       setStats(prev => ({
         ...prev,
@@ -260,11 +228,11 @@ export default function AdminDashboard() {
         approved: approvedCount,
         rejected: rejectedCount,
         news: newsRes.count || 0,
-        tickets: ticketsRes.count || 0
+        tickets: ticketsRes.count || 0,
+        smsEnabled: settingsRes.data?.enable_sms ?? true
       }));
 
-      if (logsRes.data) setRecentLogs(logsRes.data);
-
+      // Analytics
       if (analyticsRes.data) {
         const facMap: Record<string, number> = {};
         const depMap: Record<string, number> = {};
@@ -284,128 +252,140 @@ export default function AdminDashboard() {
         });
       }
 
-      await Promise.all([fetchSMSBalance(), fetchSMSHistory()]);
-    } catch (err) {
-      console.error('❌ Fetch error:', err);
+      await Promise.all([fetchSMSBalance(isBackground), fetchSMSHistory()]);
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
   };
 
-  const fetchSMSBalance = async () => {
+  const toggleSMS = async () => {
     try {
-      const { getSMSBalance } = await import('../../lib/arkesel');
-      const balance = await getSMSBalance();
-      console.log('📱 SMS Balance:', balance);
-      setStats(prev => ({ ...prev, smsBalance: balance }));
-    } catch (err) {
-      console.error('SMS balance error:', err);
-    }
-  };
+      const newValue = !stats.smsEnabled;
+      setStats(prev => ({ ...prev, smsEnabled: newValue })); // Optimistic update
 
-  const fetchSMSHistory = async () => {
-    try {
-      const { data } = await supabase
-        .from('activity_logs')
-        .select('*, user:profiles!user_id(full_name)')
-        .eq('action_type', 'sms_sent')
-        .order('created_at', { ascending: false })
-        .limit(50);
+      const { error } = await supabase
+        .from('website_settings')
+        .update({ enable_sms: newValue })
+        .eq('site_name', 'Campus Marketplace'); // Assuming single row
 
-      if (data) {
-        setSmsHistory(data as any);
-        setStats(prev => ({ ...prev, smsSent: data.length }));
-      }
-    } catch (err) {
-      console.error('SMS history error:', err);
-    }
-  };
+      if (error) throw error;
 
-  const fetchActivityLogs = async () => {
-    try {
-      const { data } = await supabase
-        .from('activity_logs')
-        .select('*, user:profiles!user_id(full_name)')
-        .order('created_at', { ascending: false })
-        .limit(20);
+      setNotification({
+        type: 'success',
+        message: `Global SMS Notifications ${newValue ? 'Enabled' : 'Disabled'}`
+      });
 
-      if (data) setRecentLogs(data);
-    } catch (err) {
-      console.error('Activity logs error:', err);
+    } catch (error: any) {
+      setStats(prev => ({ ...prev, smsEnabled: !stats.smsEnabled })); // Revert
+      alert('Failed to update SMS setting: ' + error.message);
     }
   };
 
   const handleApprove = async (applicationId: string, userId: string) => {
     setProcessing(applicationId);
     try {
-      const app = applications.find(a => a.id === applicationId);
-      if (!app) throw new Error('Application not found');
+      // 1. Approve Application
+      const { error: appError } = await supabase
+        .from('seller_applications')
+        .update({ status: 'approved', updated_at: new Date().toISOString() })
+        .eq('id', applicationId);
 
-      // Check if admin ID is a valid UUID (system admin has text ID)
-      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(profile?.id || '');
-      const reviewedBy = isValidUUID ? profile?.id : null;
-
-      const { error: appError } = await supabase.from('seller_applications').update({
-        status: 'approved',
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: reviewedBy
-      }).eq('id', applicationId);
       if (appError) throw appError;
 
-      const { error: profileError } = await supabase.from('seller_profiles').insert({
-        user_id: userId,
-        business_name: app.business_name,
-        business_category: app.business_category || 'General',
-        business_description: app.business_description,
-        contact_phone: app.contact_phone,
-        contact_email: app.contact_email,
-        subscription_status: 'inactive',
-        is_active: true
-      });
-      if (profileError && profileError.code !== '23505') throw profileError;
+      // 2. Grant Seller Role
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ role: 'seller' })
+        .eq('id', userId);
 
-      // Update the user's role to 'seller' in the profiles table ONLY if they are not already an admin
-      const { data: userProfile } = await supabase.from('profiles').select('role').eq('id', userId).single();
+      if (profileError) throw profileError;
 
-      if (userProfile?.role !== 'admin' && userProfile?.role !== 'super_admin') {
-        const { error: roleError } = await supabase.from('profiles').update({ role: 'seller' }).eq('id', userId);
-        if (roleError) throw roleError;
+      // 3. Create Seller Profile Entry (if it doesn't exist)
+      const { error: sellerProfileError } = await supabase
+        .from('seller_profiles')
+        .upsert({ user_id: userId, business_name: 'New Business', created_at: new Date().toISOString() }, { onConflict: 'user_id' });
+
+      // 4. Send Notification
+      const { data: userData } = await supabase.from('profiles').select('phone, full_name').eq('id', userId).single();
+      if (userData?.phone) {
+        try {
+          const { sendSMS } = await import('../../lib/arkesel');
+          await sendSMS(
+            [userData.phone],
+            `Congratulations ${userData.full_name.split(' ')[0]}! Your seller application for Campus Connect has been APPROVED.`
+          );
+        } catch (smsErr) {
+          console.error('Failed to send approval SMS:', smsErr);
+        }
       }
 
-      setNotification({ type: 'success', message: '✅ Seller approved and role updated!' });
-      fetchData();
+      fetchData(true);
+      setNotification({ type: 'success', message: 'Application approved and user promoted to Seller' });
     } catch (err: any) {
       console.error('Approval error:', err);
-      setNotification({ type: 'error', message: err.message || 'Failed to approve' });
+      setNotification({ type: 'error', message: err.message || 'Failed to approve application' });
     } finally {
       setProcessing(null);
     }
   };
 
   const handleReject = async (applicationId: string) => {
-    const reason = prompt('Reason for rejection:');
-    if (!reason) return;
-
+    if (!confirm('Reject this application?')) return;
     setProcessing(applicationId);
     try {
-      const { error } = await supabase.from('seller_applications').update({ status: 'rejected', rejection_reason: reason, reviewed_at: new Date().toISOString(), reviewed_by: profile?.id }).eq('id', applicationId);
+      const { error } = await supabase
+        .from('seller_applications')
+        .update({ status: 'rejected', updated_at: new Date().toISOString() })
+        .eq('id', applicationId);
+
       if (error) throw error;
 
-      setNotification({ type: 'success', message: 'Application rejected' });
-      fetchData();
+      fetchData(true);
+      setNotification({ type: 'info', message: 'Application rejected' });
     } catch (err: any) {
-      console.error('Rejection error:', err);
-      setNotification({ type: 'error', message: err.message || 'Failed to reject' });
+      setNotification({ type: 'error', message: err.message });
     } finally {
       setProcessing(null);
     }
   };
 
-  const handleSearchUsers = async (term: string) => {
+  const handleProductToggle = async (productId: string, currentStatus: boolean) => {
+    setProcessing(productId);
+    try {
+      const { error } = await supabase.from('products').update({ is_active: !currentStatus }).eq('id', productId);
+      if (error) throw error;
+      setAllProducts(prev => prev.map(p => p.id === productId ? { ...p, is_active: !currentStatus } : p));
+      fetchData(true);
+    } catch (err) {
+      console.error('Toggle error', err);
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const handleProductDelete = async (productId: string) => {
+    if (!confirm('Permanently delete this product?')) return;
+    setProcessing(productId);
+    try {
+      const { error } = await supabase.from('products').delete().eq('id', productId);
+      if (error) throw error;
+      setAllProducts(prev => prev.filter(p => p.id !== productId));
+      fetchData(true);
+    } catch (err) {
+      console.error('Delete error', err);
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const handleSearchUsers = (term: string) => {
     setAdminSearchTerm(term);
     if (term.length > 2) {
-      const { data } = await supabase.from('profiles').select('*').or(`full_name.ilike.%${term}%,email.ilike.%${term}%`).limit(5);
-      setAdminSearchResults(data || []);
+      supabase.from('profiles').select('*').ilike('full_name', `%${term}%`).limit(5)
+        .then(({ data }) => setAdminSearchResults(data || []));
     } else {
       setAdminSearchResults([]);
     }
@@ -413,57 +393,36 @@ export default function AdminDashboard() {
 
   const handleAddAdmin = async () => {
     if (!selectedAdminUser) return;
-    setProcessing('add-admin');
     try {
       const { error } = await supabase.from('profiles').update({ role: 'admin' }).eq('id', selectedAdminUser.id);
       if (error) throw error;
 
+      // Notify new admin
+      if (selectedAdminUser.phone) {
+        try {
+          const { sendSMS } = await import('../../lib/arkesel');
+          await sendSMS(
+            [selectedAdminUser.phone],
+            `Congratulations! You have been promoted to an Administrator on Campus Connect.`
+          );
+        } catch (smsErr) {
+          console.error('Failed to send admin promo SMS:', smsErr);
+        }
+      }
+
       setNotification({ type: 'success', message: `${selectedAdminUser.full_name} is now an Admin` });
       setShowAddAdminModal(false);
-      fetchData();
+      setSelectedAdminUser(null);
+      setAdminSearchTerm('');
+      fetchData(); // Refresh stats
+      setSelectedAdminUser(null);
+      fetchData(true);
     } catch (err: any) {
-      console.error('Role update error:', err);
-      setNotification({ type: 'error', message: err.message || 'Failed to update role' });
-    } finally {
-      setProcessing(null);
-    }
-  };
-
-  const handleProductToggle = async (productId: string, currentStatus: boolean) => {
-    if (!confirm(`Are you sure you want to ${currentStatus ? 'deactivate' : 'activate'} this product?`)) return;
-    setProcessing(productId);
-    try {
-      const { error } = await supabase.from('products').update({ is_active: !currentStatus }).eq('id', productId);
-      if (error) throw error;
-      setNotification({ type: 'success', message: `Product ${currentStatus ? 'deactivated' : 'activated'} successfully` });
-      fetchData();
-    } catch (error: any) {
-      console.error('Error toggling product:', error);
-      setNotification({ type: 'error', message: 'Failed to update product status' });
-    } finally {
-      setProcessing(null);
-    }
-  };
-
-  const handleProductDelete = async (productId: string) => {
-    if (!confirm('Are you sure you want to DELETE this product? This action cannot be undone.')) return;
-    setProcessing(productId);
-    try {
-      const { error } = await supabase.from('products').delete().eq('id', productId);
-      if (error) throw error;
-      setNotification({ type: 'success', message: 'Product deleted permanently' });
-      fetchData();
-    } catch (error: any) {
-      console.error('Error deleting product:', error);
-      setNotification({ type: 'error', message: 'Failed to delete product' });
-    } finally {
-      setProcessing(null);
+      setNotification({ type: 'error', message: err.message });
     }
   };
 
   const pendingApps = applications.filter(a => a.status?.toLowerCase() === 'pending');
-  console.log('🔍 Pending Apps Calculation:', { totalApps: applications.length, pendingApps: pendingApps.length, applications });
-
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
   return (
@@ -530,7 +489,7 @@ export default function AdminDashboard() {
               Manage Access
             </button>
             <button
-              onClick={fetchData}
+              onClick={() => fetchData(false)}
               className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-bold shadow-xl shadow-blue-500/20 transition-all flex items-center gap-2"
             >
               <i className="ri-refresh-line"></i>
@@ -542,36 +501,74 @@ export default function AdminDashboard() {
         {/* PROMINENT ALERTS - SMS & Pending Applications */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
           {/* SMS Balance Alert */}
-          <div className={`relative overflow-hidden rounded-2xl p-8 border-2 ${stats.smsBalance < 50
-            ? 'bg-gradient-to-br from-rose-600/20 to-rose-700/20 border-rose-500/50'
-            : 'bg-gradient-to-br from-violet-600/20 to-violet-700/20 border-violet-500/50'
+          <div className={`relative overflow-hidden rounded-2xl p-8 border-2 ${isSmsLoading
+            ? 'bg-slate-800/50 border-slate-700/50'
+            : stats.smsBalance < 50
+              ? 'bg-gradient-to-br from-rose-600/20 to-rose-700/20 border-rose-500/50'
+              : 'bg-gradient-to-br from-violet-600/20 to-violet-700/20 border-violet-500/50'
             }`}>
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16"></div>
             <div className="relative">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className={`w-14 h-14 rounded-xl ${stats.smsBalance < 50 ? 'bg-rose-500/20' : 'bg-violet-500/20'} flex items-center justify-center`}>
-                    <i className={`ri-message-3-line text-3xl ${stats.smsBalance < 50 ? 'text-rose-400' : 'text-violet-400'}`}></i>
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">SMS Balance</p>
-                    <p className={`text-4xl font-black ${stats.smsBalance < 50 ? 'text-rose-400' : 'text-violet-400'}`}>
-                      {stats.smsBalance}
-                    </p>
+                  <div className={`w-14 h-14 rounded-xl ${isSmsLoading
+                    ? 'bg-slate-700/50'
+                    : stats.smsBalance < 50 ? 'bg-rose-500/20' : 'bg-violet-500/20'
+                    } flex items-center justify-center`}>
+                    {isSmsLoading ? (
+                      <i className="ri-loader-4-line text-3xl text-slate-500 animate-spin"></i>
+                    ) : (
+                      <i className={`ri-message-3-line text-3xl ${stats.smsBalance < 50 ? 'text-rose-400' : 'text-violet-400'}`}></i>
+                    )}
                   </div>
                 </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">SMS Balance</p>
+                  {isSmsLoading ? (
+                    <div className="h-10 w-24 bg-slate-700/50 rounded-lg mt-1 animate-pulse"></div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <p className={`text-4xl font-black ${stats.smsBalance < 50 ? 'text-rose-400' : 'text-violet-400'}`}>
+                        {stats.smsBalance.toLocaleString()} <span className="text-lg text-slate-500 font-bold">Credits</span>
+                      </p>
+                      {!stats.smsEnabled && (
+                        <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 text-[10px] font-bold uppercase tracking-widest border border-rose-500/30">
+                          Disabled
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={toggleSMS}
+                  className={`px-3 py-3 rounded-xl font-bold text-xs transition-all border ${stats.smsEnabled
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                    : 'bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20'
+                    }`}
+                  title={stats.smsEnabled ? "Click to Disable SMS" : "Click to Enable SMS"}
+                >
+                  {stats.smsEnabled ? 'ON' : 'OFF'}
+                </button>
+
                 <Link
                   to="/admin/sms"
-                  className={`px-6 py-3 rounded-xl font-bold text-sm transition-all ${stats.smsBalance < 50
-                    ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-500/20'
-                    : 'bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-500/20'
+                  className={`px-6 py-3 rounded-xl font-bold text-sm transition-all flex-1 text-center ${isSmsLoading
+                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                    : stats.smsBalance < 50
+                      ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-500/20'
+                      : 'bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-500/20'
                     }`}
+                  onClick={(e) => isSmsLoading && e.preventDefault()}
                 >
-                  {stats.smsBalance < 50 ? 'Top Up Now' : 'Manage SMS'}
+                  {stats.smsBalance < 50 ? 'Top Up Now' : 'View History'}
                 </Link>
               </div>
-              {stats.smsBalance < 50 && (
-                <div className="flex items-center gap-2 text-rose-300 text-sm font-bold">
+
+              {!isSmsLoading && stats.smsBalance < 50 && (
+                <div className="flex items-center gap-2 text-rose-300 text-sm font-bold animate-in fade-in slide-in-from-top-1 mt-4">
                   <i className="ri-alert-line animate-pulse"></i>
                   <span>Low balance! Please top up to continue sending messages.</span>
                 </div>
@@ -1058,75 +1055,77 @@ export default function AdminDashboard() {
             </div>
           )}
         </div>
-      </div>
+      </div >
 
       {/* Access Manager Modal */}
-      {showAddAdminModal && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-10 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-300">
-            <div className="text-center mb-10">
-              <div className="w-20 h-20 bg-blue-500/10 text-blue-400 rounded-2xl flex items-center justify-center mx-auto mb-6 text-4xl">
-                <i className="ri-shield-user-line"></i>
-              </div>
-              <h2 className="text-3xl font-black text-white uppercase tracking-tight">Access Control</h2>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-2">Elevate user privileges</p>
-            </div>
-
-            <div className="space-y-6">
-              <div className="relative">
-                <i className="ri-search-line absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 text-lg"></i>
-                <input
-                  type="text"
-                  placeholder="Search by name or email..."
-                  value={adminSearchTerm}
-                  onChange={(e) => handleSearchUsers(e.target.value)}
-                  className="w-full pl-14 pr-6 py-5 rounded-3xl bg-slate-800 border border-slate-700 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all font-bold text-sm text-white placeholder-slate-500"
-                />
-              </div>
-
-              {adminSearchResults.length > 0 && !selectedAdminUser && (
-                <div className="bg-slate-800 rounded-3xl overflow-hidden border border-slate-700">
-                  {adminSearchResults.map(u => (
-                    <button
-                      key={u.id}
-                      onClick={() => setSelectedAdminUser(u)}
-                      className="w-full flex items-center gap-4 p-5 hover:bg-slate-700 transition-all text-left border-b border-slate-700 last:border-0"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center font-black">{u.full_name.charAt(0)}</div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-black text-white truncate">{u.full_name}</div>
-                        <div className="text-[10px] font-bold text-slate-400 uppercase">{u.role}</div>
-                      </div>
-                    </button>
-                  ))}
+      {
+        showAddAdminModal && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-10 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-300">
+              <div className="text-center mb-10">
+                <div className="w-20 h-20 bg-blue-500/10 text-blue-400 rounded-2xl flex items-center justify-center mx-auto mb-6 text-4xl">
+                  <i className="ri-shield-user-line"></i>
                 </div>
-              )}
+                <h2 className="text-3xl font-black text-white uppercase tracking-tight">Access Control</h2>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-2">Elevate user privileges</p>
+              </div>
 
-              {selectedAdminUser && (
-                <div className="p-6 bg-blue-600 rounded-3xl text-white flex items-center gap-4 animate-in zoom-in-95 shadow-xl">
-                  <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center font-black text-xl">{selectedAdminUser.full_name.charAt(0)}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-black uppercase opacity-60">Selected</div>
-                    <div className="font-black truncate">{selectedAdminUser.full_name}</div>
+              <div className="space-y-6">
+                <div className="relative">
+                  <i className="ri-search-line absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 text-lg"></i>
+                  <input
+                    type="text"
+                    placeholder="Search by name or email..."
+                    value={adminSearchTerm}
+                    onChange={(e) => handleSearchUsers(e.target.value)}
+                    className="w-full pl-14 pr-6 py-5 rounded-3xl bg-slate-800 border border-slate-700 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all font-bold text-sm text-white placeholder-slate-500"
+                  />
+                </div>
+
+                {adminSearchResults.length > 0 && !selectedAdminUser && (
+                  <div className="bg-slate-800 rounded-3xl overflow-hidden border border-slate-700">
+                    {adminSearchResults.map(u => (
+                      <button
+                        key={u.id}
+                        onClick={() => setSelectedAdminUser(u)}
+                        className="w-full flex items-center gap-4 p-5 hover:bg-slate-700 transition-all text-left border-b border-slate-700 last:border-0"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center font-black">{u.full_name.charAt(0)}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-black text-white truncate">{u.full_name}</div>
+                          <div className="text-[10px] font-bold text-slate-400 uppercase">{u.role}</div>
+                        </div>
+                      </button>
+                    ))}
                   </div>
-                  <button onClick={() => setSelectedAdminUser(null)} className="p-2 hover:scale-110 transition-transform"><i className="ri-close-circle-fill text-2xl"></i></button>
-                </div>
-              )}
-            </div>
+                )}
 
-            <div className="grid grid-cols-2 gap-4 mt-10">
-              <button onClick={() => setShowAddAdminModal(false)} className="py-5 rounded-2xl bg-slate-800 text-slate-300 font-black text-[10px] uppercase tracking-wider hover:bg-slate-700 transition-all">Cancel</button>
-              <button
-                onClick={handleAddAdmin}
-                disabled={!selectedAdminUser || processing === 'add-admin'}
-                className="py-5 rounded-2xl bg-blue-600 text-white font-black text-[10px] uppercase tracking-wider hover:bg-blue-700 transition-all disabled:opacity-50"
-              >
-                {processing === 'add-admin' ? 'Processing...' : 'Confirm'}
-              </button>
+                {selectedAdminUser && (
+                  <div className="p-6 bg-blue-600 rounded-3xl text-white flex items-center gap-4 animate-in zoom-in-95 shadow-xl">
+                    <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center font-black text-xl">{selectedAdminUser.full_name.charAt(0)}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-black uppercase opacity-60">Selected</div>
+                      <div className="font-black truncate">{selectedAdminUser.full_name}</div>
+                    </div>
+                    <button onClick={() => setSelectedAdminUser(null)} className="p-2 hover:scale-110 transition-transform"><i className="ri-close-circle-fill text-2xl"></i></button>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-10">
+                <button onClick={() => setShowAddAdminModal(false)} className="py-5 rounded-2xl bg-slate-800 text-slate-300 font-black text-[10px] uppercase tracking-wider hover:bg-slate-700 transition-all">Cancel</button>
+                <button
+                  onClick={handleAddAdmin}
+                  disabled={!selectedAdminUser || processing === 'add-admin'}
+                  className="py-5 rounded-2xl bg-blue-600 text-white font-black text-[10px] uppercase tracking-wider hover:bg-blue-700 transition-all disabled:opacity-50"
+                >
+                  {processing === 'add-admin' ? 'Processing...' : 'Confirm'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }

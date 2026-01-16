@@ -62,7 +62,7 @@ export default function Register() {
       setGeneratedOtp(otp);
 
       // Send OTP via SMS
-      const result = await sendSMS([formData.phone], `Your PU Connect verification code is: ${otp}`);
+      const result = await sendSMS([formData.phone], `Your Campus Connect verification code is: ${otp}`);
 
       // Check if SMS was sent successfully
       console.log('OTP Sent:', result);
@@ -113,6 +113,16 @@ export default function Register() {
 
       if (!response.ok || !result.success) {
         throw new Error(result.error || 'Failed to create account');
+      }
+
+      // Send Welcome SMS
+      try {
+        await sendSMS(
+          [formData.phone],
+          `Welcome to Campus Connect! 🚀\nYour account has been created successfully.\n\nStart buying and selling here: https://pentvars-marketplace.vercel.app`
+        );
+      } catch (smsError) {
+        console.error('Failed to send welcome SMS:', smsError);
       }
 
       // 2. Sign in the user since they are now confirmed

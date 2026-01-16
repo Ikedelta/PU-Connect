@@ -23,9 +23,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = useCallback(async (userId: string, userObject?: User | null): Promise<Profile | null> => {
     // CRITICAL FIX: explicit check for system admin bypass ID
-    if (userId === 'sys_admin_001') {
+    if (userId === '00000000-0000-0000-0000-000000000000') {
       return {
-        id: 'sys_admin_001',
+        id: '00000000-0000-0000-0000-000000000000',
         email: 'system.admin@gmail.com',
         full_name: 'System Administrator',
         role: 'super_admin',
@@ -158,25 +158,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     setError(null);
+
+    // 1. Immediate Local Cleanup (Optimistic Sign Out)
+    localStorage.removeItem('pentvars_profile');
+    localStorage.removeItem('sys_admin_bypass');
+
+    // Capture user for logging before nullifying
+    const currentUser = user;
+
+    // Update state immediately so UI reacts
+    setUser(null);
+    setProfile(null);
+
     try {
-      localStorage.removeItem('pentvars_profile');
-      localStorage.removeItem('sys_admin_bypass'); // Clear system bypass
+      // 2. Network Cleanup
       const { error } = await supabase.auth.signOut();
-      // Even if supabase errors (e.g. no session), we want to clear local state
       if (error) console.warn('Supabase signout warning:', error);
 
-      if (user) {
+      // 3. Activity Logging (Best effort)
+      if (currentUser && currentUser.id !== '00000000-0000-0000-0000-000000000000') {
         import('../lib/logger').then(({ logActivity }) => {
-          logActivity(user.id, 'logout', {});
+          logActivity(currentUser.id, 'logout', {});
         });
       }
-      setUser(null);
-      setProfile(null);
     } catch (err: any) {
       console.error('Sign out error:', err);
-      // Force clear anyway
-      setUser(null);
-      setProfile(null);
+      // State is already cleared, so we are good.
     }
   };
 
@@ -190,7 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (sysBypass === 'true') {
           if (mounted) {
             const mockUser = {
-              id: 'sys_admin_001',
+              id: '00000000-0000-0000-0000-000000000000',
               app_metadata: {},
               user_metadata: { full_name: 'System Administrator' },
               aud: 'authenticated',
@@ -260,6 +267,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initAuth();
 
+    // Session Management Subscription
+    // Listens for changes to the current user's profile to enforce single-session policy
+    let profileSubscription: any = null;
+
+    const setupProfileSubscription = async (userId: string) => {
+      if (profileSubscription) return;
+
+      // Get current local session ID
+      const localSessionId = localStorage.getItem('pentvars_session_id');
+
+      profileSubscription = supabase
+        .channel(`public:profiles:${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
+            filter: `id=eq.${userId}`,
+          },
+          (payload) => {
+            const newSessionId = (payload.new as Profile).active_session_id;
+
+            // If the session ID in DB is different from what we have locally, 
+            // and we HAVE a local session ID (meaning we think we are logged in),
+            // then another device has logged in.
+            if (newSessionId && localSessionId && newSessionId !== localSessionId) {
+              console.warn('Session invalidated by new login');
+
+              // Only logout if we are not the one who just initiated the change
+              // (The logic is: If I am logged in, my local ID must match DB. If DB changes to something else, I'm out.)
+
+              // Avoid infinite loop if signOut triggers something
+              // Check if we are really the user
+
+              // Check if the user is a system admin to enforce stricter rules if needed
+              // But usually we enforce for everyone or check role here if we have profile in state (captured in closure might be stale)
+
+              alert('You have been logged out because your account was logged in from another device.');
+              signOut();
+            }
+          }
+        )
+        .subscribe();
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       // 1. Critical Priority: Check System Bypass First
       // If this is set, we ignore Supabase session entirely
@@ -286,6 +339,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           avatar_url: '',
           is_active: true,
           is_online: true,
+          active_session_id: 'bypass_session',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
@@ -302,53 +356,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!mounted) return;
       if (sysBypass === 'true') {
-        // Ensure state is set for bypass user if not already (redundancy)
-        if (!user || user.id !== 'sys_admin_001') {
-          const mockUser = {
-            id: 'sys_admin_001',
-            app_metadata: {},
-            user_metadata: { full_name: 'System Administrator' },
-            aud: 'authenticated',
-            created_at: new Date().toISOString()
-          } as any;
-
-          const mockProfile: Profile = {
-            id: 'sys_admin_001',
-            email: 'system.admin@gmail.com',
-            full_name: 'System Administrator',
-            role: 'super_admin',
-            student_id: 'SYS-001',
-            department: 'IT',
-            faculty: 'Systems',
-            phone: '0000000000',
-            avatar_url: '',
-            is_active: true,
-            is_online: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-          setUser(mockUser);
-          setProfile(mockProfile);
-          localStorage.setItem('pentvars_profile', JSON.stringify(mockProfile));
-        }
+        // ... redundant block from original code ...
+        // We can skip re-implementing the redundancy if the first block catches it, 
+        // but preserving original structure where appropriate for safety.
+        // Simplified: The first block returns, so this is unreachable if sysBypass is true.
         return;
       }
 
       if (session?.user) {
         setUser(session.user);
         const profileData = await fetchProfile(session.user.id, session.user);
+
         if (mounted) {
           setProfile(profileData);
           if (profileData) {
             localStorage.setItem('pentvars_profile', JSON.stringify(profileData));
           }
           updateOnlineStatus(session.user.id, true);
+
+          // Setup Realtime Session Check
+          setupProfileSubscription(session.user.id);
         }
       } else {
         if (mounted) {
           setUser(null);
           setProfile(null);
           localStorage.removeItem('pentvars_profile');
+          if (profileSubscription) {
+            supabase.removeChannel(profileSubscription);
+            profileSubscription = null;
+          }
         }
       }
     });
@@ -377,6 +414,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (user) {
         updateOnlineStatus(user.id, false);
       }
+      if (profileSubscription) {
+        supabase.removeChannel(profileSubscription);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchProfile, updateOnlineStatus]);
@@ -386,7 +426,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+
       if (data.user) {
+        // Generate and set new Session ID
+        // Simple random ID generator compatible with all environments
+        const newSessionId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        localStorage.setItem('pentvars_session_id', newSessionId);
+
+        // Update Profile with new Session ID
+        await supabase
+          .from('profiles')
+          .update({ active_session_id: newSessionId })
+          .eq('id', data.user.id);
+
         import('../lib/logger').then(({ logActivity }) => {
           logActivity(data.user.id, 'login', { method: 'password', email });
         });
@@ -429,10 +481,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!authData.user) throw new Error('Registration failed: No user returned');
 
       // 2. Create Profile (Client-side)
-      // Only attempt if we have a session (user is logged in)
-      // If email confirmation is enabled, session might be null. In that case, we rely on metadata
-      // stored in auth.users and the fetchProfile self-healing or a database trigger.
       if (authData.session) {
+        const initialSessionId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        localStorage.setItem('pentvars_session_id', initialSessionId);
+
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
@@ -445,6 +497,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             phone,
             role: 'buyer', // Default role
             is_active: true,
+            active_session_id: initialSessionId,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           });
@@ -453,10 +506,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // If profile already exists (e.g. created by trigger), ignore the error
           if (profileError.code === '23505') { // unique_violation
             console.log('Profile already exists, skipping creation.');
+            // Try to update session ID if profile exists
+            await supabase
+              .from('profiles')
+              .update({ active_session_id: initialSessionId })
+              .eq('id', authData.user.id);
           } else {
             console.error('Profile creation failed:', profileError);
-            // We don't throw here to avoid blocking the user if the auth account is valid.
-            // The fetchProfile function has self-healing logic that might fix this later.
           }
         }
       } else {
@@ -473,13 +529,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(authData.user);
         await refreshProfile();
       } else {
-        // If no session, try signing in manually (auto-login behavior)
-        // This might fail if email confirmation is strictly enforced
         try {
           await signIn(email, password);
         } catch (loginError) {
           console.log('Auto-login failed (expected if email confirmation is on):', loginError);
-          // Do not throw, just existing success flow (navigate to login or home)
         }
       }
 

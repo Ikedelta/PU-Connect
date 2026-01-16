@@ -21,6 +21,8 @@ interface WebsiteSettings {
   twitter_url: string;
   instagram_url: string;
   footer_text: string;
+  system_default_password?: string;
+  enable_sms?: boolean;
   updated_at?: string;
 }
 
@@ -46,6 +48,8 @@ export default function WebsiteSettings() {
     twitter_url: '',
     instagram_url: '',
     footer_text: '© 2024 Campus Marketplace. All rights reserved.',
+    system_default_password: 'Password123!',
+    enable_sms: true,
   });
 
   useEffect(() => {
@@ -214,6 +218,35 @@ export default function WebsiteSettings() {
                   Leave empty to hide. This message will be shown to ALL users at the top of the site.
                 </p>
               </div>
+            </div>
+          </div>
+
+          {/* Security Settings */}
+          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center text-red-400">
+                <i className="ri-shield-keyhole-line text-2xl"></i>
+              </div>
+              <h2 className="text-2xl font-black text-white">Security Settings</h2>
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-300 mb-3 uppercase tracking-wider">
+                Default System Password
+              </label>
+              <div className="relative">
+                <i className="ri-lock-password-line absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 text-xl"></i>
+                <input
+                  type="text"
+                  name="system_default_password"
+                  value={settings.system_default_password || ''}
+                  onChange={handleChange}
+                  placeholder="Enter default system password"
+                  className="w-full pl-14 pr-5 py-4 bg-slate-900/50 border border-slate-700 rounded-xl focus:border-red-500 focus:ring-4 focus:ring-red-500/20 text-white placeholder-slate-500 transition-all font-medium"
+                />
+              </div>
+              <p className="text-xs text-slate-500 mt-2 font-medium">
+                This password will be used for system-level operations or default user resets.
+              </p>
             </div>
           </div>
 
@@ -426,6 +459,33 @@ export default function WebsiteSettings() {
                 onChange={handleChange}
                 className="w-full px-5 py-4 bg-slate-900/50 border border-slate-700 rounded-xl focus:border-slate-500 focus:ring-4 focus:ring-slate-500/20 text-white placeholder-slate-500 transition-all font-medium"
               />
+            </div>
+          </div>
+
+          {/* System Preferences */}
+          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                <i className="ri-settings-4-line text-2xl"></i>
+              </div>
+              <h2 className="text-2xl font-black text-white">System Preferences</h2>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-slate-900/30 rounded-xl border border-slate-800">
+              <div>
+                <p className="text-white font-bold text-lg mb-1">Global SMS Notifications</p>
+                <p className="text-slate-400 text-sm">
+                  Enable or disable all automated SMS messages (OTP, Deal Alerts, Welcome messages).
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.enable_sms !== false}
+                  onChange={(e) => setSettings({ ...settings, enable_sms: e.target.checked })}
+                  className="sr-only peer"
+                />
+                <div className="w-14 h-7 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
             </div>
           </div>
 

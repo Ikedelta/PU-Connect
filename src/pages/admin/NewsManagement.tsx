@@ -136,17 +136,46 @@ export default function NewsManagement() {
     setSaving(true);
     try {
       const { status, scheduled_at, ...rest } = formData;
+      let effectiveAuthorId = profile?.id;
+
+      // FIX: Handle System Admin Bypass ID (which is not a valid UUID)
+      if (profile?.id === '00000000-0000-0000-0000-000000000000') {
+        // Try to find a real admin to attribute this to
+        const { data: adminUser } = await supabase
+          .from('profiles')
+          .select('id')
+          .in('role', ['super_admin', 'admin'])
+          .limit(1)
+          .maybeSingle();
+
+        if (adminUser) {
+          effectiveAuthorId = adminUser.id;
+        } else {
+          // Fallback if no admin exists: NULL (if allowed) or we can't save.
+          // Ideally, we should have a 'system' user in DB. 
+          // For now, let's try to pass NULL and see if DB handles it, or alert user.
+          // But better to stop here if we know it's gonna fail.
+          // Let's assume most systems have an admin.
+          // Using a Nil UUID might work? '00000000-0000-0000-0000-000000000000'
+          effectiveAuthorId = undefined; // Let Supabase handle valid uuid constraint error if any
+        }
+      }
+
       const newsData = {
         ...rest,
-        author_id: profile?.id,
+        author_id: effectiveAuthorId,
         is_published: status === 'published',
         scheduled_at: status === 'scheduled' && scheduled_at ? new Date(scheduled_at).toISOString() : null,
       };
 
       if (editingNews) {
-        const { error } = await supabase.from('campus_news').update(newsData).eq('id', editingNews.id);
+        // Exclude author_id from updates to preserve original author
+        // But if we wanted to change author... nah.
+        const { author_id, ...updateData } = newsData; // eslint-disable-line @typescript-eslint/no-unused-vars
+        const { error } = await supabase.from('campus_news').update(updateData).eq('id', editingNews.id);
         if (error) throw error;
       } else {
+        if (!effectiveAuthorId) throw new Error("Cannot identify a valid author UUID for this post. Please create at least one real Admin account first.");
         const { error } = await supabase.from('campus_news').insert([newsData]);
         if (error) throw error;
       }
@@ -201,11 +230,51 @@ export default function NewsManagement() {
 
   const handlePublish = async (id: string, isPublished: boolean) => {
     try {
+      const newPublishedState = !isPublished;
+      let shouldSendSMS = false;
+      let articleTitle = '';
+
+      if (newPublishedState) {
+        // Check if SMS was already sent
+        const { data: art } = await supabase.from('campus_news').select('sms_sent, title').eq('id', id).single();
+        if (art && !art.sms_sent) {
+          shouldSendSMS = true;
+          articleTitle = art.title;
+        }
+      }
+
+      // Update status immediately
       const { error } = await supabase.from('campus_news').update({
-        is_published: !isPublished,
-        scheduled_at: null
+        is_published: newPublishedState,
+        scheduled_at: null,
+        sms_sent: shouldSendSMS ? true : undefined // Mark as sent if we are triggering it
       }).eq('id', id);
+
       if (error) throw error;
+
+      // Trigger SMS Broadcast if needed
+      if (shouldSendSMS) {
+        // Fetch all active users with phone numbers
+        // NOTE: For large user bases, this should be an Edge Function to avoid client timeout/limits
+        const { data: users } = await supabase
+          .from('profiles')
+          .select('phone')
+          .not('phone', 'is', null)
+          .eq('is_active', true);
+
+        if (users && users.length > 0) {
+          const phones = users.map(u => u.phone).filter(p => p && p.length > 9);
+          const uniquePhones = [...new Set(phones)]; // Dedup
+
+          if (uniquePhones.length > 0) {
+            import('../../lib/arkesel').then(({ sendSMS }) => {
+              sendSMS(uniquePhones, `📢 Campus News: "${articleTitle}" has just been published! Read now on Campus Connect.`);
+            });
+            alert('News published & SMS broadcast queued!');
+          }
+        }
+      }
+
       fetchNews();
     } catch (error: any) {
       alert(error.message || 'Failed to update status');
