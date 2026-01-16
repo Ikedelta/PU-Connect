@@ -115,15 +115,11 @@ export default function Register() {
         throw new Error(result.error || 'Failed to create account');
       }
 
-      // Send Welcome SMS
-      try {
-        await sendSMS(
-          [formData.phone],
-          `Welcome to Campus Connect! 🚀\nYour account has been created successfully.\n\nStart buying and selling here: https://pentvars-marketplace.vercel.app`
-        );
-      } catch (smsError) {
-        console.error('Failed to send welcome SMS:', smsError);
-      }
+      // Send Welcome SMS (Fire and forget to speed up flow)
+      sendSMS(
+        [formData.phone],
+        `Welcome to Campus Connect! 🚀\nYour account has been created successfully.\n\nStart buying and selling here: https://pentvars-marketplace.vercel.app`
+      ).catch(smsError => console.error('Failed to send welcome SMS:', smsError));
 
       // 2. Sign in the user since they are now confirmed
       try {

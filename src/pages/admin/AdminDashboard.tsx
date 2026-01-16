@@ -381,12 +381,27 @@ export default function AdminDashboard() {
   const handleProductToggle = async (productId: string, currentStatus: boolean) => {
     setProcessing(productId);
     try {
-      const { error } = await supabase.from('products').update({ is_active: !currentStatus }).eq('id', productId);
-      if (error) throw error;
+      const isBypass = localStorage.getItem('sys_admin_bypass') === 'true';
+      const secret = localStorage.getItem('sys_admin_secret');
+
+      if (isBypass && secret) {
+        const { error } = await supabase.rpc('admin_update_product', {
+          product_id: productId,
+          product_data: { is_active: !currentStatus },
+          secret_key: secret
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('products').update({ is_active: !currentStatus }).eq('id', productId);
+        if (error) throw error;
+      }
+
       setAllProducts(prev => prev.map(p => p.id === productId ? { ...p, is_active: !currentStatus } : p));
+      setNotification({ type: 'success', message: `Product ${!currentStatus ? 'Activated' : 'Hidden'} successfully` });
       fetchData(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Toggle error', err);
+      alert(err.message || 'Failed to toggle product status');
     } finally {
       setProcessing(null);
     }
@@ -396,12 +411,26 @@ export default function AdminDashboard() {
     if (!confirm('Permanently delete this product?')) return;
     setProcessing(productId);
     try {
-      const { error } = await supabase.from('products').delete().eq('id', productId);
-      if (error) throw error;
+      const isBypass = localStorage.getItem('sys_admin_bypass') === 'true';
+      const secret = localStorage.getItem('sys_admin_secret');
+
+      if (isBypass && secret) {
+        const { error } = await supabase.rpc('admin_delete_product', {
+          target_id: productId,
+          secret_key: secret
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('products').delete().eq('id', productId);
+        if (error) throw error;
+      }
+
       setAllProducts(prev => prev.filter(p => p.id !== productId));
+      setNotification({ type: 'success', message: 'Product deleted successfully' });
       fetchData(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Delete error', err);
+      alert(err.message || 'Failed to delete product');
     } finally {
       setProcessing(null);
     }
