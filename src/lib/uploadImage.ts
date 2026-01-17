@@ -13,7 +13,8 @@ export interface UploadResult {
  */
 export async function uploadImage(
   file: File,
-  folder: 'profiles' | 'products' | 'cms' | 'ads'
+  folder: 'profiles' | 'products' | 'cms' | 'ads',
+  userId?: string
 ): Promise<UploadResult> {
   try {
     // Validate file type
@@ -28,21 +29,23 @@ export async function uploadImage(
       throw new Error('File size too large. Maximum size is 5MB.');
     }
 
-    // Get current user or check for system bypass
-    let userToUse = null;
-    const { data: { user } } = await supabase.auth.getUser();
-    userToUse = user;
-
-    const sysBypass = localStorage.getItem('sys_admin_bypass');
-    if (!userToUse && sysBypass === 'true') {
-      userToUse = { id: '00000000-0000-0000-0000-000000000000' };
+    // Use provided userId or get from Supabase
+    let finalUserId = userId;
+    if (!finalUserId) {
+      const { data: { user } } = await supabase.auth.getUser();
+      finalUserId = user?.id;
     }
 
-    if (!userToUse) {
+    // Check for system bypass if still no user
+    if (!finalUserId && localStorage.getItem('sys_admin_bypass') === 'true') {
+      finalUserId = '00000000-0000-0000-0000-000000000000';
+    }
+
+    if (!finalUserId) {
       throw new Error('You must be logged in to upload images');
     }
 
-    const userId = userToUse.id;
+    const userIdToUse = finalUserId;
 
     // Generate unique filename
     const fileExt = file.name.split('.').pop();

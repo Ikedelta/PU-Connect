@@ -36,7 +36,7 @@ export type SellerApplication = {
   contact_phone: string;
   contact_email?: string;
   business_type?: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   admin_notes?: string;
   reviewed_by?: string;
   reviewed_at?: string;

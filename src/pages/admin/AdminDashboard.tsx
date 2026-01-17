@@ -29,7 +29,7 @@ export default function AdminDashboard() {
   const { profile, loading: authLoading, refreshProfile } = useAuth();
   const navigate = useNavigate();
 
-  const [applications, setApplications] = useState<(SellerApplication & { user: Profile })[]>([]);
+  const [applications, setApplications] = useState<(SellerApplication & { profiles: Profile })[]>([]);
   const [allProducts, setAllProducts] = useState<(Product & { seller: Profile })[]>([]);
   const [smsHistory, setSmsHistory] = useState<SMSHistory[]>([]);
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
@@ -45,6 +45,7 @@ export default function AdminDashboard() {
     pending: 0,
     approved: 0,
     rejected: 0,
+    cancelled: 0,
     news: 0,
     tickets: 0,
     smsBalance: 0,
@@ -180,7 +181,7 @@ export default function AdminDashboard() {
       if (!isBackground) console.log('📊 Fetching dashboard data...');
 
       const [appsRes, usersRes, sellersRes, adminsRes, publishersRes, productsCountRes, servicesCountRes, newsRes, ticketsRes, logsRes, analyticsRes, allProductsRes, settingsRes, buyersRes] = await Promise.all([
-        supabase.from('seller_applications').select('*, user:profiles!user_id(*)').order('created_at', { ascending: false }).limit(50),
+        supabase.from('seller_applications').select('*, profiles:user_id(*)').order('created_at', { ascending: false }).limit(50),
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
         supabase.from('seller_profiles').select('id', { count: 'exact', head: true }),
         supabase.from('profiles').select('id', { count: 'exact', head: true }).in('role', ['admin', 'super_admin']),
@@ -217,6 +218,7 @@ export default function AdminDashboard() {
       const pendingCount = fetchedApps.filter(a => a.status?.toLowerCase() === 'pending').length;
       const approvedCount = fetchedApps.filter(a => a.status?.toLowerCase() === 'approved').length;
       const rejectedCount = fetchedApps.filter(a => a.status?.toLowerCase() === 'rejected').length;
+      const cancelledCount = fetchedApps.filter(a => a.status?.toLowerCase() === 'cancelled').length;
 
       setStats(prev => ({
         ...prev,
@@ -230,6 +232,7 @@ export default function AdminDashboard() {
         pending: pendingCount,
         approved: approvedCount,
         rejected: rejectedCount,
+        cancelled: cancelledCount,
         news: newsRes.count || 0,
         tickets: ticketsRes.count || 0,
         smsEnabled: settingsRes.data?.enable_sms ?? true
@@ -325,7 +328,7 @@ export default function AdminDashboard() {
     return await supabase.from('seller_applications').update({ status, updated_at: new Date().toISOString() }).eq('id', appId);
   };
 
-  const adminUpsertSellerProfile = async (targetUserId: string, businessName: string, businessCategory: string) => {
+  const adminUpsertSellerProfile = async (targetUserId: string, businessName: string, businessCategory: string, businessLogo?: string, businessDescription?: string, contactPhone?: string, contactEmail?: string) => {
     const isBypass = localStorage.getItem('sys_admin_bypass') === 'true';
     const secret = localStorage.getItem('sys_admin_secret');
     if (isBypass && secret) {
@@ -341,11 +344,21 @@ export default function AdminDashboard() {
       user_id: targetUserId,
       business_name: businessName,
       business_category: businessCategory,
+      business_logo: businessLogo,
+      business_description: businessDescription,
+      contact_phone: contactPhone,
+      contact_email: contactEmail,
+      is_active: true,
       created_at: new Date().toISOString()
     }, { onConflict: 'user_id' });
   };
 
-  const handleApprove = async (applicationId: string, userId: string, businessName: string, businessCategory: string) => {
+  const handleApprove = async (application: any) => {
+    const applicationId = application.id;
+    const userId = application.user_id;
+    const businessName = application.business_name;
+    const businessCategory = application.business_category;
+
     setProcessing(applicationId);
 
     // OPTIMISTIC UPDATE: Update status immediately so UI reflects change
@@ -371,7 +384,15 @@ export default function AdminDashboard() {
       if (profileError) throw profileError;
 
       // 3. Create Seller Profile Entry (if it doesn't exist)
-      const { error: sellerProfileError } = await adminUpsertSellerProfile(userId, businessName || 'New Business', businessCategory || 'General');
+      const { error: sellerProfileError } = await adminUpsertSellerProfile(
+        userId,
+        businessName || 'New Business',
+        businessCategory || 'General',
+        application.business_logo,
+        application.business_description,
+        application.contact_phone,
+        application.contact_email
+      );
       if (sellerProfileError) throw sellerProfileError;
 
       // 4. Send Notification
@@ -379,9 +400,10 @@ export default function AdminDashboard() {
       if (userData?.phone) {
         try {
           const { sendSMS } = await import('../../lib/arkesel');
+          const firstName = userData.full_name?.split(' ')[0] || 'User';
           await sendSMS(
             [userData.phone],
-            `Congratulations ${userData.full_name.split(' ')[0]}! Your seller application for Campus Connect has been APPROVED.`
+            `Congratulations ${firstName}! Your seller application for "${application.business_name}" has been APPROVED.`
           );
         } catch (smsErr) {
           console.error('Failed to send approval SMS:', smsErr);
@@ -862,14 +884,14 @@ export default function AdminDashboard() {
                       pendingApps.slice(0, 3).map((app) => (
                         <div key={app.id} className="group flex items-center gap-4 p-4 bg-slate-900/50 rounded-xl border border-white/5 hover:border-blue-500/30 transition-all">
                           <div className="w-12 h-12 rounded-lg bg-blue-600/20 flex items-center justify-center text-blue-400 font-black text-lg">
-                            {app.user?.full_name?.charAt(0) || 'U'}
+                            {app.profiles?.full_name?.charAt(0) || 'U'}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-bold text-white truncate">{app.business_name}</p>
                               <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-400 text-[8px] font-black uppercase rounded">New</span>
                             </div>
-                            <p className="text-[10px] text-slate-500 truncate">Applied by {app.user?.full_name}</p>
+                            <p className="text-[10px] text-slate-500 truncate">Applied by {app.profiles?.full_name}</p>
                           </div>
                           <button
                             onClick={() => setActiveTab('applications')}
@@ -992,7 +1014,9 @@ export default function AdminDashboard() {
                 <div className="flex gap-2">
                   <span className="px-3 py-1 bg-amber-500/10 text-amber-400 rounded-lg text-xs font-bold">Pending: {stats.pending}</span>
                   <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-lg text-xs font-bold">Approved: {stats.approved}</span>
+
                   <span className="px-3 py-1 bg-rose-500/10 text-rose-400 rounded-lg text-xs font-bold">Rejected: {stats.rejected}</span>
+                  <span className="px-3 py-1 bg-slate-500/10 text-slate-400 rounded-lg text-xs font-bold">Cancelled: {stats.cancelled}</span>
                 </div>
               </div>
 
@@ -1010,7 +1034,7 @@ export default function AdminDashboard() {
                         <img src={getOptimizedImageUrl(app.business_logo, 100, 100)} alt={app.business_name} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-600 to-blue-700 text-white text-3xl font-black">
-                          {app.user?.full_name?.charAt(0) || app.business_name?.charAt(0) || 'U'}
+                          {app.profiles?.full_name?.charAt(0) || app.business_name?.charAt(0) || 'U'}
                         </div>
                       )}
                     </div>
@@ -1019,7 +1043,8 @@ export default function AdminDashboard() {
                         <h4 className="text-2xl font-black text-white truncate">{app.business_name}</h4>
                         <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase ${app.status === 'pending' ? 'bg-amber-500/20 text-amber-400' :
                           app.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' :
-                            'bg-rose-500/20 text-rose-400'
+                            app.status === 'cancelled' ? 'bg-slate-500/20 text-slate-400' :
+                              'bg-rose-500/20 text-rose-400'
                           }`}>
                           {app.status}
                         </span>
@@ -1027,38 +1052,40 @@ export default function AdminDashboard() {
                       <p className="text-slate-400 font-bold uppercase text-[10px] tracking-wider mb-2">{app.business_category || 'General'} • {new Date(app.created_at).toLocaleDateString()}</p>
                       <p className="text-slate-400 text-sm line-clamp-2 mb-4 max-w-2xl mx-auto xl:mx-0">{app.business_description}</p>
                       <div className="flex flex-wrap justify-center xl:justify-start gap-4">
-                        <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><i className="ri-user-line text-blue-400"></i>{app.user?.full_name}</div>
+                        <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><i className="ri-user-line text-blue-400"></i>{app.profiles?.full_name}</div>
                         <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><i className="ri-mail-line text-blue-400"></i>{app.contact_email}</div>
                         <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><i className="ri-phone-line text-blue-400"></i>{app.contact_phone}</div>
                       </div>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
-                      <button
-                        onClick={() => handleApprove(app.id, app.user_id, app.business_name, app.business_category)}
-                        disabled={!!processing}
-                        className="flex-1 xl:px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
-                      >
-                        {processing === app.id ? <i className="ri-loader-4-line animate-spin"></i> : 'Approve'}
-                      </button>
-                      <button
-                        onClick={async () => {
-                          if (confirm('Hide all existing products for this user?')) {
-                            await adminHideAllProducts(app.user_id);
-                            alert('Products hidden');
-                          }
-                        }}
-                        className="flex-1 xl:px-6 py-4 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-2xl font-black text-xs uppercase tracking-wider transition-all"
-                      >
-                        Hide Products
-                      </button>
-                      <button
-                        onClick={() => handleReject(app.id)}
-                        disabled={!!processing}
-                        className="flex-1 xl:px-8 py-4 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-2xl font-black text-xs uppercase tracking-wider transition-all disabled:opacity-50"
-                      >
-                        Reject
-                      </button>
-                    </div>
+                    {app.status !== 'cancelled' && (
+                      <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
+                        <button
+                          onClick={() => handleApprove(app)}
+                          disabled={!!processing}
+                          className="flex-1 xl:px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+                        >
+                          {processing === app.id ? <i className="ri-loader-4-line animate-spin"></i> : 'Approve'}
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (confirm('Hide all existing products for this user?')) {
+                              await adminHideAllProducts(app.user_id);
+                              alert('Products hidden');
+                            }
+                          }}
+                          className="flex-1 xl:px-6 py-4 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-2xl font-black text-xs uppercase tracking-wider transition-all"
+                        >
+                          Hide Products
+                        </button>
+                        <button
+                          onClick={() => handleReject(app.id)}
+                          disabled={!!processing}
+                          className="flex-1 xl:px-8 py-4 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-2xl font-black text-xs uppercase tracking-wider transition-all disabled:opacity-50"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))
               )}

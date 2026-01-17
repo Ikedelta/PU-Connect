@@ -10,8 +10,28 @@ export default function SellerDashboard() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
 
+  // Redirect if not a seller
+  useEffect(() => {
+    if (profile && profile.role !== 'seller' && profile.role !== 'admin' && profile.role !== 'super_admin') {
+      navigate('/seller/status');
+    }
+  }, [profile, navigate]);
+
   // Notifications
   const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'info', message: string } | null>(null);
+
+  const [sellerProfile, setSellerProfile] = useState<any>(null);
+
+  useEffect(() => {
+    if (user?.id) {
+      supabase
+        .from('seller_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle()
+        .then(({ data }) => setSellerProfile(data));
+    }
+  }, [user]);
 
   useEffect(() => {
     // Subscribe to Global Alerts
@@ -132,18 +152,34 @@ export default function SellerDashboard() {
       )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 pt-32 md:pt-40 box-border">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-10 mb-16 md:mb-24 text-center md:text-left">
-          <div>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-slate-900 dark:bg-blue-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-full mb-6 shadow-lg shadow-blue-500/20">
-              <i className="ri-shield-star-line text-blue-400 dark:text-blue-200"></i>
-              Official Seller Portal
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-10 mb-16 md:mb-24 text-center md:text-left bg-slate-50 dark:bg-slate-800/50 p-8 md:p-12 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm">
+          <div className="flex flex-col md:flex-row items-center gap-8 flex-1">
+            {sellerProfile?.business_logo ? (
+              <div className="w-32 h-32 rounded-3xl overflow-hidden shadow-2xl border-4 border-white dark:border-slate-700 bg-white">
+                <img
+                  src={getOptimizedImageUrl(sellerProfile.business_logo, 200, 85)}
+                  alt={sellerProfile.business_name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-32 h-32 rounded-3xl bg-blue-600 flex items-center justify-center text-white text-4xl shadow-2xl">
+                <i className="ri-store-3-line"></i>
+              </div>
+            )}
+            <div>
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-slate-900 dark:bg-blue-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-full mb-6">
+                <i className="ri-shield-star-line text-blue-400"></i>
+                Official Seller Portal
+              </div>
+              <h1 className="text-3xl md:text-5xl font-bold text-slate-900 dark:text-white leading-tight tracking-tight mb-4">
+                {sellerProfile?.business_name || 'Merchant'}<br />
+                <span className="text-blue-600">Operations.</span>
+              </h1>
+              <p className="text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest text-[10px]">
+                {sellerProfile?.business_category || 'General'} • Established {new Date(sellerProfile?.created_at || Date.now()).getFullYear()}
+              </p>
             </div>
-            <h1 className="text-4xl md:text-[4rem] font-bold text-slate-900 dark:text-white leading-tight tracking-tight mb-4">
-              Merchant<br /><span className="text-blue-600 dark:text-blue-400">Operations.</span>
-            </h1>
-            <p className="text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest text-[10px] md:text-xs">
-              Management of campus marketplace activities
-            </p>
           </div>
 
           <div className="flex flex-col gap-3">

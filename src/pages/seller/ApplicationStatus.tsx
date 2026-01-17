@@ -61,10 +61,12 @@ export default function ApplicationStatus() {
     if (!user) return;
 
     try {
+      const effectiveUserId = user.id === 'sys_admin_001' ? '00000000-0000-0000-0000-000000000000' : user.id;
+
       const { data, error } = await supabase
         .from('seller_applications')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .single();
 
       if (error) {
@@ -104,6 +106,46 @@ export default function ApplicationStatus() {
       await refreshProfile();
     } catch (error) {
       console.error('Error updating user role:', error);
+    }
+  };
+
+  const handleCancelApplication = async () => {
+    if (!application) return;
+
+    if (!confirm('Are you sure you want to cancel your application? This action cannot be undone.')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const isBypass = user?.id === 'sys_admin_001' || localStorage.getItem('sys_admin_bypass') === 'true';
+
+      if (isBypass) {
+        // Use RPC function to bypass RLS for system admin
+        const secret = localStorage.getItem('sys_admin_secret') || 'your_secret_admin_key_here';
+        const { error } = await supabase.rpc('admin_cancel_seller_application', {
+          application_id: application.id,
+          secret_key: secret
+        });
+
+        if (error) throw error;
+      } else {
+        // Regular user update status to cancelled
+        const { error } = await supabase
+          .from('seller_applications')
+          .update({ status: 'cancelled' })
+          .eq('id', application.id)
+          .eq('user_id', user?.id);
+
+        if (error) throw error;
+      }
+
+      // Navigate back to apply page
+      navigate('/seller/apply');
+    } catch (error: any) {
+      console.error('Error canceling application:', error);
+      alert('Failed to cancel application: ' + error.message);
+      setLoading(false);
     }
   };
 
@@ -220,37 +262,37 @@ export default function ApplicationStatus() {
           {/* Status Overview Card */}
           <div className="lg:col-span-5">
             <div className={`p-10 md:p-14 rounded-[3rem] border shadow-2xl transition-all relative overflow-hidden group ${application.status === 'approved' ? 'bg-emerald-50/50 dark:bg-emerald-500/5 border-emerald-100 dark:border-emerald-500/20 shadow-emerald-500/10' :
-                application.status === 'rejected' ? 'bg-rose-50/50 dark:bg-rose-500/5 border-rose-100 dark:border-rose-500/20 shadow-rose-500/10' :
-                  'bg-blue-50/50 dark:bg-blue-500/5 border-blue-100 dark:border-blue-500/20 shadow-blue-500/10'
+              application.status === 'rejected' ? 'bg-rose-50/50 dark:bg-rose-500/5 border-rose-100 dark:border-rose-500/20 shadow-rose-500/10' :
+                'bg-blue-50/50 dark:bg-blue-500/5 border-blue-100 dark:border-blue-500/20 shadow-blue-500/10'
               }`}>
               <div className="absolute top-0 right-0 w-40 h-40 bg-current opacity-[0.03] rounded-bl-full translate-x-10 -translate-y-10 group-hover:scale-110 transition-transform duration-700"></div>
 
               <div className="flex flex-col items-center text-center relative z-10">
                 <div className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-10 shadow-2xl shadow-current/20 transition-transform group-hover:scale-105 duration-500 ${application.status === 'approved' ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white' :
-                    application.status === 'rejected' ? 'bg-gradient-to-br from-rose-500 to-rose-600 text-white' :
-                      'bg-gradient-to-br from-blue-500 to-blue-600 text-white'
+                  application.status === 'rejected' ? 'bg-gradient-to-br from-rose-500 to-rose-600 text-white' :
+                    'bg-gradient-to-br from-blue-500 to-blue-600 text-white'
                   }`}>
                   <i className={`${getStatusIcon(application.status)} text-5xl`}></i>
                 </div>
 
                 <h2 className={`text-3xl font-black tracking-tight mb-4 ${application.status === 'approved' ? 'text-emerald-900 dark:text-emerald-400' :
-                    application.status === 'rejected' ? 'text-rose-900 dark:text-rose-400' :
-                      'text-blue-900 dark:text-blue-400'
+                  application.status === 'rejected' ? 'text-rose-900 dark:text-rose-400' :
+                    'text-blue-900 dark:text-blue-400'
                   }`}>
                   {statusInfo.title}
                 </h2>
 
                 <div className={`inline-flex items-center gap-3 px-6 py-2.5 rounded-full text-[11px] font-black uppercase tracking-[0.2em] mb-10 border-2 ${application.status === 'approved' ? 'bg-emerald-100/30 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300' :
-                    application.status === 'rejected' ? 'bg-rose-100/30 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300' :
-                      'bg-blue-100/30 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300'
+                  application.status === 'rejected' ? 'bg-rose-100/30 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300' :
+                    'bg-blue-100/30 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300'
                   }`}>
                   <span className="w-2.5 h-2.5 rounded-full bg-current animate-pulse"></span>
                   {application.status}
                 </div>
 
                 <p className={`text-sm font-bold leading-relaxed mb-12 max-w-sm ${application.status === 'approved' ? 'text-emerald-800/80 dark:text-emerald-400/80' :
-                    application.status === 'rejected' ? 'text-rose-800/80 dark:text-rose-400/80' :
-                      'text-blue-800/80 dark:text-blue-400/80'
+                  application.status === 'rejected' ? 'text-rose-800/80 dark:text-rose-400/80' :
+                    'text-blue-800/80 dark:text-blue-400/80'
                   }`}>
                   {statusInfo.message}
                 </p>
@@ -272,9 +314,18 @@ export default function ApplicationStatus() {
                     <i className="ri-refresh-line text-xl group-hover:rotate-180 transition-transform duration-700"></i>
                   </button>
                 ) : (
-                  <div className="w-full h-16 bg-white dark:bg-slate-900/50 border-2 border-blue-200 dark:border-blue-500/20 text-blue-900 dark:text-blue-400 font-black text-[10px] uppercase tracking-[0.3em] rounded-2xl flex items-center justify-center gap-4">
-                    <i className="ri-loader-5-line animate-spin text-xl"></i>
-                    Verification In Progress
+                  <div className="w-full space-y-4">
+                    <div className="w-full h-16 bg-white dark:bg-slate-900/50 border-2 border-blue-200 dark:border-blue-500/20 text-blue-900 dark:text-blue-400 font-black text-[10px] uppercase tracking-[0.3em] rounded-2xl flex items-center justify-center gap-4">
+                      <i className="ri-loader-5-line animate-spin text-xl"></i>
+                      Verification In Progress
+                    </div>
+                    <button
+                      onClick={handleCancelApplication}
+                      className="w-full h-14 bg-rose-50 dark:bg-rose-500/10 border-2 border-rose-200 dark:border-rose-500/20 text-rose-600 dark:text-rose-400 font-black text-[10px] uppercase tracking-[0.3em] rounded-2xl hover:bg-rose-100 dark:hover:bg-rose-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group/cancel"
+                    >
+                      <i className="ri-close-circle-line text-lg group-hover/cancel:rotate-90 transition-transform duration-300"></i>
+                      Cancel Application
+                    </button>
                   </div>
                 )}
               </div>

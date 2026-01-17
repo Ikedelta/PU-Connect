@@ -10,6 +10,7 @@ export default function SellerApplication() {
   const { user, profile, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'warning' | 'info', message: string } | null>(null);
+  const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     businessName: '',
     businessCategory: '',
@@ -66,20 +67,36 @@ export default function SellerApplication() {
 
     setLoading(true);
 
+    // Bypass Mode: Modify business name to indicate mock data but allow DB save for verification
+    const isBypass = user.id === 'sys_admin_001' || localStorage.getItem('sys_admin_bypass') === 'true';
+    const finalBusinessName = isBypass ? `[Mock] ${formData.businessName}` : formData.businessName;
+    const effectiveUserId = isBypass ? '00000000-0000-0000-0000-000000000000' : user.id;
+
     try {
-      // Check if user already has an application
+      let finalLogoUrl = formData.businessLogo;
+
+      // 1. Upload logo if selected
+      if (selectedLogoFile) {
+        const { uploadImage, compressImage } = await import('../../lib/uploadImage');
+        const compressed = await compressImage(selectedLogoFile);
+        const { url } = await uploadImage(compressed, 'profiles', effectiveUserId);
+        finalLogoUrl = url;
+      }
+
+      // 2. Check if user already has an application (ignore cancelled ones)
       const { data: existingApp } = await supabase
         .from('seller_applications')
         .select('id, status')
-        .eq('user_id', user.id)
-        .single();
+        .eq('user_id', effectiveUserId)
+        .neq('status', 'cancelled') // Ignore cancelled apps so user can re-apply
+        .maybeSingle();
 
       if (existingApp) {
         if (existingApp.status === 'approved') {
-          setNotification({ type: 'warning', message: 'You already have an active Seller Account. You are limited to one shop per user.' });
+          setNotification({ type: 'warning', message: 'You already have an active Seller Account.' });
           setTimeout(() => navigate('/seller/dashboard'), 2000);
         } else if (existingApp.status === 'pending') {
-          setNotification({ type: 'info', message: 'You already have a pending application. Please wait for admin approval.' });
+          setNotification({ type: 'info', message: 'You already have a pending application.' });
           setTimeout(() => navigate('/seller/status'), 2000);
         } else {
           setNotification({ type: 'warning', message: 'You have a previous application. Please contact support.' });
@@ -88,23 +105,71 @@ export default function SellerApplication() {
         return;
       }
 
-      // Submit new application
-      const { error } = await supabase
-        .from('seller_applications')
-        .insert([
-          {
-            user_id: user.id,
-            business_name: formData.businessName,
-            business_category: formData.businessCategory,
-            business_description: `${formData.businessDescription}\n\n[WhatsApp Contact: ${formData.whatsappNumber}]`,
-            contact_phone: formData.contactPhone,
-            contact_email: formData.contactEmail,
-            business_logo: formData.businessLogo,
-            status: 'pending'
-          }
-        ]);
+      // 3. Submit new application
+      let insertError = null;
 
-      if (error) throw error;
+      const applicationData = {
+        user_id: effectiveUserId,
+        business_name: finalBusinessName,
+        business_category: formData.businessCategory,
+        business_description: `${formData.businessDescription}\n\n[WhatsApp Contact: ${formData.whatsappNumber}]`,
+        contact_phone: formData.contactPhone,
+        contact_email: formData.contactEmail,
+        business_logo: finalLogoUrl,
+        status: 'pending',
+        updated_at: new Date().toISOString() // Ensure updated_at is refreshed
+      };
+
+      if (isBypass) {
+        // Use RPC function to bypass RLS for system admin
+        // Note: The RPC effectively does an INSERT. If we need UPDATE for existing cancelled app, 
+        // we might need a generic "upsert" RPC or just try insert and see.
+        // Actually for simplicity, let's use a new upsert RPC or assume insert works if unique constraint allows.
+        // If unique constraint exists, simple insert fails. 
+        // Let's create an 'admin_upsert_seller_application' to be safe.
+        // Or reuse existing logic. I'll stick to 'admin_insert...' for now but I really should have upsert.
+        // Let's rely on standard upsert for regular users, and for admin pass 'upsert' flag to a new RPC or modify standard?
+        // Let's assume for now valid insert is what we want.
+        // Wait, if I want to overwrite 'cancelled', I need to UPSERT.
+
+        const secret = localStorage.getItem('sys_admin_secret') || 'your_secret_admin_key_here';
+        // We need an upsert function. Let's use the one we created or use raw SQL if possible? No.
+        // Let's use a modification of the insert RPC or call a new one.
+        // I will create 'admin_upsert_seller_application' in SQL next.
+        const { error } = await supabase.rpc('admin_upsert_seller_application', {
+          application_data: applicationData,
+          secret_key: secret
+        });
+        insertError = error;
+      } else {
+        // Regular user: Check if application exists (including cancelled)
+        const { data: existingApp } = await supabase
+          .from('seller_applications')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (existingApp) {
+          // UPDATE existing application (reactivate it)
+          const { error } = await supabase
+            .from('seller_applications')
+            .update({
+              ...applicationData,
+              status: 'pending',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingApp.id);
+          insertError = error;
+        } else {
+          // INSERT new application
+          const { error } = await supabase
+            .from('seller_applications')
+            .insert([applicationData]);
+          insertError = error;
+        }
+      }
+
+      if (insertError) throw insertError;
 
       // Notify Admins (Non-blocking)
       const notifyAdmins = async () => {
@@ -136,7 +201,9 @@ export default function SellerApplication() {
       setTimeout(() => navigate('/seller/status'), 2000);
     } catch (error: any) {
       console.error('Error submitting application:', error);
-      setNotification({ type: 'error', message: error.message || 'Failed to submit application. Please try again.' });
+      const msg = error.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
+      setNotification({ type: 'error', message: 'Failed: ' + msg });
+      alert('Application Error: ' + msg);
     } finally {
       setLoading(false);
     }
@@ -264,9 +331,22 @@ export default function SellerApplication() {
                     <div className="w-32 h-32 flex-shrink-0 relative group/logo">
                       <ImageUploader
                         folder="profiles"
-                        onImageUploaded={(url) => setFormData({ ...formData, businessLogo: url })}
+                        autoUpload={false}
+                        onPreview={(url) => setFormData(prev => ({ ...prev, businessLogo: url }))}
+                        onFileSelected={(file) => setSelectedLogoFile(file)}
+                        hideInternalUI={true}
+                        noBorder={true}
                         className="w-full h-full rounded-3xl bg-white dark:bg-slate-800 border-none shadow-xl group-hover/logo:scale-[1.02] transition-transform cursor-pointer overflow-hidden flex items-center justify-center"
                       />
+                      {formData.businessLogo && (
+                        <div className="absolute inset-0 pointer-events-none">
+                          <img
+                            src={formData.businessLogo}
+                            className="w-full h-full object-cover rounded-3xl"
+                            alt="Logo preview"
+                          />
+                        </div>
+                      )}
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/logo:opacity-100 transition-opacity rounded-3xl flex items-center justify-center pointer-events-none">
                         <i className="ri-camera-lens-line text-white text-3xl"></i>
                       </div>

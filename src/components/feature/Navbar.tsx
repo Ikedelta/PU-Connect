@@ -114,6 +114,10 @@ export default function Navbar() {
   useEffect(() => {
     if (!user) return;
 
+    // Calculate effective user ID once, respecting localStorage bypass for testing
+    const isBypass = user.id === 'sys_admin_001' || localStorage.getItem('sys_admin_bypass') === 'true';
+    const effectiveUserId = isBypass ? '00000000-0000-0000-0000-000000000000' : user.id;
+
     const fetchData = async () => {
       try {
         // Fetch unread messages
@@ -130,14 +134,15 @@ export default function Navbar() {
         // Check for seller application
         const { data: app, error: appError } = await supabase
           .from('seller_applications')
-          .select('id')
-          .eq('user_id', user.id)
+          .select('id, status')
+          .eq('user_id', effectiveUserId)
           .maybeSingle();
 
-        if (!appError && app) {
-          setHasApplication(true);
-        } else {
-          setHasApplication(false);
+        // Only update if query was successful
+        if (!appError) {
+          // Treat 'cancelled' as no application pending
+          const hasActiveApp = !!app && app.status !== 'cancelled';
+          setHasApplication(hasActiveApp);
         }
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -146,8 +151,36 @@ export default function Navbar() {
 
     fetchData();
 
+    // Real-time subscription for application changes
+    const appChannel = supabase
+      .channel(`seller-app-${effectiveUserId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'seller_applications',
+          filter: `user_id=eq.${effectiveUserId}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'DELETE') {
+            setHasApplication(false);
+          } else if (payload.eventType === 'INSERT') {
+            const newApp = payload.new as any;
+            setHasApplication(newApp.status !== 'cancelled');
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedApp = payload.new as any;
+            setHasApplication(updatedApp.status !== 'cancelled');
+          }
+        }
+      )
+      .subscribe();
+
     const interval = setInterval(fetchData, 10000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(appChannel);
+    };
   }, [user, profile?.role]);
 
   useEffect(() => {

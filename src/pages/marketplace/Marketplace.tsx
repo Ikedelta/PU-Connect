@@ -296,8 +296,12 @@ function Marketplace() {
                         </div>
 
                         <div className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-gray-100 dark:border-gray-800">
-                          <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden ring-1 ring-gray-200 dark:ring-gray-700">
-                            <img src={getOptimizedImageUrl(seller?.avatar_url || "", 50, 50)} alt="" className="w-full h-full object-cover" />
+                          <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden ring-1 ring-gray-200 dark:ring-gray-700 flex items-center justify-center">
+                            {seller?.avatar_url ? (
+                              <img src={getOptimizedImageUrl(seller.avatar_url, 50, 50)} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-[10px] font-bold text-gray-400">{seller?.full_name?.charAt(0) || 'U'}</span>
+                            )}
                           </div>
                         </div>
                       </div>

@@ -288,23 +288,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             filter: `id=eq.${userId}`,
           },
           (payload) => {
-            const newSessionId = (payload.new as Profile).active_session_id;
+            console.log('Profile update received!', payload);
+            const updatedProfile = payload.new as Profile;
+
+            // 1. Update local state to reflect DB changes immediately (e.g. Role change)
+            setProfile((prev) => {
+              console.log('New Role:', updatedProfile.role, 'Old Role:', prev?.role);
+              if (!prev) return updatedProfile;
+              const newProfile = { ...prev, ...updatedProfile };
+              // Persist to localStorage for consistency
+              localStorage.setItem('pentvars_profile', JSON.stringify(newProfile));
+              return newProfile;
+            });
+
+            // 2. Session Logic
+            const newSessionId = updatedProfile.active_session_id;
+            const localSessionId = localStorage.getItem('pentvars_session_id');
 
             // If the session ID in DB is different from what we have locally, 
             // and we HAVE a local session ID (meaning we think we are logged in),
             // then another device has logged in.
             if (newSessionId && localSessionId && newSessionId !== localSessionId) {
               console.warn('Session invalidated by new login');
-
-              // Only logout if we are not the one who just initiated the change
-              // (The logic is: If I am logged in, my local ID must match DB. If DB changes to something else, I'm out.)
-
-              // Avoid infinite loop if signOut triggers something
-              // Check if we are really the user
-
-              // Check if the user is a system admin to enforce stricter rules if needed
-              // But usually we enforce for everyone or check role here if we have profile in state (captured in closure might be stale)
-
               alert('You have been logged out because your account was logged in from another device.');
               signOut();
             }

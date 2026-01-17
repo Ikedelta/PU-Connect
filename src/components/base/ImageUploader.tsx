@@ -3,7 +3,7 @@ import { uploadImage, compressImage } from '../../lib/uploadImage';
 
 interface ImageUploaderProps {
   currentImage?: string;
-  onImageUploaded: (url: string) => void;
+  onImageUploaded?: (url: string) => void;
   folder: 'profiles' | 'products' | 'cms' | 'ads';
   className?: string;
   shape?: 'circle' | 'square';
@@ -80,7 +80,7 @@ export default function ImageUploader({
 
       // Update parent component
       setProgress('Complete!');
-      onImageUploaded(url);
+      if (onImageUploaded) onImageUploaded(url);
       setPreview(url);
 
       // Clear progress after a short delay

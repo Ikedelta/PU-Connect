@@ -27,13 +27,14 @@ export default function AddProduct() {
   const { profile, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [sellers, setSellers] = useState<Seller[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     category: '',
     price: '',
     priceType: 'fixed' as 'fixed' | 'contact',
-    images: [] as string[],
+    images: [] as string[], // Local blob URLs for previews
     sellerId: '',
     whatsappNumber: '',
   });
@@ -135,6 +136,18 @@ export default function AddProduct() {
     setLoading(true);
 
     try {
+      // 1. Upload all selected images (Parallelized)
+      const { uploadImage, compressImage } = await import('../../lib/uploadImage');
+
+      const uploadPromises = selectedFiles.map(async (file) => {
+        const compressed = await compressImage(file);
+        const { url } = await uploadImage(compressed, 'products', isAdmin ? formData.sellerId : profile?.id);
+        return url;
+      });
+
+      const uploadedUrls = await Promise.all(uploadPromises);
+
+      // 2. Prepare final data
       const productData = {
         seller_id: isAdmin ? formData.sellerId : profile?.id,
         name: formData.name.trim(),
@@ -142,7 +155,7 @@ export default function AddProduct() {
         category: formData.category,
         price: formData.priceType === 'fixed' ? parseFloat(formData.price) : null,
         price_type: formData.priceType,
-        images: formData.images,
+        images: uploadedUrls,
         whatsapp_number: formData.whatsappNumber,
         is_active: true,
       };
@@ -167,14 +180,21 @@ export default function AddProduct() {
     }
   };
 
-  const handleImageUploaded = (url: string) => {
+  const handleFileSelect = (file: File) => {
+    const previewUrl = URL.createObjectURL(file);
+    setSelectedFiles(prev => [...prev, file]);
     setFormData(prev => ({
       ...prev,
-      images: [...prev.images, url],
+      images: [...prev.images, previewUrl],
     }));
   };
 
   const removeImage = (index: number) => {
+    // Revoke object URL to avoid memory leak
+    if (formData.images[index].startsWith('blob:')) {
+      URL.revokeObjectURL(formData.images[index]);
+    }
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
     setFormData(prev => ({
       ...prev,
       images: prev.images.filter((_, i) => i !== index),
@@ -412,8 +432,10 @@ export default function AddProduct() {
                   {formData.images.length < 8 && (
                     <div className="aspect-square bg-white/5 border-2 border-dashed border-white/10 rounded-3xl flex items-center justify-center hover:bg-white/10 transition-all">
                       <ImageUploader
-                        onImageUploaded={handleImageUploaded}
                         folder="products"
+                        autoUpload={false}
+                        onFileSelected={handleFileSelect}
+                        hideInternalUI={true}
                         className="w-full h-full flex flex-col items-center justify-center gap-3 text-slate-500 hover:text-white transition-colors cursor-pointer"
                       />
                     </div>

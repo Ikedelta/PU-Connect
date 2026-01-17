@@ -13,7 +13,8 @@ type Application = {
   business_description: string;
   contact_phone: string;
   contact_email: string;
-  status: 'pending' | 'approved' | 'rejected';
+  business_logo?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   rejection_reason?: string;
   created_at: string;
   updated_at: string;
@@ -29,7 +30,7 @@ export default function SellerApplications() {
   const { profile } = useAuth();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'cancelled'>('all');
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -75,9 +76,10 @@ export default function SellerApplications() {
             student_id
           )
         `)
-        .order('created_at', { ascending: false });
+        .order('updated_at', { ascending: false });
 
-      if (error) throw error;
+      console.log('Admin Dashboard: Current User:', profile?.role, profile?.id); // DEBUG
+      console.log('Admin Dashboard: Fetched Applications:', data);
       setApplications(data || []);
     } catch (error) {
       console.error('Error fetching applications:', error);
@@ -95,7 +97,9 @@ export default function SellerApplications() {
       // If we are the system admin (or any non-UUID), we pass null to reviewed_by
       // because the column is UUID type.
       const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(profile?.id || '');
-      const reviewedBy = isValidUUID ? profile?.id : null;
+      // Ensure we don't pass the dummy UUID which might not exist in profiles table
+      const isDummy = profile?.id === '00000000-0000-0000-0000-000000000000';
+      const reviewedBy = (isValidUUID && !isDummy) ? profile?.id : null;
 
       // Update application status
       const { error: appError } = await supabase
@@ -128,6 +132,7 @@ export default function SellerApplications() {
           business_description: application.business_description,
           contact_phone: application.contact_phone,
           contact_email: application.contact_email,
+          business_logo: application.business_logo,
           subscription_status: 'inactive',
           is_active: true
         });
@@ -166,6 +171,46 @@ export default function SellerApplications() {
     setShowModal(true);
   };
 
+  const handleReset = async (app: Application) => {
+    if (!confirm(`Reset application for ${app.business_name} to Pending?`)) return;
+
+    setProcessing(true);
+    try {
+      const { error } = await supabase
+        .from('seller_applications')
+        .update({ status: 'pending', updated_at: new Date().toISOString() })
+        .eq('id', app.id);
+
+      if (error) throw error;
+
+      // If resetting from Approved, we should also revert role
+      if (app.status === 'approved') {
+        // Use RPC to bypass RLS and guarantee update
+        const secret = localStorage.getItem('sys_admin_secret') || 'your_secret_admin_key_here';
+        const { error: rpcError } = await supabase.rpc('admin_update_user_role', {
+          target_user_id: app.user_id,
+          new_role: 'buyer',
+          secret_key: secret
+        });
+
+        if (rpcError) {
+          console.error('Failed to revert role via RPC:', rpcError);
+          alert('Warning: Application reset but failed to revert user role.');
+        } else {
+          // Also deactivate seller profile if exists (using direct update, usually fine if policy set, or could add RPC)
+          await supabase.from('seller_profiles').update({ is_active: false }).eq('user_id', app.user_id);
+        }
+      }
+
+      alert('Application reset to Pending');
+      fetchApplications();
+    } catch (err: any) {
+      alert('Error resetting application: ' + err.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const submitRejection = async () => {
     if (!selectedApp || !rejectionReason.trim()) {
       alert('Please provide a rejection reason');
@@ -174,6 +219,13 @@ export default function SellerApplications() {
 
     setProcessing(true);
     try {
+      // Check if we are revoking a dummy system admin (bypass mode)
+      // This is less likely for rejection but good to keep safe
+      const isDummy = selectedApp.user_id === '00000000-0000-0000-0000-000000000000';
+      if (isDummy) {
+        // Dummy user doesn't have profile, so we skip role updates
+      }
+
       const { error } = await supabase
         .from('seller_applications')
         .update({
@@ -184,6 +236,17 @@ export default function SellerApplications() {
         .eq('id', selectedApp.id);
 
       if (error) throw error;
+
+      // If Revoking an approved app, cleanup
+      if (selectedApp.status === 'approved' && !isDummy) {
+        const secret = localStorage.getItem('sys_admin_secret') || 'your_secret_admin_key_here';
+        await supabase.rpc('admin_update_user_role', {
+          target_user_id: selectedApp.user_id,
+          new_role: 'buyer',
+          secret_key: secret
+        });
+        await supabase.from('seller_profiles').update({ is_active: false }).eq('user_id', selectedApp.user_id);
+      }
 
       alert('Application rejected');
       setShowModal(false);
@@ -206,6 +269,7 @@ export default function SellerApplications() {
     pending: applications.filter(a => a.status === 'pending').length,
     approved: applications.filter(a => a.status === 'approved').length,
     rejected: applications.filter(a => a.status === 'rejected').length,
+    cancelled: applications.filter(a => a.status === 'cancelled').length,
   };
 
   if (loading) {
@@ -241,51 +305,60 @@ export default function SellerApplications() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-100 dark:border-gray-800 shadow-sm transition-colors">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Applications</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
+                <h3 className="text-2xl font-black text-gray-900 dark:text-white">{stats.total}</h3>
               </div>
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
-                <i className="ri-file-list-line text-2xl text-white"></i>
+              <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center text-blue-500">
+                <i className="ri-file-list-3-fill text-xl"></i>
               </div>
             </div>
           </div>
-
           <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-100 dark:border-gray-800 shadow-sm transition-colors">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Pending Review</p>
-                <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{stats.pending}</p>
+                <h3 className="text-2xl font-black text-amber-500">{stats.pending}</h3>
               </div>
-              <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center shadow-md">
-                <i className="ri-time-line text-2xl text-white"></i>
+              <div className="w-10 h-10 bg-amber-500/10 rounded-lg flex items-center justify-center text-amber-500">
+                <i className="ri-time-fill text-xl"></i>
               </div>
             </div>
           </div>
-
           <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-100 dark:border-gray-800 shadow-sm transition-colors">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Approved</p>
-                <p className="text-3xl font-bold text-green-600 dark:text-green-400">{stats.approved}</p>
+                <h3 className="text-2xl font-black text-emerald-500">{stats.approved}</h3>
               </div>
-              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-md">
-                <i className="ri-checkbox-circle-line text-2xl text-white"></i>
+              <div className="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-500">
+                <i className="ri-checkbox-circle-fill text-xl"></i>
               </div>
             </div>
           </div>
-
           <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-100 dark:border-gray-800 shadow-sm transition-colors">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Rejected</p>
-                <p className="text-3xl font-bold text-red-600 dark:text-red-400">{stats.rejected}</p>
+                <h3 className="text-2xl font-black text-red-500">{stats.rejected}</h3>
               </div>
-              <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-md">
-                <i className="ri-close-circle-line text-2xl text-white"></i>
+              <div className="w-10 h-10 bg-red-500/10 rounded-lg flex items-center justify-center text-red-500">
+                <i className="ri-close-circle-fill text-xl"></i>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-100 dark:border-gray-800 shadow-sm transition-colors">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Cancelled</p>
+                <h3 className="text-2xl font-black text-slate-500">{stats.cancelled}</h3>
+              </div>
+              <div className="w-10 h-10 bg-slate-500/10 rounded-lg flex items-center justify-center text-slate-500">
+                <i className="ri-prohibited-line text-xl"></i>
               </div>
             </div>
           </div>
@@ -293,7 +366,7 @@ export default function SellerApplications() {
 
         {/* Filter Tabs */}
         <div className="bg-white dark:bg-gray-900 rounded-xl p-2 mb-6 border border-gray-100 dark:border-gray-800 shadow-sm inline-flex gap-2 w-full sm:w-auto overflow-x-auto transition-colors">
-          {(['all', 'pending', 'approved', 'rejected'] as const).map((status) => (
+          {(['all', 'pending', 'approved', 'rejected', 'cancelled'] as const).map((status) => (
             <button
               key={status}
               onClick={() => setFilter(status)}
@@ -328,12 +401,19 @@ export default function SellerApplications() {
                 <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
                   <div className="flex-1">
                     <div className="flex items-start gap-4 mb-4">
-                      <div className="w-14 h-14 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
-                        <i className="ri-store-3-line text-2xl text-white"></i>
+                      <div className="w-14 h-14 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md overflow-hidden">
+                        {app.business_logo ? (
+                          <img src={app.business_logo} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <i className="ri-store-3-line text-2xl text-white"></i>
+                        )}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="text-xl font-bold text-gray-900 dark:text-white">{app.business_name}</h3>
+                          {app.business_name.startsWith('[Mock]') && (
+                            <span className="px-2 py-0.5 bg-blue-500/10 text-blue-500 text-[10px] font-black uppercase rounded">System Test</span>
+                          )}
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${app.status === 'approved' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
                             app.status === 'rejected' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
                               'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
@@ -388,26 +468,72 @@ export default function SellerApplications() {
                     )}
                   </div>
 
-                  {app.status === 'pending' && (
-                    <div className="flex flex-col gap-3 lg:w-48">
-                      <button
-                        onClick={() => handleApprove(app)}
-                        disabled={processing}
-                        className="w-full px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 shadow-sm"
-                      >
-                        <i className="ri-checkbox-circle-line text-lg"></i>
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => handleReject(app)}
-                        disabled={processing}
-                        className="w-full px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 shadow-sm"
-                      >
-                        <i className="ri-close-circle-line text-lg"></i>
-                        Reject
-                      </button>
-                    </div>
-                  )}
+
+
+                  <div className="flex flex-col gap-3 lg:w-48">
+                    {app.status === 'pending' && (
+                      <>
+                        <button
+                          onClick={() => handleApprove(app)}
+                          disabled={processing}
+                          className="w-full px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+                        >
+                          <i className="ri-checkbox-circle-line text-lg"></i>
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleReject(app)}
+                          disabled={processing}
+                          className="w-full px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+                        >
+                          <i className="ri-close-circle-line text-lg"></i>
+                          Reject
+                        </button>
+                      </>
+                    )}
+
+                    {app.status === 'approved' && (
+                      <>
+                        <button
+                          onClick={() => handleReject(app)}
+                          disabled={processing}
+                          className="w-full px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+                        >
+                          <i className="ri-prohibited-line text-lg"></i>
+                          Revoke
+                        </button>
+                        <button
+                          onClick={() => handleReset(app)}
+                          disabled={processing}
+                          className="w-full px-6 py-3 bg-white border border-yellow-500 text-yellow-600 rounded-lg hover:bg-yellow-50 transition-all font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+                        >
+                          <i className="ri-history-line text-lg"></i>
+                          Re-evaluate
+                        </button>
+                      </>
+                    )}
+
+                    {app.status === 'rejected' && (
+                      <>
+                        <button
+                          onClick={() => handleApprove(app)}
+                          disabled={processing}
+                          className="w-full px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+                        >
+                          <i className="ri-checkbox-circle-line text-lg"></i>
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleReset(app)}
+                          disabled={processing}
+                          className="w-full px-6 py-3 bg-white border border-yellow-500 text-yellow-600 rounded-lg hover:bg-yellow-50 transition-all font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+                        >
+                          <i className="ri-history-line text-lg"></i>
+                          Re-evaluate
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             ))
@@ -416,52 +542,54 @@ export default function SellerApplications() {
       </div>
 
       {/* Rejection Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 dark:border-gray-800">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
-                <i className="ri-close-circle-line text-2xl text-white"></i>
+      {
+        showModal && (
+          <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 dark:border-gray-800">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <i className="ri-close-circle-line text-2xl text-white"></i>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Reject Application</h3>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Reject Application</h3>
-            </div>
 
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Please provide a reason for rejecting <strong>{selectedApp?.business_name}</strong>
-            </p>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Please provide a reason for rejecting <strong>{selectedApp?.business_name}</strong>
+              </p>
 
-            <textarea
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              placeholder="Enter rejection reason..."
-              rows={4}
-              maxLength={500}
-              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none mb-2 outline-none"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-500 mb-4">{rejectionReason.length}/500 characters</p>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Enter rejection reason..."
+                rows={4}
+                maxLength={500}
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none mb-2 outline-none"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-500 mb-4">{rejectionReason.length}/500 characters</p>
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  setSelectedApp(null);
-                }}
-                disabled={processing}
-                className="flex-1 px-6 py-3 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all font-medium text-sm whitespace-nowrap disabled:opacity-50 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitRejection}
-                disabled={processing || !rejectionReason.trim()}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-md"
-              >
-                {processing ? 'Rejecting...' : 'Confirm Rejection'}
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowModal(false);
+                    setSelectedApp(null);
+                  }}
+                  disabled={processing}
+                  className="flex-1 px-6 py-3 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all font-medium text-sm whitespace-nowrap disabled:opacity-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitRejection}
+                  disabled={processing || !rejectionReason.trim()}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-md"
+                >
+                  {processing ? 'Rejecting...' : 'Confirm Rejection'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }

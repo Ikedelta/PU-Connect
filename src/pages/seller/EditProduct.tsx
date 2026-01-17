@@ -23,13 +23,14 @@ export default function EditProduct() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [newFilesMap] = useState(new Map<string, File>());
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     category: '',
     price: '',
     priceType: 'fixed' as 'fixed' | 'contact',
-    images: [] as string[],
+    images: [] as string[], // Mix of existing URLs and local blobs
     whatsapp_number: '',
   });
 
@@ -116,13 +117,31 @@ export default function EditProduct() {
     setError(null);
 
     try {
+      // 1. Upload new images if any (Parallelized for speed)
+      const { uploadImage, compressImage } = await import('../../lib/uploadImage');
+
+      const uploadPromises = formData.images.map(async (url) => {
+        if (url.startsWith('blob:')) {
+          const file = newFilesMap.get(url);
+          if (file) {
+            const compressed = await compressImage(file);
+            const { url: uploadedUrl } = await uploadImage(compressed, 'products', user!.id);
+            return uploadedUrl;
+          }
+          return null;
+        }
+        return url;
+      });
+
+      const finalImages = (await Promise.all(uploadPromises)).filter(Boolean) as string[];
+
       const productData = {
         name: formData.name,
         description: formData.description,
         category: formData.category,
         price: formData.priceType === 'fixed' ? parseFloat(formData.price) : null,
         price_type: formData.priceType,
-        images: formData.images.length > 0 ? formData.images : null,
+        images: finalImages.length > 0 ? finalImages : null,
         whatsapp_number: formData.whatsapp_number || null,
         updated_at: new Date().toISOString(),
       };
@@ -153,14 +172,21 @@ export default function EditProduct() {
     }
   };
 
-  const handleImageUploaded = (url: string) => {
+  const handleFileSelect = (file: File) => {
+    const previewUrl = URL.createObjectURL(file);
+    newFilesMap.set(previewUrl, file);
     setFormData(prev => ({
       ...prev,
-      images: [...prev.images, url],
+      images: [...prev.images, previewUrl],
     }));
   };
 
   const removeImage = (index: number) => {
+    const urlToRemove = formData.images[index];
+    if (urlToRemove.startsWith('blob:')) {
+      newFilesMap.delete(urlToRemove);
+      URL.revokeObjectURL(urlToRemove);
+    }
     setFormData(prev => ({
       ...prev,
       images: prev.images.filter((_, i) => i !== index),
@@ -391,8 +417,10 @@ export default function EditProduct() {
               {formData.images.length < 8 && (
                 <div className="aspect-square">
                   <ImageUploader
-                    onImageUploaded={handleImageUploaded}
                     folder="products"
+                    autoUpload={false}
+                    onFileSelected={handleFileSelect}
+                    hideInternalUI={true}
                     shape="square"
                     size="medium"
                     className="w-full h-full bg-gray-800 hover:bg-gray-700 transition-colors rounded-2xl border-2 border-dashed border-gray-700 flex items-center justify-center cursor-pointer group"

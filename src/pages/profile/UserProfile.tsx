@@ -73,7 +73,7 @@ export default function UserProfile() {
         console.log('Uploading new avatar...');
         const { uploadImage, compressImage } = await import('../../lib/uploadImage');
         const compressed = await compressImage(selectedFile);
-        const { url } = await uploadImage(compressed, 'profiles');
+        const { url } = await uploadImage(compressed, 'profiles', profile.id);
         finalAvatarUrl = url;
         console.log('Avatar uploaded successfully:', url);
       }
