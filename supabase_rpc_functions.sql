@@ -187,3 +187,55 @@ BEGIN
   RETURN jsonb_build_object('success', true, 'message', 'Role updated');
 END;
 $$;
+
+-- Admin RPC function to insert products (bypasses RLS)
+CREATE OR REPLACE FUNCTION admin_insert_product(
+  product_data jsonb,
+  secret_key text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  result_id uuid;
+  target_seller_id uuid;
+BEGIN
+  -- Verify secret key
+  IF secret_key != 'your_secret_admin_key_here' THEN
+    RAISE EXCEPTION 'Invalid secret key';
+  END IF;
+
+  target_seller_id := (product_data->>'seller_id')::uuid;
+
+  INSERT INTO products (
+    name,
+    description,
+    price,
+    price_type,
+    category,
+    images,
+    is_active,
+    seller_id,
+    whatsapp_number,
+    created_at,
+    updated_at
+  )
+  VALUES (
+    product_data->>'name',
+    product_data->>'description',
+    (product_data->>'price')::numeric,
+    product_data->>'price_type',
+    product_data->>'category',
+    ARRAY(SELECT jsonb_array_elements_text(product_data->'images')),
+    (product_data->>'is_active')::boolean,
+    target_seller_id,
+    product_data->>'whatsapp_number',
+    NOW(),
+    NOW()
+  )
+  RETURNING id INTO result_id;
+
+  RETURN jsonb_build_object('id', result_id, 'success', true);
+END;
+$$;

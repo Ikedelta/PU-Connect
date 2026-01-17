@@ -12,7 +12,7 @@ export default function Navbar() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [hasApplication, setHasApplication] = useState(false);
+  const [applicationStatus, setApplicationStatus] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Realtime Presence Tracking
@@ -140,9 +140,7 @@ export default function Navbar() {
 
         // Only update if query was successful
         if (!appError) {
-          // Treat 'cancelled' as no application pending
-          const hasActiveApp = !!app && app.status !== 'cancelled';
-          setHasApplication(hasActiveApp);
+          setApplicationStatus(app?.status || null);
         }
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -164,13 +162,10 @@ export default function Navbar() {
         },
         (payload) => {
           if (payload.eventType === 'DELETE') {
-            setHasApplication(false);
-          } else if (payload.eventType === 'INSERT') {
-            const newApp = payload.new as any;
-            setHasApplication(newApp.status !== 'cancelled');
-          } else if (payload.eventType === 'UPDATE') {
-            const updatedApp = payload.new as any;
-            setHasApplication(updatedApp.status !== 'cancelled');
+            setApplicationStatus(null);
+          } else if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const app = payload.new as any;
+            setApplicationStatus(app.status);
           }
         }
       )
@@ -200,16 +195,21 @@ export default function Navbar() {
   }, [showDropdown]);
 
   const getDashboardItem = () => {
-    if (profile?.role === 'super_admin') return { label: 'Admin Dashboard', path: '/admin', icon: 'ri-dashboard-line' };
-    if (profile?.role === 'admin') return { label: 'Admin Dashboard', path: '/admin', icon: 'ri-dashboard-line' };
-    if (profile?.role === 'news_publisher') return { label: 'Publisher Dashboard', path: '/publisher', icon: 'ri-article-line' };
-    if (profile?.role === 'seller') return { label: 'Seller Dashboard', path: '/seller/dashboard', icon: 'ri-store-3-line' };
-    if (profile?.role === 'publisher_seller') return { label: 'Seller Dashboard', path: '/seller/dashboard', icon: 'ri-store-3-line' };
+    if (profile?.role === 'super_admin' || profile?.role === 'admin')
+      return { label: 'Admin Dashboard', path: '/admin', icon: 'ri-dashboard-line' };
 
-    // If buyer has pending/rejected application
-    if (hasApplication) return { label: 'Application Status', path: '/seller/status', icon: 'ri-file-list-3-line' };
+    // If they have an application that is NOT approved (pending/rejected), show status
+    if (applicationStatus && applicationStatus !== 'approved' && applicationStatus !== 'cancelled') {
+      return { label: 'View Application Status', path: '/seller/status', icon: 'ri-file-list-3-line' };
+    }
 
-    return null; // Don't show anything for regular buyers
+    if (profile?.role === 'seller' || profile?.role === 'publisher_seller')
+      return { label: 'Seller Dashboard', path: '/seller/dashboard', icon: 'ri-store-3-line' };
+
+    if (profile?.role === 'news_publisher')
+      return { label: 'Publisher Dashboard', path: '/publisher', icon: 'ri-article-line' };
+
+    return null;
   };
 
   const dashboardItem = getDashboardItem();
@@ -268,21 +268,30 @@ export default function Navbar() {
                 Help Center
               </Link>
               <div className="w-px h-6 bg-gray-200 dark:bg-gray-800 mx-2"></div>
-              {['seller', 'admin', 'super_admin', 'publisher_seller'].includes(profile?.role || '') ? (
+              {/* Primary Action Button */}
+              {profile?.role === 'super_admin' || profile?.role === 'admin' ? (
                 <Link
-                  to="/seller/dashboard"
-                  className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 active:scale-95 transition-all flex items-center gap-2"
+                  to="/admin"
+                  className="px-5 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-teal-500/20 hover:shadow-teal-500/40 active:scale-95 transition-all flex items-center gap-2"
                 >
                   <i className="ri-dashboard-line text-lg"></i>
-                  Seller Dashboard
+                  Admin Dashboard
                 </Link>
-              ) : hasApplication ? (
+              ) : (applicationStatus && applicationStatus !== 'approved' && applicationStatus !== 'cancelled') ? (
                 <Link
                   to="/seller/status"
                   className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 active:scale-95 transition-all flex items-center gap-2"
                 >
                   <i className="ri-file-list-3-line text-lg"></i>
                   View Application Status
+                </Link>
+              ) : (profile?.role === 'seller' || profile?.role === 'publisher_seller') ? (
+                <Link
+                  to="/seller/dashboard"
+                  className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 active:scale-95 transition-all flex items-center gap-2"
+                >
+                  <i className="ri-dashboard-line text-lg"></i>
+                  Seller Dashboard
                 </Link>
               ) : (
                 <Link
@@ -455,15 +464,6 @@ export default function Navbar() {
               { label: 'Marketplace', path: '/marketplace', icon: 'ri-compass-3-line', color: 'text-emerald-400', bg: 'bg-emerald-900/20' },
               { label: 'Campus News', path: '/news', icon: 'ri-newspaper-line', color: 'text-indigo-400', bg: 'bg-indigo-900/20' },
               { label: 'Help Center', path: '/support', icon: 'ri-customer-service-2-line', color: 'text-pink-400', bg: 'bg-pink-900/20' },
-              {
-                label: hasApplication ? 'Application Status' : 'Become a Seller',
-                path: hasApplication ? '/seller/status' : (user ? '/seller/apply' : '/seller/become'),
-                icon: hasApplication ? 'ri-file-list-3-line' : 'ri-store-2-line',
-                color: 'text-white',
-                bg: hasApplication
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 shadow-blue-900/20'
-                  : 'bg-gradient-to-r from-orange-500 to-red-600 shadow-orange-900/20'
-              },
             ].map((item) => (
               <Link
                 key={item.label}
@@ -475,15 +475,60 @@ export default function Navbar() {
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${item.bg} ${item.color} shadow-lg ring-1 ring-white/5`}>
                     <i className={`${item.icon} text-xl`}></i>
                   </div>
-                  <span className={`text-lg font-bold tracking-tight transition-colors ${item.label === 'Become a Seller' ? 'bg-gradient-to-r from-orange-500 to-red-600 text-transparent bg-clip-text' : 'text-gray-200 group-hover:text-white'}`}>{item.label}</span>
+                  <span className={`text-lg font-bold tracking-tight text-gray-200 group-hover:text-white transition-colors`}>{item.label}</span>
                 </div>
                 <i className="ri-arrow-right-line text-xl text-gray-700 group-hover:text-white transition-colors"></i>
               </Link>
             ))}
 
+            {/* Application or Seller Action */}
+            {!['super_admin', 'admin'].includes(profile?.role || '') && (
+              <>
+                {dashboardItem ? (
+                  <Link
+                    to={dashboardItem.path}
+                    onClick={() => setShowMobileMenu(false)}
+                    className="group flex items-center justify-between p-5 rounded-2xl bg-white/5 border border-white/10 hover:border-blue-500/30 transition-all active:scale-[0.98]"
+                  >
+                    <div className="flex items-center gap-5">
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg ring-1 ring-white/10 ${dashboardItem.label === 'View Application Status'
+                        ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white'
+                        : 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white'
+                        }`}>
+                        <i className={`${dashboardItem.icon} text-xl`}></i>
+                      </div>
+                      <div>
+                        <span className="text-lg font-bold text-white tracking-tight">{dashboardItem.label}</span>
+                        <p className={`text-[10px] font-bold uppercase tracking-wide mt-1 ${dashboardItem.label === 'View Application Status' ? 'text-blue-400' : 'text-emerald-400'
+                          }`}>Live Access</p>
+                      </div>
+                    </div>
+                    <i className="ri-arrow-right-line text-xl text-gray-500 group-hover:text-white transition-colors"></i>
+                  </Link>
+                ) : !['seller', 'publisher_seller'].includes(profile?.role || '') && (
+                  <Link
+                    to="/seller/apply"
+                    onClick={() => setShowMobileMenu(false)}
+                    className="group flex items-center justify-between p-5 rounded-2xl bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20 hover:border-orange-500/40 transition-all active:scale-[0.98]"
+                  >
+                    <div className="flex items-center gap-5">
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-900/40">
+                        <i className="ri-store-2-line text-xl"></i>
+                      </div>
+                      <div>
+                        <span className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-400 tracking-tight">Become a Seller</span>
+                        <p className="text-[10px] font-bold text-orange-500/60 uppercase tracking-wide mt-1">Start Trading</p>
+                      </div>
+                    </div>
+                    <i className="ri-arrow-right-line text-xl text-orange-500/40 group-hover:text-orange-400 transition-colors"></i>
+                  </Link>
+                )}
+              </>
+            )}
 
 
-            {user && dashboardItem && (
+
+            {user && (profile?.role === 'admin' || profile?.role === 'super_admin') && dashboardItem && (
               <Link
                 to={dashboardItem.path}
                 onClick={() => setShowMobileMenu(false)}

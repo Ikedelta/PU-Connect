@@ -7,7 +7,7 @@ interface ImageUploaderProps {
   folder: 'profiles' | 'products' | 'cms' | 'ads';
   className?: string;
   shape?: 'circle' | 'square';
-  size?: 'small' | 'medium' | 'large';
+  size?: 'small' | 'medium' | 'large' | 'custom';
   noBorder?: boolean;
   onPreview?: (url: string) => void;
   onFileSelected?: (file: File) => void;
@@ -43,6 +43,7 @@ export default function ImageUploader({
     small: 'w-20 h-20',
     medium: 'w-32 h-32',
     large: 'w-48 h-48',
+    custom: 'w-full h-full',
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,24 +96,22 @@ export default function ImageUploader({
   };
 
   const handleClick = () => {
+    // Legacy support or programmatic trigger if needed
     fileInputRef.current?.click();
   };
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative ${className} group`}>
       <div
         className={`
           ${sizeClasses[size]}
           ${shape === 'circle' ? 'rounded-full' : 'rounded-xl'}
           ${noBorder ? '' : 'border-2 border-dashed border-gray-300'}
-          hover:border-blue-500
+          group-hover:border-blue-500
           transition-all duration-200
           overflow-hidden
-          cursor-pointer
-          group
           relative
         `}
-        onClick={handleClick}
       >
         {!hideInternalUI && (
           preview ? (
@@ -149,14 +148,14 @@ export default function ImageUploader({
 
         {uploading && (
           hideInternalUI ? (
-            <div className="absolute inset-x-0 bottom-0 h-1 bg-gray-200 overflow-hidden">
+            <div className="absolute inset-x-0 bottom-0 h-1 bg-gray-200 overflow-hidden z-20">
               <div className="h-full bg-blue-600 animate-progress origin-left"></div>
               <div className="absolute top-[-20px] right-2 bg-blue-600 text-white rounded-full p-1 shadow-lg">
                 <i className="ri-loader-4-line text-[10px] animate-spin"></i>
               </div>
             </div>
           ) : (
-            <div className="absolute inset-0 bg-white/95 flex items-center justify-center">
+            <div className="absolute inset-0 bg-white/95 flex items-center justify-center z-20">
               <div className="text-center">
                 <i className="ri-loader-4-line text-2xl text-teal-600 animate-spin"></i>
                 <p className="text-xs text-gray-600 mt-2 font-medium">{progress}</p>
@@ -171,7 +170,8 @@ export default function ImageUploader({
         type="file"
         accept="image/jpeg,image/png,image/gif,image/webp"
         onChange={handleFileSelect}
-        className="hidden"
+        onClick={(e) => (e.currentTarget.value = '')}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50"
       />
 
       {error && (

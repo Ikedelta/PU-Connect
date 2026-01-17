@@ -5,6 +5,7 @@ import { useProducts, useUpdateProduct, useDeleteProduct } from '../../hooks/use
 import { getOptimizedImageUrl } from '../../lib/imageOptimization';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import ImageUploader from '../../components/base/ImageUploader';
 
 export default function SellerDashboard() {
   const { user, profile } = useAuth();
@@ -17,21 +18,164 @@ export default function SellerDashboard() {
     }
   }, [profile, navigate]);
 
-  // Notifications
+  // Immediate protection: If application status changes (e.g. Admin re-evaluates), kick back to status page
+  useEffect(() => {
+    if (!user || profile?.role === 'admin' || profile?.role === 'super_admin') return;
+
+    const isBypass = localStorage.getItem('sys_admin_bypass') === 'true';
+    if (isBypass) return;
+
+    const checkAppStatus = async () => {
+      const { data, error } = await supabase
+        .from('seller_applications')
+        .select('status')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!error && data && data.status !== 'approved') {
+        navigate('/seller/status');
+      } else if (!error && !data) {
+        // If no application record exists at all, they shouldn't be here
+        navigate('/seller/status');
+      }
+    };
+
+    checkAppStatus();
+
+    const statusSubscription = supabase
+      .channel(`seller-status-guard-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen for ALL changes including DELETE
+          schema: 'public',
+          table: 'seller_applications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload: any) => {
+          if (payload.eventType === 'DELETE') {
+            navigate('/seller/status');
+          } else if (payload.new.status !== 'approved') {
+            navigate('/seller/status');
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(statusSubscription);
+    };
+  }, [user, profile, navigate]);
+
   const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'info', message: string } | null>(null);
 
   const [sellerProfile, setSellerProfile] = useState<any>(null);
+  const [updatingLogo, setUpdatingLogo] = useState(false);
 
-  useEffect(() => {
+  // Edit Profile States
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [settingsFormData, setSettingsFormData] = useState({
+    businessName: '',
+    businessCategory: '',
+    businessDescription: ''
+  });
+
+  const categories = [
+    'Electronics', 'Fashion & Clothing', 'Books & Stationery', 'Food & Beverages',
+    'Accommodation', 'Services', 'Sports & Fitness', 'Beauty & Personal Care',
+    'Home & Living', 'Other'
+  ];
+
+  const fetchSellerProfile = async () => {
     if (user?.id) {
-      supabase
+      const { data } = await supabase
         .from('seller_profiles')
         .select('*')
         .eq('user_id', user.id)
-        .maybeSingle()
-        .then(({ data }) => setSellerProfile(data));
+        .maybeSingle();
+      setSellerProfile(data);
+      if (data) {
+        setSettingsFormData({
+          businessName: data.business_name || '',
+          businessCategory: data.business_category || '',
+          businessDescription: data.business_description || ''
+        });
+        // Start with existing logo URL as preview
+        setLogoPreview(data.business_logo || null);
+      }
     }
+  };
+
+  useEffect(() => {
+    fetchSellerProfile();
   }, [user]);
+
+  const handleProfileUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setIsSavingSettings(true);
+
+    try {
+      let finalLogoUrl = sellerProfile?.business_logo;
+
+      // 1. Upload new logo if selected
+      if (logoFile) {
+        const { uploadImage, compressImage } = await import('../../lib/uploadImage');
+        const compressed = await compressImage(logoFile);
+        const { url } = await uploadImage(compressed, 'profiles', user.id);
+        finalLogoUrl = url;
+      }
+
+      // 2. Update seller_profiles
+      const { error: profileError } = await supabase
+        .from('seller_profiles')
+        .update({
+          business_name: settingsFormData.businessName,
+          business_category: settingsFormData.businessCategory,
+          business_description: settingsFormData.businessDescription,
+          business_logo: finalLogoUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
+
+      if (profileError) throw profileError;
+
+      // 3. Sync to seller_applications so admins see the update
+      await supabase
+        .from('seller_applications')
+        .update({
+          business_name: settingsFormData.businessName,
+          business_category: settingsFormData.businessCategory,
+          business_description: settingsFormData.businessDescription,
+          business_logo: finalLogoUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
+
+      setNotification({ type: 'success', message: 'Business settings updated successfully!' });
+      await fetchSellerProfile();
+      setShowSettingsModal(false);
+      setLogoPreview(null);
+      setLogoFile(null);
+    } catch (err: any) {
+      console.error('Error updating settings:', err);
+      setNotification({ type: 'error', message: 'Update failed: ' + err.message });
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const handleLogoSelect = (file: File) => {
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setLogoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     // Subscribe to Global Alerts
@@ -74,7 +218,7 @@ export default function SellerDashboard() {
   };
 
   if (!user || (!['seller', 'admin', 'super_admin', 'publisher_seller'].includes(profile?.role || ''))) {
-    navigate('/marketplace');
+    navigate('/seller/status');
     return null;
   }
 
@@ -154,19 +298,39 @@ export default function SellerDashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 pt-32 md:pt-40 box-border">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-10 mb-16 md:mb-24 text-center md:text-left bg-slate-50 dark:bg-slate-800/50 p-8 md:p-12 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm">
           <div className="flex flex-col md:flex-row items-center gap-8 flex-1">
-            {sellerProfile?.business_logo ? (
-              <div className="w-32 h-32 rounded-3xl overflow-hidden shadow-2xl border-4 border-white dark:border-slate-700 bg-white">
-                <img
-                  src={getOptimizedImageUrl(sellerProfile.business_logo, 200, 85)}
-                  alt={sellerProfile.business_name}
-                  className="w-full h-full object-cover"
-                />
+            <div className="relative group/logo">
+              <div className={`w-32 h-32 rounded-3xl overflow-hidden shadow-2xl border-4 border-white dark:border-slate-700 bg-white transition-all ${updatingLogo ? 'opacity-50' : ''}`}>
+                {sellerProfile?.business_logo ? (
+                  <img
+                    src={getOptimizedImageUrl(sellerProfile.business_logo, 200, 85)}
+                    alt={sellerProfile.business_name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-blue-600 flex items-center justify-center text-white text-4xl">
+                    <i className="ri-store-3-line"></i>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="w-32 h-32 rounded-3xl bg-blue-600 flex items-center justify-center text-white text-4xl shadow-2xl">
-                <i className="ri-store-3-line"></i>
-              </div>
-            )}
+
+              {/* Modal Trigger Overlay */}
+              <button
+                onClick={() => setShowSettingsModal(true)}
+                className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/logo:opacity-100 transition-opacity z-10"
+              >
+                <div className="bg-black/60 backdrop-blur-sm inset-0 absolute rounded-3xl"></div>
+                <div className="relative z-30 text-white text-center">
+                  <i className="ri-edit-circle-line text-2xl mb-1 block"></i>
+                  <span className="text-[8px] font-black uppercase tracking-widest leading-none">Edit Profile</span>
+                </div>
+              </button>
+
+              {updatingLogo && (
+                <div className="absolute inset-0 flex items-center justify-center z-40">
+                  <i className="ri-loader-4-line animate-spin text-3xl text-blue-600"></i>
+                </div>
+              )}
+            </div>
             <div>
               <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-slate-900 dark:bg-blue-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-full mb-6">
                 <i className="ri-shield-star-line text-blue-400"></i>
@@ -183,13 +347,13 @@ export default function SellerDashboard() {
           </div>
 
           <div className="flex flex-col gap-3">
-            <Link
-              to="/profile"
+            <button
+              onClick={() => setShowSettingsModal(true)}
               className="px-10 py-4 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs uppercase tracking-widest rounded-2xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2 active:scale-95"
             >
-              <i className="ri-user-smile-line text-lg text-blue-500"></i>
-              <span>My Profile</span>
-            </Link>
+              <i className="ri-settings-4-line text-lg text-blue-500"></i>
+              <span>Edit Business Information</span>
+            </button>
             <Link
               to="/seller/add-product"
               className="group px-10 py-5 bg-blue-600 text-white font-bold text-xs uppercase tracking-widest rounded-2xl hover:bg-blue-700 transition-all flex items-center justify-center gap-4 active:scale-95 shadow-lg shadow-blue-500/20"
@@ -208,6 +372,122 @@ export default function SellerDashboard() {
             )}
           </div>
         </div>
+
+        {/* Business Settings Modal */}
+        {showSettingsModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 duration-300">
+              <div className="px-10 py-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Business Settings</h2>
+                  <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1">Configure your merchant identity</p>
+                </div>
+                <button
+                  onClick={() => setShowSettingsModal(false)}
+                  className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center"
+                >
+                  <i className="ri-close-line text-2xl"></i>
+                </button>
+              </div>
+
+              <form onSubmit={handleProfileUpdate} className="p-10 space-y-8 overflow-y-auto max-h-[70vh]">
+                <div className="flex flex-col sm:flex-row items-center gap-8">
+                  <div className="relative group/edit-logo">
+                    <div className="w-32 h-32 rounded-3xl bg-slate-100 dark:bg-slate-800 overflow-hidden border-4 border-white dark:border-slate-700 shadow-xl">
+                      <img
+                        src={logoPreview || getOptimizedImageUrl(sellerProfile?.business_logo, 200, 85)}
+                        className="w-full h-full object-cover"
+                        alt="Preview"
+                        onError={(e) => {
+                          e.currentTarget.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(settingsFormData.businessName || 'B');
+                        }}
+                      />
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/edit-logo:opacity-100 transition-opacity">
+                      <div className="bg-black/40 inset-0 absolute rounded-2xl"></div>
+                      <ImageUploader
+                        folder="profiles"
+                        autoUpload={false}
+                        onFileSelected={handleLogoSelect}
+                        hideInternalUI={true}
+                        size="custom"
+                        noBorder
+                        className="absolute inset-0 z-20 cursor-pointer"
+                      />
+                      <i className="ri-camera-lens-line text-white text-3xl relative z-10 pointer-events-none"></i>
+                    </div>
+                  </div>
+                  <div className="flex-1 text-center sm:text-left">
+                    <p className="text-sm font-black text-slate-900 dark:text-white mb-2">Merchant Branding</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
+                      Upload your business logo. Recommended size is 500x500 pixels.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Business Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={settingsFormData.businessName}
+                      onChange={(e) => setSettingsFormData({ ...settingsFormData, businessName: e.target.value })}
+                      className="w-full h-14 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-blue-500/30 rounded-2xl px-6 font-bold outline-none text-slate-900 dark:text-white transition-all"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Industry Sector</label>
+                    <select
+                      required
+                      value={settingsFormData.businessCategory}
+                      onChange={(e) => setSettingsFormData({ ...settingsFormData, businessCategory: e.target.value })}
+                      className="w-full h-14 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-blue-500/30 rounded-2xl px-6 font-bold outline-none text-slate-900 dark:text-white transition-all appearance-none"
+                    >
+                      {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Mission Statement (Description)</label>
+                    <textarea
+                      rows={4}
+                      value={settingsFormData.businessDescription}
+                      onChange={(e) => setSettingsFormData({ ...settingsFormData, businessDescription: e.target.value })}
+                      className="w-full p-6 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-blue-500/30 rounded-2xl font-bold outline-none text-slate-900 dark:text-white transition-all resize-none"
+                      placeholder="Describe your business..."
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowSettingsModal(false)}
+                    className="flex-1 h-16 bg-slate-50 dark:bg-slate-800 text-slate-500 font-bold uppercase tracking-widest text-[10px] rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingSettings}
+                    className="flex-[2] h-16 bg-blue-600 text-white font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl hover:bg-blue-700 shadow-xl shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+                  >
+                    {isSavingSettings ? (
+                      <i className="ri-loader-4-line animate-spin text-xl"></i>
+                    ) : (
+                      <>
+                        <i className="ri-save-3-line text-lg"></i>
+                        Save Profile Changes
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* System Stats Section */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-24">

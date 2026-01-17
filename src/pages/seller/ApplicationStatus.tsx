@@ -14,7 +14,7 @@ type Application = {
   contact_email: string;
   created_at: string;
   updated_at: string;
-  rejection_reason?: string;
+  admin_notes?: string;
 };
 
 export default function ApplicationStatus() {
@@ -31,31 +31,55 @@ export default function ApplicationStatus() {
 
     fetchApplication();
 
-    // Subscribe to real-time updates
+    // Use the effective ID for filtering and channel naming
+    const effectiveUserId = user.id === 'sys_admin_001' ? '00000000-0000-0000-0000-000000000000' : user.id;
+
+    // Subscribe to real-time updates with a unique channel name
     const subscription = supabase
-      .channel('application-updates')
+      .channel(`app-status-${effectiveUserId}`)
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*',
           schema: 'public',
           table: 'seller_applications',
-          filter: `user_id=eq.${user.id}`,
+          filter: `user_id=eq.${effectiveUserId}`,
         },
         (payload) => {
-          setApplication(payload.new as Application);
-          if (payload.new.status === 'approved') {
+          if (payload.eventType === 'DELETE') {
+            navigate('/seller/apply');
+            return;
+          }
+          const updatedApp = payload.new as Application;
+          setApplication(updatedApp);
+          if (updatedApp.status === 'approved') {
             refreshProfile();
           }
         }
       )
       .subscribe();
 
+    // Secondary Polling Fallback (Every 10 seconds)
+    const interval = setInterval(fetchApplication, 10000);
+
     return () => {
-      subscription.unsubscribe();
+      supabase.removeChannel(subscription);
+      clearInterval(interval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate]);
+
+  // Automatic redirect when approved AND role is updated
+  useEffect(() => {
+    const isSeller = profile?.role === 'seller' || profile?.role === 'publisher_seller' || profile?.role === 'admin' || profile?.role === 'super_admin';
+
+    if (application?.status === 'approved' && isSeller) {
+      const timer = setTimeout(() => {
+        navigate('/seller/dashboard');
+      }, 1500); // Small delay to let the user see the "Approved" message
+      return () => clearTimeout(timer);
+    }
+  }, [application?.status, profile?.role, navigate]);
 
   const fetchApplication = async () => {
     if (!user) return;
@@ -331,13 +355,13 @@ export default function ApplicationStatus() {
               </div>
             </div>
 
-            {application.rejection_reason && (
+            {application.admin_notes && (
               <div className="mt-8 p-10 bg-rose-50/50 dark:bg-rose-500/5 border-2 border-rose-100 dark:border-rose-500/20 rounded-[2.5rem] relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-bl-full translate-x-5 -translate-y-5"></div>
                 <p className="text-[10px] font-black text-rose-400 uppercase tracking-[0.2em] mb-4">Official Feedback</p>
                 <div className="flex gap-4">
                   <i className="ri-double-quotes-l text-4xl text-rose-200 dark:text-rose-500/20"></i>
-                  <p className="text-rose-900 dark:text-rose-300 font-bold leading-relaxed italic text-lg">{application.rejection_reason}</p>
+                  <p className="text-rose-900 dark:text-rose-300 font-bold leading-relaxed italic text-lg">{application.admin_notes}</p>
                 </div>
               </div>
             )}

@@ -430,13 +430,22 @@ export default function AddProduct() {
                   ))}
 
                   {formData.images.length < 8 && (
-                    <div className="aspect-square bg-white/5 border-2 border-dashed border-white/10 rounded-3xl flex items-center justify-center hover:bg-white/10 transition-all">
+                    <div className="aspect-square bg-white/5 border-2 border-dashed border-white/10 rounded-3xl relative group hover:bg-white/10 transition-all cursor-pointer">
+                      {/* Visual UI Layer */}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-slate-500 group-hover:text-blue-400 transition-colors pointer-events-none z-0">
+                        <i className="ri-image-add-line text-3xl group-hover:scale-110 transition-transform duration-300"></i>
+                        <span className="text-[10px] font-black uppercase tracking-widest">Add Photo</span>
+                      </div>
+
+                      {/* Functional Click Layer */}
                       <ImageUploader
                         folder="products"
                         autoUpload={false}
                         onFileSelected={handleFileSelect}
                         hideInternalUI={true}
-                        className="w-full h-full flex flex-col items-center justify-center gap-3 text-slate-500 hover:text-white transition-colors cursor-pointer"
+                        size="custom"
+                        noBorder
+                        className="absolute inset-0 z-10 w-full h-full"
                       />
                     </div>
                   )}

@@ -251,6 +251,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setProfile(profileData);
             if (profileData) {
               localStorage.setItem('pentvars_profile', JSON.stringify(profileData));
+              setupProfileSubscription(session.user.id);
             }
             updateOnlineStatus(session.user.id, true);
           }

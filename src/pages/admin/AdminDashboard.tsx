@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase, type SellerApplication, type Profile, type Product } from '../../lib/supabase';
 import Navbar from '../../components/feature/Navbar';
+import SellerApplications from './SellerApplications';
 import { getOptimizedImageUrl } from '../../lib/imageOptimization';
 import {
   BarChart,
@@ -811,6 +812,7 @@ export default function AdminDashboard() {
                     {[
                       { label: 'Users', path: '/admin/users', icon: 'ri-user-settings-line', color: 'blue' },
                       { label: 'Applications', path: '/admin/seller-applications', icon: 'ri-file-list-3-line', color: 'amber', badge: pendingApps.length },
+                      { label: 'Registered Sellers', path: '/admin/sellers', icon: 'ri-store-2-line', color: 'green' },
                       { label: 'News', path: '/admin/news', icon: 'ri-newspaper-line', color: 'emerald' },
                       { label: 'Newsletter', path: '/admin/newsletter', icon: 'ri-mail-send-line', color: 'cyan' },
                       { label: 'CMS', path: '/admin/content', icon: 'ri-pages-line', color: 'indigo' },
@@ -1008,88 +1010,7 @@ export default function AdminDashboard() {
           )}
 
           {activeTab === 'applications' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-black text-white">Seller Applications ({applications.length})</h3>
-                <div className="flex gap-2">
-                  <span className="px-3 py-1 bg-amber-500/10 text-amber-400 rounded-lg text-xs font-bold">Pending: {stats.pending}</span>
-                  <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-lg text-xs font-bold">Approved: {stats.approved}</span>
-
-                  <span className="px-3 py-1 bg-rose-500/10 text-rose-400 rounded-lg text-xs font-bold">Rejected: {stats.rejected}</span>
-                  <span className="px-3 py-1 bg-slate-500/10 text-slate-400 rounded-lg text-xs font-bold">Cancelled: {stats.cancelled}</span>
-                </div>
-              </div>
-
-              {applications.length === 0 ? (
-                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-20 text-center">
-                  <i className="ri-file-list-3-line text-6xl text-slate-700 mb-4 block"></i>
-                  <h3 className="text-2xl font-black text-slate-400">No Applications Yet</h3>
-                  <p className="text-slate-500 mt-2">Seller applications will appear here</p>
-                </div>
-              ) : (
-                applications.map((app) => (
-                  <div key={app.id} className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 flex flex-col xl:flex-row items-center gap-8 hover:border-slate-600 transition-all">
-                    <div className="w-20 h-20 rounded-2xl bg-slate-700/50 overflow-hidden flex-shrink-0 shadow-lg border border-slate-600/50">
-                      {app.business_logo ? (
-                        <img src={getOptimizedImageUrl(app.business_logo, 100, 100)} alt={app.business_name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-600 to-blue-700 text-white text-3xl font-black">
-                          {app.profiles?.full_name?.charAt(0) || app.business_name?.charAt(0) || 'U'}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 text-center xl:text-left min-w-0">
-                      <div className="flex items-center gap-3 justify-center xl:justify-start mb-2">
-                        <h4 className="text-2xl font-black text-white truncate">{app.business_name}</h4>
-                        <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase ${app.status === 'pending' ? 'bg-amber-500/20 text-amber-400' :
-                          app.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' :
-                            app.status === 'cancelled' ? 'bg-slate-500/20 text-slate-400' :
-                              'bg-rose-500/20 text-rose-400'
-                          }`}>
-                          {app.status}
-                        </span>
-                      </div>
-                      <p className="text-slate-400 font-bold uppercase text-[10px] tracking-wider mb-2">{app.business_category || 'General'} • {new Date(app.created_at).toLocaleDateString()}</p>
-                      <p className="text-slate-400 text-sm line-clamp-2 mb-4 max-w-2xl mx-auto xl:mx-0">{app.business_description}</p>
-                      <div className="flex flex-wrap justify-center xl:justify-start gap-4">
-                        <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><i className="ri-user-line text-blue-400"></i>{app.profiles?.full_name}</div>
-                        <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><i className="ri-mail-line text-blue-400"></i>{app.contact_email}</div>
-                        <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><i className="ri-phone-line text-blue-400"></i>{app.contact_phone}</div>
-                      </div>
-                    </div>
-                    {app.status !== 'cancelled' && (
-                      <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
-                        <button
-                          onClick={() => handleApprove(app)}
-                          disabled={!!processing}
-                          className="flex-1 xl:px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
-                        >
-                          {processing === app.id ? <i className="ri-loader-4-line animate-spin"></i> : 'Approve'}
-                        </button>
-                        <button
-                          onClick={async () => {
-                            if (confirm('Hide all existing products for this user?')) {
-                              await adminHideAllProducts(app.user_id);
-                              alert('Products hidden');
-                            }
-                          }}
-                          className="flex-1 xl:px-6 py-4 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-2xl font-black text-xs uppercase tracking-wider transition-all"
-                        >
-                          Hide Products
-                        </button>
-                        <button
-                          onClick={() => handleReject(app.id)}
-                          disabled={!!processing}
-                          className="flex-1 xl:px-8 py-4 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-2xl font-black text-xs uppercase tracking-wider transition-all disabled:opacity-50"
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
+            <SellerApplications isEmbedded={true} />
           )}
 
           {activeTab === 'analytics' && (

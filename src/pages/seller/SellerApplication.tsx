@@ -83,26 +83,26 @@ export default function SellerApplication() {
         finalLogoUrl = url;
       }
 
-      // 2. Check if user already has an application (ignore cancelled ones)
+      // 2. Check if user already has an application that blocks a new one
       const { data: existingApp } = await supabase
         .from('seller_applications')
         .select('id, status')
         .eq('user_id', effectiveUserId)
-        .neq('status', 'cancelled') // Ignore cancelled apps so user can re-apply
         .maybeSingle();
 
       if (existingApp) {
         if (existingApp.status === 'approved') {
           setNotification({ type: 'warning', message: 'You already have an active Seller Account.' });
           setTimeout(() => navigate('/seller/dashboard'), 2000);
+          setLoading(false);
+          return;
         } else if (existingApp.status === 'pending') {
-          setNotification({ type: 'info', message: 'You already have a pending application.' });
+          setNotification({ type: 'info', message: 'You already have a pending application status.' });
           setTimeout(() => navigate('/seller/status'), 2000);
-        } else {
-          setNotification({ type: 'warning', message: 'You have a previous application. Please contact support.' });
+          setLoading(false);
+          return;
         }
-        setLoading(false);
-        return;
+        // If it's rejected or cancelled, we fall through and allow the UPDATE below
       }
 
       // 3. Submit new application

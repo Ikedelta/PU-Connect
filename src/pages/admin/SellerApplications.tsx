@@ -15,7 +15,7 @@ type Application = {
   contact_email: string;
   business_logo?: string;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';
-  rejection_reason?: string;
+  admin_notes?: string;
   created_at: string;
   updated_at: string;
   profiles?: {
@@ -25,7 +25,11 @@ type Application = {
   };
 };
 
-export default function SellerApplications() {
+interface SellerApplicationsProps {
+  isEmbedded?: boolean;
+}
+
+export default function SellerApplications({ isEmbedded = false }: SellerApplicationsProps) {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const [applications, setApplications] = useState<Application[]>([]);
@@ -35,6 +39,14 @@ export default function SellerApplications() {
   const [showModal, setShowModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'info', message: string } | null>(null);
+
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   useEffect(() => {
     if (profile?.role !== 'admin' && profile?.role !== 'super_admin') {
@@ -101,7 +113,42 @@ export default function SellerApplications() {
       const isDummy = profile?.id === '00000000-0000-0000-0000-000000000000';
       const reviewedBy = (isValidUUID && !isDummy) ? profile?.id : null;
 
-      // Update application status
+      // 1. Update user role to seller FIRST
+      const secret = localStorage.getItem('sys_admin_secret') || 'your_secret_admin_key_here';
+      const { error: profileError } = await supabase.rpc('admin_update_user_role', {
+        target_user_id: application.user_id,
+        new_role: 'seller',
+        secret_key: secret
+      });
+
+      if (profileError) {
+        console.warn('RPC role update failed, falling back to direct update:', profileError);
+        const { error: directError } = await supabase
+          .from('profiles')
+          .update({ role: 'seller' })
+          .eq('id', application.user_id);
+        if (directError) throw directError;
+      }
+
+      // 2. Create/Update seller profile
+      const { error: sellerError } = await supabase
+        .from('seller_profiles')
+        .upsert({
+          user_id: application.user_id,
+          business_name: application.business_name,
+          business_category: application.business_category,
+          business_description: application.business_description,
+          contact_phone: application.contact_phone,
+          contact_email: application.contact_email,
+          business_logo: application.business_logo,
+          is_active: true,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+
+      if (sellerError) throw sellerError;
+
+      // 3. Update application status LAST
+      // This triggers the real-time redirect on the status page
       const { error: appError } = await supabase
         .from('seller_applications')
         .update({
@@ -113,31 +160,6 @@ export default function SellerApplications() {
         .eq('id', application.id);
 
       if (appError) throw appError;
-
-      // Update user role to seller
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ role: 'seller' })
-        .eq('id', application.user_id);
-
-      if (profileError) throw profileError;
-
-      // Create seller profile
-      const { error: sellerError } = await supabase
-        .from('seller_profiles')
-        .insert({
-          user_id: application.user_id,
-          business_name: application.business_name,
-          business_category: application.business_category,
-          business_description: application.business_description,
-          contact_phone: application.contact_phone,
-          contact_email: application.contact_email,
-          business_logo: application.business_logo,
-          subscription_status: 'inactive',
-          is_active: true
-        });
-
-      if (sellerError && sellerError.code !== '23505') throw sellerError;
 
       // Send SMS Notification
       if (application.contact_phone) {
@@ -155,11 +177,12 @@ export default function SellerApplications() {
         }
       }
 
-      alert('Application approved successfully! SMS notification sent.');
+      setNotification({ type: 'success', message: 'Application approved successfully!' });
+      // The real-time subscription will also catch this, but we fetch to be safe
       fetchApplications();
     } catch (error: any) {
       console.error('Error approving application:', error);
-      alert('Failed to approve application: ' + error.message);
+      setNotification({ type: 'error', message: 'Failed to approve: ' + error.message });
     } finally {
       setProcessing(false);
     }
@@ -202,10 +225,10 @@ export default function SellerApplications() {
         }
       }
 
-      alert('Application reset to Pending');
+      setNotification({ type: 'success', message: 'Application reset to Pending' });
       fetchApplications();
     } catch (err: any) {
-      alert('Error resetting application: ' + err.message);
+      setNotification({ type: 'error', message: 'Error resetting: ' + err.message });
     } finally {
       setProcessing(false);
     }
@@ -230,7 +253,7 @@ export default function SellerApplications() {
         .from('seller_applications')
         .update({
           status: 'rejected',
-          rejection_reason: rejectionReason,
+          admin_notes: rejectionReason,
           updated_at: new Date().toISOString()
         })
         .eq('id', selectedApp.id);
@@ -248,13 +271,13 @@ export default function SellerApplications() {
         await supabase.from('seller_profiles').update({ is_active: false }).eq('user_id', selectedApp.user_id);
       }
 
-      alert('Application rejected');
+      setNotification({ type: 'success', message: 'Application rejected successfully' });
       setShowModal(false);
       setSelectedApp(null);
       fetchApplications();
     } catch (error: any) {
       console.error('Error rejecting application:', error);
-      alert('Failed to reject application: ' + error.message);
+      setNotification({ type: 'error', message: 'Failed to reject: ' + error.message });
     } finally {
       setProcessing(false);
     }
@@ -274,8 +297,8 @@ export default function SellerApplications() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 transition-colors duration-300">
-        <Navbar />
+      <div className={isEmbedded ? "py-20" : "min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 transition-colors duration-300"}>
+        {!isEmbedded && <Navbar />}
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
             <div className="w-16 h-16 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
@@ -287,13 +310,14 @@ export default function SellerApplications() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 transition-colors duration-300">
-      <Navbar />
+    <div className={isEmbedded ? "animate-in fade-in duration-500" : "min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 transition-colors duration-300"}>
+      {!isEmbedded && <Navbar />}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-12">
+      <div className={isEmbedded ? "w-full" : "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-12"}>
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
+
             <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
               <i className="ri-file-list-3-line text-2xl text-white"></i>
             </div>
@@ -302,7 +326,26 @@ export default function SellerApplications() {
               <p className="text-gray-600 dark:text-gray-400">Review and manage seller applications</p>
             </div>
           </div>
+          <button
+            onClick={() => fetchApplications()}
+            disabled={loading}
+            className="flex items-center gap-2 px-6 py-2.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-bold text-xs uppercase tracking-widest rounded-xl border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+          >
+            <i className={`ri-refresh-line ${loading ? 'animate-spin' : ''}`}></i>
+            Sync Data
+          </button>
         </div>
+
+        {/* Notification Toast */}
+        {notification && (
+          <div className={`fixed top-24 right-4 md:right-8 z-50 animate-in fade-in slide-in-from-right-8 duration-300 px-6 py-4 rounded-2xl shadow-2xl border flex items-center gap-3 backdrop-blur-md ${notification.type === 'success' ? 'bg-emerald-500/90 border-emerald-400/50 text-white' :
+            notification.type === 'error' ? 'bg-rose-500/90 border-rose-400/50 text-white' :
+              'bg-blue-500/90 border-blue-400/50 text-white'
+            }`}>
+            <i className={`${notification.type === 'success' ? 'ri-checkbox-circle-fill' : notification.type === 'error' ? 'ri-error-warning-fill' : 'ri-notification-3-fill'} text-xl`}></i>
+            <span className="font-bold text-sm tracking-wide">{notification.message}</span>
+          </div>
+        )}
 
         {/* Stats Cards */}
         {/* Stats Cards */}
@@ -403,7 +446,7 @@ export default function SellerApplications() {
                     <div className="flex items-start gap-4 mb-4">
                       <div className="w-14 h-14 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md overflow-hidden">
                         {app.business_logo ? (
-                          <img src={app.business_logo} alt="" className="w-full h-full object-cover" />
+                          <img src={`${app.business_logo}?t=${new Date(app.updated_at).getTime()}`} alt="" className="w-full h-full object-cover" />
                         ) : (
                           <i className="ri-store-3-line text-2xl text-white"></i>
                         )}
@@ -460,10 +503,10 @@ export default function SellerApplications() {
                       )}
                     </div>
 
-                    {app.rejection_reason && (
+                    {app.admin_notes && (
                       <div className="mt-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-lg p-4">
                         <p className="text-sm font-semibold text-red-900 dark:text-red-300 mb-1">Rejection Reason:</p>
-                        <p className="text-sm text-red-800 dark:text-red-200/80">{app.rejection_reason}</p>
+                        <p className="text-sm text-red-800 dark:text-red-200/80">{app.admin_notes}</p>
                       </div>
                     )}
                   </div>

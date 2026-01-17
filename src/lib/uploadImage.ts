@@ -49,7 +49,7 @@ export async function uploadImage(
 
     // Generate unique filename
     const fileExt = file.name.split('.').pop();
-    const fileName = `${userId}/${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const fileName = `${userIdToUse}/${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
     // Upload to Supabase Storage with optimized settings
     const BUCKET_NAME = 'media';
