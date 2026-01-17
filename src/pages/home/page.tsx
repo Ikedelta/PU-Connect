@@ -572,7 +572,7 @@ export default function Home() {
           </div>
 
           <div className="pt-12 border-t border-gray-100 dark:border-gray-800 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
-            <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wide">&copy; 2024 PU Connect. All professional rights reserved.</p>
+            <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wide">&copy; 2026 PU Connect. All professional rights reserved.</p>
             <div className="flex gap-6">
               <a href="#" className="text-gray-400 hover:text-gray-900 dark:hover:text-white text-[10px] font-bold uppercase tracking-wide transition-colors">Privacy Policy</a>
               <a href="#" className="text-gray-400 hover:text-gray-900 dark:hover:text-white text-[10px] font-bold uppercase tracking-wide transition-colors">Service Terms</a>
