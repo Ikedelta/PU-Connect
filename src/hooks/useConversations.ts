@@ -22,6 +22,7 @@ export type Conversation = {
   last_message: string;
   last_message_at: string;
   created_at: string;
+  updated_at?: string;
   other_user?: {
     id: string;
     full_name: string;
@@ -40,7 +41,7 @@ export type Conversation = {
 export function useConversations() {
   const { user } = useAuth();
 
-  const { data: conversations = [], isLoading } = useQuery({
+  const { data: conversations = [], isLoading, refetch } = useQuery({
     queryKey: ['conversations', user?.id],
     queryFn: async () => {
       if (!user) return [];
@@ -115,6 +116,7 @@ export function useConversations() {
     conversations,
     isLoading,
     totalUnreadCount,
+    refetch,
   };
 }
 

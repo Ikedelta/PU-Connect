@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { useCreateConversation } from '../../hooks/useConversations';
+
 import Navbar from '../../components/feature/Navbar';
 
 type User = {
@@ -21,6 +23,22 @@ type User = {
 
 export default function UserManagement() {
   const navigate = useNavigate();
+  const { mutate: createConversation } = useCreateConversation();
+
+  const handleMessageUser = (userId: string) => {
+    createConversation(
+      { otherUserId: userId },
+      {
+        onSuccess: (conversationId) => {
+          navigate(`/messages?conversationId=${conversationId}`);
+        },
+        onError: () => {
+          alert('Failed to start conversation');
+        }
+      }
+    );
+  };
+
   const { profile, loading: authLoading } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -522,6 +540,7 @@ export default function UserManagement() {
                           <>
                             <div className="fixed inset-0 z-10" onClick={() => setOpenDropdown(null)}></div>
                             <div className="absolute right-8 mt-2 w-48 bg-white dark:bg-slate-800 shadow-xl rounded-xl z-20 border border-slate-100 dark:border-slate-700 py-1 text-left">
+                              <button onClick={() => handleMessageUser(user.id)} className="block w-full text-left px-4 py-2 text-xs font-bold text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20">Message User</button>
                               <button onClick={() => handleEditRole(user)} className="block w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700">View Details / Edit</button>
                               <button onClick={() => handleDeleteUser(user.id)} className="block w-full text-left px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20">Delete User</button>
                             </div>
@@ -673,6 +692,14 @@ export default function UserManagement() {
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <button
+                    onClick={() => handleMessageUser(selectedUser.id)}
+                    className="flex items-center justify-center gap-3 p-5 rounded-2xl border-2 border-blue-100 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/10 dark:border-blue-900/20 transition-all font-bold text-xs uppercase tracking-widest active:scale-95"
+                  >
+                    <i className="ri-chat-3-line text-lg"></i>
+                    Send Message
+                  </button>
+
                   <button
                     onClick={() => handleToggleActive(selectedUser.id, selectedUser.is_active)}
                     className={`flex items-center justify-center gap-3 p-5 rounded-2xl border-2 transition-all font-bold text-xs uppercase tracking-widest active:scale-95 ${selectedUser.is_active

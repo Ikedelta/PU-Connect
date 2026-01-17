@@ -360,6 +360,12 @@ export default function AdminDashboard() {
     const businessCategory = application.business_category;
 
     setProcessing(applicationId);
+
+    // OPTIMISTIC UPDATE: Update status immediately so UI reflects change
+    setApplications(prev => prev.map(app =>
+      app.id === applicationId ? { ...app, status: 'approved' } : app
+    ));
+
     try {
       // 1. Approve Application
       const { error: appError } = await adminUpdateApplication(applicationId, 'approved');
@@ -404,7 +410,8 @@ export default function AdminDashboard() {
         }
       }
 
-      fetchData(true);
+
+      // fetchData(true); // Rely on optimistic update to avoid race conditions
       setNotification({ type: 'success', message: 'Application approved and user promoted to Seller' });
     } catch (err: any) {
       console.error('Approval error:', err);
@@ -417,12 +424,18 @@ export default function AdminDashboard() {
   const handleReject = async (applicationId: string) => {
     if (!confirm('Reject this application?')) return;
     setProcessing(applicationId);
+
+    // Optimistic Update
+    setApplications(prev => prev.map(app =>
+      app.id === applicationId ? { ...app, status: 'rejected' } : app
+    ));
+
     try {
       const { error } = await adminUpdateApplication(applicationId, 'rejected');
 
       if (error) throw error;
 
-      fetchData(true);
+      // fetchData(true);
       setNotification({ type: 'info', message: 'Application rejected' });
     } catch (err: any) {
       setNotification({ type: 'error', message: err.message });

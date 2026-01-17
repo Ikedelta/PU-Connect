@@ -47,7 +47,7 @@ export default function WebsiteSettings() {
     facebook_url: '',
     twitter_url: '',
     instagram_url: '',
-    footer_text: '© 2024 Campus Marketplace. All rights reserved.',
+    footer_text: '© 2026 Campus Marketplace. All rights reserved.',
     system_default_password: 'Password123!',
     enable_sms: true,
   });
