@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/feature/Navbar';
 import { useAuth } from '../../contexts/AuthContext';
@@ -8,10 +8,23 @@ import { useInternships } from '../../hooks/useInternships';
 export default function Internships() {
     const { user } = useAuth();
     const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [filterType, setFilterType] = useState('All');
 
-    // Fetch data using the hook
-    const { data: internships = [], isLoading } = useInternships({ search: searchQuery });
+    // Debounce search query to prevent excessive API calls
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchQuery);
+        }, 800);
+
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // Fetch data using the hook (depends on debounced search)
+    const { data: internships = [], isLoading: isFetching } = useInternships({ search: debouncedSearch });
+
+    // Show loading state if raw search differs from debounced (user is typing) or if fetching
+    const isLoading = isFetching || searchQuery !== debouncedSearch;
 
     const filteredInternships = useMemo(() => {
         return internships.filter(internship => {

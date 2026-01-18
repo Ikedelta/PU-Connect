@@ -84,19 +84,24 @@ export function useInternships(filters?: { search?: string; type?: string }) {
 
             // 1. Fetch from Supabase
             try {
-                const { data, error } = await supabase
+                let dbQuery = supabase
                     .from('internships')
                     .select('*')
-                    .eq('is_active', true)
-                    .order('posted_at', { ascending: false });
+                    .eq('is_active', true);
+
+                // Apply search filter if present
+                if (filters?.search) {
+                    const searchTerm = filters.search.trim();
+                    // Using .or() to search across title and company
+                    dbQuery = dbQuery.or(`title.ilike.%${searchTerm}%,company.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+                }
+
+                const { data, error } = await dbQuery.order('posted_at', { ascending: false });
 
                 if (error) {
                     console.warn('Fetching Supabase internships failed:', error);
-                    // results.push(...MOCK_DATA); // DISABLE MOCK FALLBACK
                 } else if (data && data.length > 0) {
                     results.push(...data);
-                } else {
-                    // DB is empty, do nothing.
                 }
             } catch (err) {
                 console.error('Supabase error:', err);

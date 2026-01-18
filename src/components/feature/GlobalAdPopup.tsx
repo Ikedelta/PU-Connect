@@ -28,7 +28,7 @@ export default function GlobalAdPopup() {
                 .limit(1)
                 .maybeSingle();
 
-            if (data) {
+            if (data && data.image_url) {
                 setAd(data);
                 // Delay slightly for effect
                 setTimeout(() => setIsVisible(true), 2000);

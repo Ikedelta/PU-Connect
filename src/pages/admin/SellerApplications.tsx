@@ -105,63 +105,19 @@ export default function SellerApplications({ isEmbedded = false }: SellerApplica
 
     setProcessing(true);
     try {
-      // Check if admin ID is a valid UUID (system admin has text ID)
-      // If we are the system admin (or any non-UUID), we pass null to reviewed_by
-      // because the column is UUID type.
-      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(profile?.id || '');
-      // Ensure we don't pass the dummy UUID which might not exist in profiles table
-      const isDummy = profile?.id === '00000000-0000-0000-0000-000000000000';
-      const reviewedBy = (isValidUUID && !isDummy) ? profile?.id : null;
-
-      // 1. Update user role to seller FIRST
+      // Use the unified RPC for atomic, permission-bypassing approval
       const secret = localStorage.getItem('sys_admin_secret') || 'your_secret_admin_key_here';
-      const { error: profileError } = await supabase.rpc('admin_update_user_role', {
-        target_user_id: application.user_id,
-        new_role: 'seller',
-        secret_key: secret
+      const adminId = (profile?.id && profile.id !== '00000000-0000-0000-0000-000000000000') ? profile.id : null;
+
+      const { error } = await supabase.rpc('admin_approve_seller_application', {
+        application_id: application.id,
+        secret_key: secret,
+        admin_id: adminId
       });
 
-      if (profileError) {
-        console.warn('RPC role update failed, falling back to direct update:', profileError);
-        const { error: directError } = await supabase
-          .from('profiles')
-          .update({ role: 'seller' })
-          .eq('id', application.user_id);
-        if (directError) throw directError;
-      }
+      if (error) throw error;
 
-      // 2. Create/Update seller profile
-      const { error: sellerError } = await supabase
-        .from('seller_profiles')
-        .upsert({
-          user_id: application.user_id,
-          business_name: application.business_name,
-          business_category: application.business_category,
-          business_description: application.business_description,
-          contact_phone: application.contact_phone,
-          contact_email: application.contact_email,
-          business_logo: application.business_logo,
-          is_active: true,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' });
-
-      if (sellerError) throw sellerError;
-
-      // 3. Update application status LAST
-      // This triggers the real-time redirect on the status page
-      const { error: appError } = await supabase
-        .from('seller_applications')
-        .update({
-          status: 'approved',
-          reviewed_at: new Date().toISOString(),
-          reviewed_by: reviewedBy,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', application.id);
-
-      if (appError) throw appError;
-
-      // Send SMS Notification
+      // Send SMS Notification (Client Side)
       if (application.contact_phone) {
         try {
           const { sendSMS } = await import('../../lib/arkesel');
@@ -173,14 +129,13 @@ export default function SellerApplications({ isEmbedded = false }: SellerApplica
           );
         } catch (smsErr) {
           console.error('Failed to send approval SMS:', smsErr);
-          // Don't block the approval if SMS fails, just log it
         }
       }
 
       // Log Activity
       try {
         await supabase.from('activity_logs').insert({
-          user_id: profile?.id, // Admin performed the action
+          user_id: profile?.id,
           action_type: 'application_approved',
           action_details: {
             business_name: application.business_name,
@@ -193,7 +148,6 @@ export default function SellerApplications({ isEmbedded = false }: SellerApplica
       }
 
       setNotification({ type: 'success', message: 'Application approved successfully! SMS notification sent.' });
-      // The real-time subscription will also catch this, but we fetch to be safe
       fetchApplications();
     } catch (error: any) {
       console.error('Error approving application:', error);
@@ -257,21 +211,15 @@ export default function SellerApplications({ isEmbedded = false }: SellerApplica
 
     setProcessing(true);
     try {
-      // Check if we are revoking a dummy system admin (bypass mode)
-      // This is less likely for rejection but good to keep safe
-      const isDummy = selectedApp.user_id === '00000000-0000-0000-0000-000000000000';
-      if (isDummy) {
-        // Dummy user doesn't have profile, so we skip role updates
-      }
+      const secret = localStorage.getItem('sys_admin_secret') || 'your_secret_admin_key_here';
+      const adminId = (profile?.id && profile.id !== '00000000-0000-0000-0000-000000000000') ? profile.id : null;
 
-      const { error } = await supabase
-        .from('seller_applications')
-        .update({
-          status: 'rejected',
-          admin_notes: rejectionReason,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', selectedApp.id);
+      const { error } = await supabase.rpc('admin_reject_seller_application', {
+        application_id: selectedApp.id,
+        reason: rejectionReason,
+        secret_key: secret,
+        admin_id: adminId
+      });
 
       if (error) throw error;
 
@@ -288,17 +236,6 @@ export default function SellerApplications({ isEmbedded = false }: SellerApplica
         });
       } catch (logErr) {
         console.error('Error logging rejection:', logErr);
-      }
-
-      // If Revoking an approved app, cleanup
-      if (selectedApp.status === 'approved' && !isDummy) {
-        const secret = localStorage.getItem('sys_admin_secret') || 'your_secret_admin_key_here';
-        await supabase.rpc('admin_update_user_role', {
-          target_user_id: selectedApp.user_id,
-          new_role: 'buyer',
-          secret_key: secret
-        });
-        await supabase.from('seller_profiles').update({ is_active: false }).eq('user_id', selectedApp.user_id);
       }
 
       setNotification({ type: 'success', message: 'Application rejected successfully' });

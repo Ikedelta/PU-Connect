@@ -69,30 +69,52 @@ export function useProducts(filters?: {
       if (error) throw error;
       if (!data) return [];
 
-      // Fetch business details for all unique sellers in one go
-      const sellerIds = Array.from(new Set(data.map(p => p.seller_id)));
+      // 1. Manual Filter: Only show products from ACTIVE Seller Profiles
+      // This avoids the 400 Bad Request from complex inner joins on RLS-protected tables
+      const uniqueSellerIds = Array.from(new Set(data.map(p => p.seller_id)));
 
-      if (sellerIds.length > 0) {
-        const { data: businessApps } = await supabase
-          .from('seller_applications')
-          .select('user_id, business_name, business_logo')
-          .in('user_id', sellerIds)
-          .eq('status', 'approved');
+      let finalProducts = data;
 
-        if (businessApps && businessApps.length > 0) {
-          const businessMap = new Map(businessApps.map(app => [app.user_id, app]));
+      if (uniqueSellerIds.length > 0) {
+        // Fetch active statuses
+        const { data: activeSellers } = await supabase
+          .from('seller_profiles')
+          .select('user_id')
+          .in('user_id', uniqueSellerIds)
+          .eq('is_active', true);
 
-          data.forEach(product => {
-            const business = businessMap.get(product.seller_id);
-            if (business && product.seller) {
-              (product.seller as any).business_name = business.business_name;
-              (product.seller as any).business_logo = business.business_logo;
-            }
-          });
+        const activeSellerIds = new Set(activeSellers?.map(s => s.user_id));
+
+        // Filter out products from inactive/rejected sellers if not owner
+        if (!isOwner) {
+          finalProducts = data.filter(p => activeSellerIds.has(p.seller_id));
+        }
+
+        // 2. Fetch business details for these valid products
+        const validSellerIds = Array.from(new Set(finalProducts.map(p => p.seller_id)));
+
+        if (validSellerIds.length > 0) {
+          const { data: businessApps } = await supabase
+            .from('seller_applications')
+            .select('user_id, business_name, business_logo')
+            .in('user_id', validSellerIds)
+            .eq('status', 'approved');
+
+          if (businessApps && businessApps.length > 0) {
+            const businessMap = new Map(businessApps.map(app => [app.user_id, app]));
+
+            finalProducts.forEach(product => {
+              const business = businessMap.get(product.seller_id);
+              if (business && product.seller) {
+                (product.seller as any).business_name = business.business_name;
+                (product.seller as any).business_logo = business.business_logo;
+              }
+            });
+          }
         }
       }
 
-      return data;
+      return finalProducts;
     },
     staleTime: 1000 * 60 * 3, // 3 minutes
     gcTime: 1000 * 60 * 10, // 10 minutes
@@ -257,7 +279,7 @@ export function useFavorites() {
               const business = businessMap.get(product.seller_id);
               if (business) {
                 product.seller.business_name = business.business_name;
-                product.seller.business_logo = business.business_logo;
+                (product.seller as any).business_logo = business.business_logo;
               }
             }
           });
