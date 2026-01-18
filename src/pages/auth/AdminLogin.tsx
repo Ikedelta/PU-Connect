@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase';
 
 export default function AdminLogin() {
     const [email, setEmail] = useState('system.admin@gmail.com');
-    const [password, setPassword] = useState('pukonnect@!');
+    const [password, setPassword] = useState('puconnect@!');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -34,7 +34,7 @@ export default function AdminLogin() {
             }
 
             // 1. Fallback: Check for HARDCODED System Credentials (Escape Hatch) [Keep for safety if DB fails]
-            if (email.toLowerCase() === 'system.admin@gmail.com' && password === 'pukonnect@!') {
+            if (email.toLowerCase() === 'system.admin@gmail.com' && password === 'puconnect@!') {
                 console.log('System Override Activated (Hardcoded)');
                 localStorage.setItem('sys_admin_bypass', 'true');
                 localStorage.setItem('sys_admin_secret', password); // Store for RPC calls

@@ -1,0 +1,14 @@
+import{r as d}from"./react-vendor-Bsfkyusf.js";import{u as i,b as u,c as n}from"./query-vendor-Cpskl8RO.js";import{s as a,u as c}from"./index-4BAF1yr7.js";function m(e){const t=i();return d.useEffect(()=>{const r=a.channel("products-changes").on("postgres_changes",{event:"*",schema:"public",table:"products"},()=>{t.invalidateQueries({queryKey:["products"]})}).subscribe();return()=>{a.removeChannel(r)}},[t]),u({queryKey:["products",e],queryFn:async()=>{let r=a.from("products").select(`
+          *,
+          seller:profiles!products_seller_id_fkey(id, full_name, email, avatar_url)
+        `).eq("is_active",!0).order("created_at",{ascending:!1}).limit(100);e?.category&&e.category!=="all"&&(r=r.eq("category",e.category)),e?.search&&(r=r.or(`name.ilike.%${e.search}%,description.ilike.%${e.search}%`)),e?.sellerId&&(r=r.eq("seller_id",e.sellerId));const{data:o,error:s}=await r;if(s)throw s;return o||[]},staleTime:1e3*60*3,gcTime:1e3*60*10})}function p(e){return u({queryKey:["product",e],queryFn:async()=>{if(!e)return null;const{data:t,error:r}=await a.from("products").select(`
+          *,
+          seller:profiles!products_seller_id_fkey(id, full_name, email, avatar_url, student_id, department)
+        `).eq("id",e).single();if(r)throw r;return Promise.resolve(a.rpc("increment_product_views",{product_id:e})).catch(console.error),t},enabled:!!e,staleTime:1e3*60*3,gcTime:1e3*60*10,retry:3})}function _(){const e=i();return n({mutationFn:async({id:t,updates:r})=>{const{data:o,error:s}=await a.from("products").update(r).eq("id",t).select().single();if(s)throw s;return o},onSuccess:t=>{e.invalidateQueries({queryKey:["products"]}),e.invalidateQueries({queryKey:["product",t.id]})}})}function q(){const e=i();return n({mutationFn:async t=>{const{error:r}=await a.from("products").delete().eq("id",t);if(r)throw r},onSuccess:()=>{e.invalidateQueries({queryKey:["products"]})}})}function v(){const{user:e}=c();return u({queryKey:["favorites",e?.id],queryFn:async()=>{if(!e)return[];const{data:t,error:r}=await a.from("favorites").select(`
+          *,
+          product:products(
+            *,
+            seller:profiles!products_seller_id_fkey(id, full_name, email, avatar_url)
+          )
+        `).eq("user_id",e.id);if(r)throw r;return t||[]},enabled:!!e,staleTime:1e3*60*10})}function h(){const{user:e}=c(),t=i();return n({mutationFn:async r=>{if(!e)throw new Error("Not authenticated");const{data:o}=await a.from("favorites").select("id").eq("user_id",e.id).eq("product_id",r).single();if(o){const{error:s}=await a.from("favorites").delete().eq("id",o.id);if(s)throw s;return{action:"removed"}}else{const{error:s}=await a.from("favorites").insert({user_id:e.id,product_id:r});if(s)throw s;return{action:"added"}}},onSuccess:()=>{t.invalidateQueries({queryKey:["favorites"]})}})}export{v as a,h as b,p as c,_ as d,q as e,m as u};
+//# sourceMappingURL=useProducts-6jgPtXoo.js.map

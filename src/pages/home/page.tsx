@@ -425,17 +425,14 @@ export default function Home() {
                   className={`absolute inset-0 transition-all duration-[1.2s] ease-in-out transform ${index === currentSlide ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-105 pointer-events-none'
                     }`}
                 >
-                  {news.image_url ? (
-                    <img
-                      src={getOptimizedImageUrl(news.image_url, 1920, 85)}
-                      alt={news.title}
-                      className="w-full h-full object-cover opacity-70"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-slate-800 flex items-center justify-center">
-                      <i className="ri-newspaper-line text-9xl text-white/5"></i>
-                    </div>
-                  )}
+                  <img
+                    src={getOptimizedImageUrl(news.image_url, 1920, 85)}
+                    alt={news.title}
+                    onError={(e) => {
+                      e.currentTarget.src = 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&q=80&w=1920';
+                    }}
+                    className="w-full h-full object-cover opacity-70 transition-transform duration-[5s] group-hover:scale-105"
+                  />
                   <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-900/40 to-transparent"></div>
                   <div className="absolute bottom-0 left-0 p-8 md:p-16 max-w-4xl">
                     <span className="px-5 py-2 bg-blue-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-full mb-6 inline-block">
