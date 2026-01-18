@@ -217,9 +217,11 @@ export default function NewsManagement() {
         logActivity('news_updated', { title: newsData.title, id: editingNews.id });
 
       } else {
-        const { error } = await supabase
+        const { data: inserted, error } = await supabase
           .from('campus_news')
-          .insert([newsData]);
+          .insert([newsData])
+          .select()
+          .single();
 
         if (error) throw error;
 
@@ -227,7 +229,7 @@ export default function NewsManagement() {
           shouldBroadcast = true;
         }
 
-        logActivity('news_created', { title: newsData.title, id: inserted.id });
+        logActivity('news_created', { title: newsData.title, id: inserted?.id });
       }
 
       if (shouldBroadcast) {
