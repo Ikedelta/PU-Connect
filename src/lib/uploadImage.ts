@@ -62,6 +62,17 @@ export async function uploadImage(
 
     if (error) {
       console.error('Supabase Storage Error:', error);
+
+      // Specifically handle the bypass ID case which is common for new setups
+      if (userIdToUse === '00000000-0000-0000-0000-000000000000') {
+        throw new Error(
+          `Permission Denied: The 'System Admin' bypass account is not a real Supabase user and cannot pass Row-Level Security (RLS) policies. \n\n` +
+          `To fix this: \n` +
+          `1. Register a real account and promote it to Admin in the database. \n` +
+          `2. OR update your Supabase Storage RLS policies for the '${BUCKET_NAME}' bucket to allow uploads for the ID '00000000-0000-0000-0000-000000000000'.`
+        );
+      }
+
       if (error.message && (error.message.includes('Bucket not found') || error.message.includes('does not exist'))) {
         throw new Error(`Storage bucket '${BUCKET_NAME}' not found. Please go to your Supabase Dashboard > Storage and create a NEW PUBLIC BUCKET named '${BUCKET_NAME}'.`);
       }

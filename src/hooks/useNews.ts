@@ -63,7 +63,7 @@ export function useNews(filters?: {
             *,
             author:profiles(id, full_name, email, avatar_url)
           `)
-          .order('created_at', { ascending: false });
+          .order('updated_at', { ascending: false });
 
         if (filters?.isPublished !== undefined) {
           query = query.eq('is_published', filters.isPublished);
@@ -72,7 +72,7 @@ export function useNews(filters?: {
         }
 
         if (filters?.category && filters.category !== 'all') {
-          query = query.eq('category', filters.category);
+          query = query.ilike('category', filters.category);
         }
 
         if (filters?.search) {
@@ -130,7 +130,7 @@ export function useFeaturedNews(limit: number = 5) {
 
 export function useNewsArticle(id: string | undefined) {
   return useQuery({
-    queryKey: ['news', id],
+    queryKey: ['news', 'article', id],
     queryFn: async () => {
       if (!id) return null;
 

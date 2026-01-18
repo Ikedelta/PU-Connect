@@ -3,15 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import Navbar from '../../components/feature/Navbar';
+import { uploadImage, compressImage } from '../../lib/uploadImage';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { useQueryClient } from '@tanstack/react-query';
 
 type NewsArticle = {
   id: string;
   title: string;
   content: string;
+  excerpt: string;
   category: string;
   image_url: string | null;
   author_id: string;
   is_published: boolean;
+  published_at: string | null;
   scheduled_at: string | null;
   views_count: number;
   created_at: string;
@@ -23,7 +29,9 @@ type NewsArticle = {
 export default function NewsManagement() {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [news, setNews] = useState<NewsArticle[]>([]);
+  const [previewMode, setPreviewMode] = useState<'write' | 'preview'>('write');
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'published' | 'draft' | 'scheduled'>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,6 +42,7 @@ export default function NewsManagement() {
   const [formData, setFormData] = useState({
     title: '',
     content: '',
+    excerpt: '',
     category: 'General',
     image_url: '',
     status: 'draft' as 'draft' | 'published' | 'scheduled',
@@ -63,8 +72,11 @@ export default function NewsManagement() {
     try {
       let query = supabase
         .from('campus_news')
-        .select('*, author:profiles!author_id(full_name)')
-        .order('created_at', { ascending: false });
+        .select(`
+          *,
+          author:profiles(full_name)
+        `)
+        .order('updated_at', { ascending: false });
 
       if (filter === 'published') {
         query = query.eq('is_published', true);
@@ -76,6 +88,8 @@ export default function NewsManagement() {
 
       const { data, error } = await query;
       if (error) throw error;
+
+      console.log('Fetched News from Server:', data);
       setNews(data as any || []);
     } catch (error) {
       console.error('Error fetching news:', error);
@@ -84,52 +98,40 @@ export default function NewsManagement() {
     }
   };
 
-  const uploadImage = async (file: File, bucket: string = 'news-images'): Promise<string | null> => {
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from(bucket)
-        .upload(filePath, file);
-
-      if (uploadError) {
-        console.error('Upload Error:', uploadError);
-        alert(`Upload failed: ${uploadError.message}. Ensure 'news-images' bucket exists and is public.`);
-        return null;
-      }
-
-      const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
-      return data.publicUrl;
-    } catch (error) {
-      console.error('Upload logic error', error);
-      return null;
-    }
-  };
-
   const handleFeaturedImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     setUploading(true);
-    const file = e.target.files[0];
-    const url = await uploadImage(file);
-    if (url) {
-      setFormData(prev => ({ ...prev, image_url: url }));
+    try {
+      const file = e.target.files[0];
+      const compressed = await compressImage(file, 1200, 800, 0.85);
+      const { url } = await uploadImage(compressed, 'cms');
+      if (url) {
+        setFormData(prev => ({ ...prev, image_url: url }));
+      }
+    } catch (error: any) {
+      alert(error.message || 'Failed to upload image');
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   };
 
   const handleContentImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     setContentUploading(true);
-    const file = e.target.files[0];
-    const url = await uploadImage(file);
-    if (url) {
-      // Insert markdown image at cursor position or end
-      const imageMarkdown = `\n![${file.name}](${url})\n`;
-      setFormData(prev => ({ ...prev, content: prev.content + imageMarkdown }));
+    try {
+      const file = e.target.files[0];
+      const compressed = await compressImage(file, 800, 800, 0.8);
+      const { url } = await uploadImage(compressed, 'cms');
+      if (url) {
+        // Insert markdown image at cursor position or end
+        const imageMarkdown = `\n![${file.name}](${url})\n`;
+        setFormData(prev => ({ ...prev, content: prev.content + imageMarkdown }));
+      }
+    } catch (error: any) {
+      alert(error.message || 'Failed to upload image');
+    } finally {
+      setContentUploading(false);
     }
-    setContentUploading(false);
   };
 
   const broadcastNewsSMS = async (title: string) => {
@@ -162,62 +164,92 @@ export default function NewsManagement() {
     setSaving(true);
     try {
       const { status, scheduled_at, ...rest } = formData;
+
+      // Auto-generate excerpt if empty
+      const finalExcerpt = rest.excerpt || rest.content.substring(0, 160).replace(/[#*`]/g, '') + '...';
+
       const newsData = {
-        ...rest,
+        title: rest.title,
+        content: rest.content,
+        category: rest.category,
+        image_url: rest.image_url,
         author_id: profile?.id,
         is_published: status === 'published',
         scheduled_at: status === 'scheduled' && scheduled_at ? new Date(scheduled_at).toISOString() : null,
+        updated_at: new Date().toISOString(),
       };
 
       let shouldBroadcast = false;
 
       if (editingNews) {
-        const { author_id, ...updateData } = newsData;
-        const { error } = await supabase.from('campus_news').update(updateData).eq('id', editingNews.id);
+        // Explicitly define update fields to avoid any schema mismatch or hidden fields (like 'excerpt')
+        const updateData = {
+          title: newsData.title,
+          content: newsData.content,
+          category: newsData.category,
+          image_url: newsData.image_url,
+          is_published: newsData.is_published,
+          scheduled_at: newsData.scheduled_at,
+          updated_at: newsData.updated_at
+        };
+
+        console.log('Sending Update to Supabase:', editingNews.id, updateData);
+
+        // We use a specific select here to avoid PostgREST cache issues with '*'
+        const { data: verifyData, error } = await supabase
+          .from('campus_news')
+          .update(updateData)
+          .eq('id', editingNews.id)
+          .select('id, title, image_url');
+
         if (error) throw error;
 
-        // Only broadcast if it is NOW published and WAS NOT published before (and SMS wasn't sent)
-        // Check editingNews.is_published and editingNews.sms_sent if available (NewsArticle type might need checking)
-        // A safer check: If it was draft before and now published.
+        if (!verifyData || verifyData.length === 0) {
+          throw new Error('Permission Error (RLS): Your account is authorized on the site, but the Supabase Database is blocking this specific update. Please run the "RLS SQL Fix" provided in the chat to grant the System Administrator full editing permissions.');
+        }
+
+        console.log('Update Verified:', verifyData[0]);
+
         if (newsData.is_published && !editingNews.is_published && !editingNews.sms_sent) {
           shouldBroadcast = true;
         }
       } else {
-        const { data: inserted, error } = await supabase.from('campus_news').insert([newsData]).select().single();
+        const { error } = await supabase
+          .from('campus_news')
+          .insert([newsData]);
+
         if (error) throw error;
 
-        // New article: Broadcast if published immediately
         if (newsData.is_published) {
           shouldBroadcast = true;
         }
       }
 
-      // Trigger SMS if needed
       if (shouldBroadcast) {
         broadcastNewsSMS(newsData.title);
-        // We should ideally update sms_sent=true in DB, but broadcastNewsSMS is a helper.
-        // Let's rely on handlePublish logic or update it here.
-        // For now, fire and forget or we can update the record's sms_sent column.
-        // But wait, the record is already saved.
-        // Let's do nothing extra for now regarding sms_sent update here unless I update the helper to update the DB?
-        // Actually, better to update the DB to mark sms_sent=true immediately to avoid double send.
-        // But since we just inserted/updated, we can't easily re-update without ID.
-        // If it was inserted, valid. If updated, valid.
-        // Let's assume standard flow.
       }
 
+      // Sync with React Query cache used by CampusNews and NewsDetail
+      queryClient.invalidateQueries({ queryKey: ['news'] });
+      if (editingNews) {
+        queryClient.invalidateQueries({ queryKey: ['news', 'article', editingNews.id] });
+      }
+
+      alert(editingNews ? 'Story updated successfully!' : 'New story created successfully!');
       setShowModal(false);
       setEditingNews(null);
       setFormData({
         title: '',
         content: '',
+        excerpt: '',
         category: 'General',
         image_url: '',
         status: 'draft',
         scheduled_at: '',
       });
-      fetchNews();
+      await fetchNews();
     } catch (error: any) {
+      console.error('Submit Error:', error);
       alert(error.message || 'Failed to save news');
     } finally {
       setSaving(false);
@@ -231,15 +263,18 @@ export default function NewsManagement() {
   // The Auth update covers the user's specific complaint about "no activities found" generally.
 
   const handleEdit = (article: NewsArticle) => {
+    console.log('Editing article data:', article);
     setEditingNews(article);
     setFormData({
       title: article.title,
       content: article.content,
+      excerpt: article.excerpt || '',
       category: article.category,
       image_url: article.image_url || '',
       status: article.scheduled_at ? 'scheduled' : (article.is_published ? 'published' : 'draft'),
       scheduled_at: article.scheduled_at ? new Date(article.scheduled_at).toISOString().slice(0, 16) : '',
     });
+    setPreviewMode('write');
     setShowModal(true);
   };
 
@@ -248,7 +283,12 @@ export default function NewsManagement() {
     try {
       const { error } = await supabase.from('campus_news').delete().eq('id', id);
       if (error) throw error;
-      fetchNews();
+
+      // Invalidate caches
+      queryClient.invalidateQueries({ queryKey: ['news'] });
+      queryClient.invalidateQueries({ queryKey: ['news', 'article', id] });
+
+      await fetchNews();
     } catch (error: any) {
       alert(error.message || 'Failed to delete news');
     }
@@ -286,7 +326,9 @@ export default function NewsManagement() {
         else alert('News published (SMS broadcast failed/skipped)');
       }
 
-      fetchNews();
+      await fetchNews();
+      queryClient.invalidateQueries({ queryKey: ['news'] });
+      queryClient.invalidateQueries({ queryKey: ['news', 'article', id] });
     } catch (error: any) {
       alert(error.message || 'Failed to update status');
     }
@@ -306,7 +348,7 @@ export default function NewsManagement() {
       return (
         article.title.toLowerCase().includes(query) ||
         article.category.toLowerCase().includes(query) ||
-        article.author?.full_name.toLowerCase().includes(query)
+        (article.author?.full_name || '').toLowerCase().includes(query)
       );
     }
     return true;
@@ -363,6 +405,7 @@ export default function NewsManagement() {
                 setFormData({
                   title: '',
                   content: '',
+                  excerpt: '',
                   category: 'General',
                   image_url: '',
                   status: 'draft',
@@ -436,15 +479,25 @@ export default function NewsManagement() {
                 className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 overflow-hidden hover:shadow-xl transition-shadow group"
               >
                 <div className="flex flex-col md:flex-row">
-                  <div className="w-full h-48 md:w-64 md:h-auto flex-shrink-0 relative overflow-hidden">
-                    {article.image_url ? (
+                  <div className="w-full h-48 md:w-64 md:h-auto flex-shrink-0 relative overflow-hidden bg-slate-100 dark:bg-slate-700">
+                    {article.image_url && article.image_url.trim() !== '' ? (
                       <img
                         src={article.image_url}
                         alt={article.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          // Show placeholder on error
+                          const parent = e.currentTarget.parentElement;
+                          if (parent) {
+                            const icon = document.createElement('i');
+                            icon.className = 'ri-image-line text-4xl text-slate-300 absolute inset-0 flex items-center justify-center';
+                            parent.appendChild(icon);
+                          }
+                        }}
                       />
                     ) : (
-                      <div className="w-full h-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-300 dark:text-slate-600">
+                      <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-600">
                         <i className="ri-image-line text-4xl"></i>
                       </div>
                     )}
@@ -537,7 +590,7 @@ export default function NewsManagement() {
       {/* Create/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-100 dark:border-slate-800">
+          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-100 dark:border-slate-800">
             <div className="sticky top-0 bg-white/95 dark:bg-slate-900/95 border-b border-slate-100 dark:border-slate-800 px-8 py-6 flex items-center justify-between z-10 backdrop-blur">
               <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                 {editingNews ? 'Edit Story' : 'Compose News'}
@@ -567,6 +620,19 @@ export default function NewsManagement() {
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">
+                  Short Summary
+                </label>
+                <textarea
+                  value={formData.excerpt}
+                  onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
+                  rows={2}
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500/50 outline-none font-medium text-slate-900 dark:text-white resize-none"
+                  placeholder="A brief teaser for the news feed (optional)"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">
                   Category *
                 </label>
                 <select
@@ -585,71 +651,138 @@ export default function NewsManagement() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">
-                  Content *
-                </label>
-                <div className="relative">
-                  <textarea
-                    value={formData.content}
-                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                    required
-                    rows={10}
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500/50 outline-none font-medium text-slate-900 dark:text-white resize-none"
-                    placeholder="Write your story here..."
-                  />
-                  <div className="absolute top-2 right-2">
-                    <label className={`
-                          flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-700 rounded-lg text-xs font-bold uppercase tracking-wide shadow-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors
-                          ${contentUploading ? 'opacity-50 cursor-not-allowed' : ''}
-                       `}>
-                      {contentUploading ? <i className="ri-loader-4-line animate-spin"></i> : <i className="ri-image-add-line"></i>}
-                      {contentUploading ? 'Uploading...' : 'Insert Image'}
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        onChange={handleContentImageUpload}
-                        disabled={contentUploading}
-                      />
-                    </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Content *
+                  </label>
+                  <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewMode('write')}
+                      className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${previewMode === 'write'
+                        ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                    >
+                      Write
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewMode('preview')}
+                      className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${previewMode === 'preview'
+                        ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                    >
+                      Preview
+                    </button>
                   </div>
                 </div>
+
+                {previewMode === 'write' ? (
+                  <div className="relative">
+                    <textarea
+                      value={formData.content}
+                      onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                      required
+                      rows={12}
+                      className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-blue-500/50 outline-none font-medium text-slate-800 dark:text-gray-200 resize-y min-h-[300px] leading-relaxed"
+                      placeholder="Write your story here... Markdown is supported."
+                    />
+                    <div className="absolute top-4 right-4">
+                      <label className={`
+                            flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-700 rounded-lg text-xs font-bold uppercase tracking-wide shadow-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors
+                            ${contentUploading ? 'opacity-50 cursor-not-allowed' : ''}
+                         `}>
+                        {contentUploading ? <i className="ri-loader-4-line animate-spin"></i> : <i className="ri-image-add-line"></i>}
+                        {contentUploading ? 'Uploading...' : 'Insert Image'}
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={handleContentImageUpload}
+                          disabled={contentUploading}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full px-6 py-6 bg-slate-50 dark:bg-slate-800 border-none rounded-xl min-h-[300px] overflow-y-auto">
+                    <div className="prose prose-blue dark:prose-invert prose-sm max-w-none">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {formData.content || '_No content to preview._'}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                )}
                 <p className="text-[10px] text-slate-400 mt-2">
-                  * Pro Tip: Upload images to automatically insert them into your current cursor position.
+                  * Pro Tip: Use Markdown for formatting. Images uploaded are automatically inserted.
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">
-                  Cover Image
+                <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">
+                  Cover Image & Graphics
                 </label>
-                <div className="flex gap-4 items-center">
-                  <div className="flex-1">
-                    <input
-                      type="url"
-                      value={formData.image_url}
-                      onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500/50 outline-none font-medium text-slate-900 dark:text-white"
-                      placeholder="https://example.com/image.jpg"
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="md:col-span-2 space-y-4">
+                    <div className="flex gap-4 items-center">
+                      <div className="flex-1 relative group">
+                        <i className="ri-link-m absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input
+                          type="url"
+                          value={formData.image_url}
+                          onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                          className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-blue-500/50 outline-none font-bold text-xs text-slate-900 dark:text-white"
+                          placeholder="https://images.unsplash.com/..."
+                        />
+                      </div>
+                      <label className={`
+                            flex items-center justify-center w-14 h-14 bg-blue-600 text-white rounded-2xl cursor-pointer hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 active:scale-95 flex-shrink-0
+                            ${uploading ? 'opacity-50 pointer-events-none' : ''}
+                        `}>
+                        {uploading ? (
+                          <i className="ri-loader-4-line animate-spin text-xl"></i>
+                        ) : (
+                          <i className="ri-camera-lens-fill text-xl"></i>
+                        )}
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={handleFeaturedImageUpload}
+                          disabled={uploading}
+                        />
+                      </label>
+                    </div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
+                      Upload a high-resolution banner (16:9 recommended) to serve as the visual hook for your story.
+                    </p>
                   </div>
-                  <label className={`
-                        flex items-center justify-center w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-xl cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex-shrink-0
-                        ${uploading ? 'opacity-50' : ''}
-                    `}>
-                    {uploading ? (
-                      <i className="ri-loader-4-line animate-spin text-xl text-slate-500"></i>
+
+                  <div className="h-32 md:h-full bg-slate-50 dark:bg-slate-800 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700 relative overflow-hidden group">
+                    {formData.image_url ? (
+                      <>
+                        <img
+                          src={formData.image_url}
+                          alt="Preview"
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, image_url: '' }))}
+                          className="absolute top-2 right-2 w-8 h-8 bg-black/50 backdrop-blur-md text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <i className="ri-delete-bin-fill"></i>
+                        </button>
+                      </>
                     ) : (
-                      <i className="ri-upload-cloud-2-line text-xl text-slate-500"></i>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 opacity-50">
+                        <i className="ri-image-2-fill text-3xl mb-1"></i>
+                        <span className="text-[9px] font-black uppercase tracking-widest">No Graphics</span>
+                      </div>
                     )}
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept="image/*"
-                      onChange={handleFeaturedImageUpload}
-                      disabled={uploading}
-                    />
-                  </label>
+                  </div>
                 </div>
               </div>
 
@@ -696,13 +829,18 @@ export default function NewsManagement() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving}
-                  className="flex-[2] py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-xs"
+                  disabled={saving || uploading}
+                  className="flex-[2] py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? (
                     <>
                       <i className="ri-loader-4-line animate-spin text-lg"></i>
                       <span>Saving...</span>
+                    </>
+                  ) : uploading ? (
+                    <>
+                      <i className="ri-loader-4-line animate-spin text-lg"></i>
+                      <span>Uploading Image...</span>
                     </>
                   ) : (
                     <>

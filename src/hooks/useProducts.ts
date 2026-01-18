@@ -10,6 +10,7 @@ export function useProducts(filters?: {
   sellerId?: string;
 }) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   // Real-time subscription
   useEffect(() => {
@@ -36,18 +37,22 @@ export function useProducts(filters?: {
   return useQuery({
     queryKey: ['products', filters],
     queryFn: async () => {
+      const isOwner = user?.id && filters?.sellerId === user.id;
+
       let query = supabase
         .from('products')
         .select(`
           *,
           seller:profiles!products_seller_id_fkey(id, full_name, email, avatar_url)
         `)
-        .eq('is_active', true)
         .order('created_at', { ascending: false })
-        .limit(100); // Add limit to prevent loading too much data
+        .limit(100);
+
+      if (!isOwner) {
+        query = query.eq('is_active', true);
+      }
 
       if (filters?.category && filters.category !== 'all') {
-        // Use ilike for case-insensitive matching to handle mismatches like "electronics" vs "Electronics"
         query = query.ilike('category', filters.category);
       }
 
@@ -62,7 +67,32 @@ export function useProducts(filters?: {
       const { data, error } = await query;
 
       if (error) throw error;
-      return data || [];
+      if (!data) return [];
+
+      // Fetch business details for all unique sellers in one go
+      const sellerIds = Array.from(new Set(data.map(p => p.seller_id)));
+
+      if (sellerIds.length > 0) {
+        const { data: businessApps } = await supabase
+          .from('seller_applications')
+          .select('user_id, business_name, business_logo')
+          .in('user_id', sellerIds)
+          .eq('status', 'approved');
+
+        if (businessApps && businessApps.length > 0) {
+          const businessMap = new Map(businessApps.map(app => [app.user_id, app]));
+
+          data.forEach(product => {
+            const business = businessMap.get(product.seller_id);
+            if (business && product.seller) {
+              (product.seller as any).business_name = business.business_name;
+              (product.seller as any).business_logo = business.business_logo;
+            }
+          });
+        }
+      }
+
+      return data;
     },
     staleTime: 1000 * 60 * 3, // 3 minutes
     gcTime: 1000 * 60 * 10, // 10 minutes
@@ -70,6 +100,7 @@ export function useProducts(filters?: {
 }
 
 export function useProduct(id: string | undefined) {
+  const { user } = useAuth();
   return useQuery({
     queryKey: ['product', id],
     queryFn: async () => {
@@ -85,6 +116,27 @@ export function useProduct(id: string | undefined) {
         .single();
 
       if (error) throw error;
+
+      // Privacy check: If product is hidden, only the owner can see it
+      if (!data.is_active && (!user || user.id !== data.seller_id)) {
+        throw new Error('This product is currently private or hidden by the seller.');
+      }
+
+      // Fetch additional business details from seller_applications
+      if (data?.seller) {
+        const { data: businessData } = await supabase
+          .from('seller_applications')
+          .select('business_name, business_logo')
+          .eq('user_id', data.seller.id)
+          .eq('status', 'approved')
+          .maybeSingle();
+
+        if (businessData) {
+          // Merge business details into seller object
+          (data.seller as any).business_name = businessData.business_name;
+          (data.seller as any).business_logo = businessData.business_logo;
+        }
+      }
 
       // Increment view count asynchronously without waiting
       Promise.resolve(supabase.rpc('increment_product_views', { product_id: id })).catch(console.error);
@@ -184,6 +236,34 @@ export function useFavorites() {
         .eq('user_id', user.id);
 
       if (error) throw error;
+      if (!data) return [];
+
+      // Fetch business details for unique sellers of favorited products
+      const sellerIds = Array.from(new Set(data.map(f => (f.product as any)?.seller_id).filter(Boolean)));
+
+      if (sellerIds.length > 0) {
+        const { data: businessApps } = await supabase
+          .from('seller_applications')
+          .select('user_id, business_name, business_logo')
+          .in('user_id', sellerIds)
+          .eq('status', 'approved');
+
+        if (businessApps && businessApps.length > 0) {
+          const businessMap = new Map(businessApps.map(app => [app.user_id, app]));
+
+          data.forEach(fav => {
+            const product = fav.product as any;
+            if (product && product.seller) {
+              const business = businessMap.get(product.seller_id);
+              if (business) {
+                product.seller.business_name = business.business_name;
+                product.seller.business_logo = business.business_logo;
+              }
+            }
+          });
+        }
+      }
+
       return data || [];
     },
     enabled: !!user,

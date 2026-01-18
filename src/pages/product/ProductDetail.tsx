@@ -1,9 +1,10 @@
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { type Profile } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/feature/Navbar';
 import { getOptimizedImageUrl } from '../../lib/imageOptimization';
-import { useProduct } from '../../hooks/useProducts';
+import { useProduct, useFavorites, useToggleFavorite } from '../../hooks/useProducts';
 import { useCreateConversation, useConversations } from '../../hooks/useConversations';
 
 export default function ProductDetail() {
@@ -14,6 +15,18 @@ export default function ProductDetail() {
   const { data: product, isLoading: loading } = useProduct(id);
   const { conversations = [] } = useConversations();
   const createConversationMutation = useCreateConversation();
+  const { data: favoriteItems = [] } = useFavorites();
+  const toggleFavoriteMutation = useToggleFavorite();
+
+  const isFavorited = favoriteItems.some(f => f.product_id === id);
+
+  const [activeImage, setActiveImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (product?.images && product.images.length > 0) {
+      setActiveImage(product.images[0]);
+    }
+  }, [product]);
 
   const handleWhatsAppContact = () => {
     if (!product?.whatsapp_number) {
@@ -118,23 +131,88 @@ export default function ProductDetail() {
 
         <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-xl shadow-gray-200/40 dark:shadow-none border border-gray-50 dark:border-gray-800 overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 p-6 md:p-12">
-            <div className="aspect-[4/5] md:aspect-square bg-gray-50 dark:bg-gray-800 rounded-[2rem] overflow-hidden border border-gray-50 dark:border-gray-800 flex items-center justify-center relative group">
-              {product.images && product.images.length > 0 ? (
-                <img
-                  src={getOptimizedImageUrl(product.images[0], 1000, 85)}
-                  alt={product.name}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  loading="eager"
-                  decoding="async"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <i className="ri-image-line text-6xl text-gray-200 dark:text-gray-700"></i>
-                </div>
-              )}
-              {product.is_active === false && (
-                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center">
-                  <span className="px-8 py-3 bg-red-600 text-white font-bold rounded-full text-lg uppercase tracking-widest shadow-xl">Sold Out</span>
+            {/* Product Image Gallery */}
+            <div className="flex flex-col gap-4">
+              {/* Main Image */}
+              <div className="aspect-[4/5] md:aspect-square bg-gray-50 dark:bg-gray-800 rounded-[2rem] overflow-hidden border border-gray-50 dark:border-gray-800 flex items-center justify-center relative group select-none">
+                {activeImage ? (
+                  <>
+                    <img
+                      key={activeImage}
+                      src={getOptimizedImageUrl(activeImage, 1000, 85)}
+                      alt={product.name}
+                      className="w-full h-full object-cover animate-in fade-in zoom-in-105 duration-500"
+                      loading="eager"
+                      decoding="async"
+                    />
+
+                    {/* Navigation Arrows (Only if multiple images) */}
+                    {product.images && product.images.length > 1 && (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const currentIdx = product.images!.indexOf(activeImage);
+                            const prevIdx = (currentIdx - 1 + product.images!.length) % product.images!.length;
+                            setActiveImage(product.images![prevIdx]);
+                          }}
+                          className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/10 hover:bg-white/30 backdrop-blur-md text-white rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 active:scale-95"
+                        >
+                          <i className="ri-arrow-left-s-line text-2xl"></i>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const currentIdx = product.images!.indexOf(activeImage);
+                            const nextIdx = (currentIdx + 1) % product.images!.length;
+                            setActiveImage(product.images![nextIdx]);
+                          }}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/10 hover:bg-white/30 backdrop-blur-md text-white rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 active:scale-95"
+                        >
+                          <i className="ri-arrow-right-s-line text-2xl"></i>
+                        </button>
+
+                        {/* Image Counter Badge */}
+                        <div className="absolute bottom-4 right-4 px-3 py-1 bg-black/50 backdrop-blur-md rounded-full text-white text-[10px] font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                          {product.images.indexOf(activeImage) + 1} / {product.images.length}
+                        </div>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <i className="ri-image-line text-6xl text-gray-200 dark:text-gray-700"></i>
+                  </div>
+                )}
+                {product.is_active === false && (
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center">
+                    <span className="px-8 py-3 bg-red-600 text-white font-bold rounded-full text-lg uppercase tracking-widest shadow-xl">Sold Out</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Thumbnails */}
+              {product.images && product.images.length > 1 && (
+                <div className="grid grid-cols-5 gap-2 md:gap-3 overflow-x-auto pb-2 px-1">
+                  {product.images.map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveImage(img)}
+                      className={`aspect-square rounded-xl overflow-hidden border-2 transition-all duration-300 relative group/thumb ${activeImage === img
+                        ? 'border-blue-600 ring-4 ring-blue-600/10 scale-95 opacity-100'
+                        : 'border-transparent opacity-50 hover:opacity-100 hover:scale-105'
+                        }`}
+                    >
+                      <img
+                        src={getOptimizedImageUrl(img, 200, 80)}
+                        alt={`View ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                      {activeImage !== img && (
+                        <div className="absolute inset-0 bg-black/10 group-hover/thumb:bg-transparent transition-colors"></div>
+                      )}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
@@ -150,9 +228,20 @@ export default function ProductDetail() {
                 </div>
               </div>
 
-              <h1 className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6 leading-tight tracking-tight">
-                {product.name}
-              </h1>
+              <div className="flex items-start justify-between gap-4 mb-6">
+                <h1 className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-white leading-tight tracking-tight">
+                  {product.name}
+                </h1>
+                <button
+                  onClick={() => toggleFavoriteMutation.mutate(product.id)}
+                  className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all shadow-lg active:scale-95 flex-shrink-0 cursor-pointer ${isFavorited
+                    ? 'bg-rose-500 text-white shadow-rose-200 dark:shadow-none'
+                    : 'bg-white dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-rose-500 border border-gray-100 dark:border-gray-800'
+                    }`}
+                >
+                  <i className={`${isFavorited ? 'ri-heart-fill' : 'ri-heart-line'} text-2xl`}></i>
+                </button>
+              </div>
 
               <div className="mb-8 p-8 bg-gray-50 dark:bg-gray-800/50 rounded-[2rem] border border-gray-100 dark:border-gray-800">
                 {product.price_type === 'fixed' ? (
@@ -179,29 +268,33 @@ export default function ProductDetail() {
 
               <div className="mb-10 p-6 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 rounded-xl overflow-hidden shadow-sm border-2 border-white dark:border-gray-700">
-                    {seller?.avatar_url ? (
+                  <div className="w-12 h-12 rounded-xl overflow-hidden shadow-sm border-2 border-white dark:border-gray-700 bg-white dark:bg-black">
+                    {/* Prefer Business Logo, fallback to Avatar */}
+                    {(seller as any).business_logo || seller?.avatar_url ? (
                       <img
-                        src={getOptimizedImageUrl(seller.avatar_url, 128, 80)}
-                        alt={seller.full_name}
+                        src={getOptimizedImageUrl((seller as any).business_logo || seller.avatar_url, 128, 80)}
+                        alt={(seller as any).business_name || seller.full_name}
                         className="w-full h-full object-cover"
                       />
                     ) : (
                       <div className="w-full h-full bg-gray-900 dark:bg-gray-700 flex items-center justify-center">
                         <span className="text-white font-bold text-lg">
-                          {seller?.full_name?.charAt(0).toUpperCase() || 'S'}
+                          {((seller as any).business_name || seller?.full_name)?.charAt(0).toUpperCase() || 'S'}
                         </span>
                       </div>
                     )}
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Verified Seller</p>
-                    <p className="font-bold text-gray-900 dark:text-white text-base tracking-tight">{seller?.full_name || 'Campus Student'}</p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Sold By</p>
+                    <p className="font-bold text-gray-900 dark:text-white text-base tracking-tight">
+                      {(seller as any).business_name || seller?.full_name || 'Campus Seller'}
+                    </p>
+                    {/* If showing business name, maybe show contact name below? distinct from Department */}
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Department</p>
-                  <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{seller?.department || 'University Member'}</p>
+                <div className="text-right hidden sm:block">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Faculty / Dept</p>
+                  <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{seller?.department || 'Verified Member'}</p>
                 </div>
               </div>
 

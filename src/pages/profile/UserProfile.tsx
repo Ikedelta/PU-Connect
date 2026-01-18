@@ -2,16 +2,33 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import Navbar from '../../components/feature/Navbar';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import ImageUploader from '../../components/base/ImageUploader';
 import { getOptimizedImageUrl } from '../../lib/imageOptimization';
+import { useFavorites, useToggleFavorite } from '../../hooks/useProducts';
 
 export default function UserProfile() {
   // Destructure loading from useAuth
   const { profile, signOut, refreshProfile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'details' | 'favorites'>(
+    location.hash === '#favorites' ? 'favorites' : 'details'
+  );
+
+  const { data: favorites, isLoading: favsLoading } = useFavorites();
+  const toggleFavoriteMutation = useToggleFavorite();
+
+  useEffect(() => {
+    if (location.hash === '#favorites') {
+      setActiveTab('favorites');
+    } else {
+      setActiveTab('details');
+    }
+  }, [location.hash]);
+
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
@@ -193,29 +210,55 @@ export default function UserProfile() {
               </h1>
             </div>
 
-            <button
-              onClick={() => {
-                if (editing) {
-                  // Revert changes on cancel
-                  setFormData({
-                    full_name: profile.full_name || '',
-                    student_id: profile.student_id || '',
-                    department: profile.department || '',
-                    faculty: profile.faculty || '',
-                    avatar_url: profile.avatar_url || '',
-                    phone: profile.phone || '',
-                  });
-                  setSelectedFile(null);
-                }
-                setEditing(!editing);
-              }}
-              className={`group px-8 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all flex items-center gap-3 shadow-xl animate-fade-in-up delay-200 cursor-pointer ${editing
-                ? 'bg-white text-gray-900 hover:bg-gray-100'
-                : 'bg-blue-600 text-white hover:bg-blue-500 shadow-blue-900/20'}`}
-            >
-              <span>{editing ? 'Cancel Changes' : 'Edit Information'}</span>
-              <i className={editing ? 'ri-close-line text-lg' : 'ri-edit-2-line text-lg'}></i>
-            </button>
+            <div className="flex flex-col gap-4">
+              <nav className="flex gap-2 p-1 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl animate-fade-in-up delay-200">
+                <button
+                  onClick={() => {
+                    setActiveTab('details');
+                    navigate('#profile');
+                  }}
+                  className={`px-6 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'details' ? 'bg-white text-gray-900 shadow-lg' : 'text-white hover:bg-white/10'}`}
+                >
+                  My Details
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('favorites');
+                    navigate('#favorites');
+                  }}
+                  className={`px-6 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'favorites' ? 'bg-white text-gray-900 shadow-lg' : 'text-white hover:bg-white/10'}`}
+                >
+                  Saved Items
+                </button>
+              </nav>
+
+              <button
+                onClick={() => {
+                  if (activeTab !== 'details') {
+                    setActiveTab('details');
+                    navigate('#profile');
+                  }
+                  if (editing) {
+                    setFormData({
+                      full_name: profile.full_name || '',
+                      student_id: profile.student_id || '',
+                      department: profile.department || '',
+                      faculty: profile.faculty || '',
+                      avatar_url: profile.avatar_url || '',
+                      phone: profile.phone || '',
+                    });
+                    setSelectedFile(null);
+                  }
+                  setEditing(!editing);
+                }}
+                className={`group px-8 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all flex items-center gap-3 shadow-xl animate-fade-in-up delay-200 cursor-pointer ${editing
+                  ? 'bg-white text-gray-900 hover:bg-gray-100'
+                  : 'bg-blue-600 text-white hover:bg-blue-500 shadow-blue-900/20'}`}
+              >
+                <span>{editing ? 'Cancel Changes' : 'Edit Information'}</span>
+                <i className={editing ? 'ri-close-line text-lg' : 'ri-edit-2-line text-lg'}></i>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -336,80 +379,179 @@ export default function UserProfile() {
 
           {/* Details & Engagement */}
           <div className="lg:col-span-8 flex flex-col gap-8 animate-fade-in-up delay-400">
-            {/* Main Form */}
-            <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] p-8 md:p-12 shadow-xl shadow-gray-200/10 dark:shadow-none border border-gray-100 dark:border-gray-800 flex-1">
-              <div className="flex items-center justify-between mb-10">
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Academic Details</h3>
-                {editing && <span className="text-[10px] font-bold text-white bg-blue-600 px-3 py-1 rounded-full uppercase tracking-widest animate-pulse">Editing Enabled</span>}
-              </div>
+            {activeTab === 'details' ? (
+              <>
+                {/* Main Form */}
+                <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] p-8 md:p-12 shadow-xl shadow-gray-200/10 dark:shadow-none border border-gray-100 dark:border-gray-800">
+                  <div className="flex items-center justify-between mb-10">
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Academic Details</h3>
+                    {editing && <span className="text-[10px] font-bold text-white bg-blue-600 px-3 py-1 rounded-full uppercase tracking-widest animate-pulse">Editing Enabled</span>}
+                  </div>
 
-              {error && (
-                <div className="mb-8 p-4 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-3 text-rose-600 text-sm font-bold">
-                  <i className="ri-error-warning-fill text-lg"></i>
-                  {error}
-                </div>
-              )}
+                  {error && (
+                    <div className="mb-8 p-4 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-3 text-rose-600 text-sm font-bold">
+                      <i className="ri-error-warning-fill text-lg"></i>
+                      {error}
+                    </div>
+                  )}
 
-              <form onSubmit={handleSubmit} className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {[
-                    { label: 'Full Name', key: 'full_name', value: formData.full_name, type: 'text', placeholder: 'Your Legal Name', icon: 'ri-user-line' },
-                    { label: 'Email Address', key: 'email', value: profile.email, type: 'email', disabled: true, icon: 'ri-mail-line' },
-                    { label: 'Phone Number', key: 'phone', value: formData.phone, type: 'tel', placeholder: 'Eg. 055 555 5555', icon: 'ri-phone-line' },
-                    { label: 'Student ID', key: 'student_id', value: formData.student_id, type: 'text', placeholder: 'Your Index Number', icon: 'ri-id-card-line' },
-                    { label: 'Faculty', key: 'faculty', value: formData.faculty, type: 'text', placeholder: 'Eg. Computing & Engineering', icon: 'ri-building-4-line' },
-                    { label: 'Department', key: 'department', value: formData.department, type: 'text', placeholder: 'Eg. Computer Science', icon: 'ri-computer-line' }
-                  ].map((field) => (
-                    <div key={field.key} className="relative group">
-                      <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2.5 ml-1">{field.label}</label>
-                      <div className={`relative flex items-center rounded-2xl border transition-all duration-300 ${field.disabled ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800' : 'bg-gray-50 dark:bg-gray-800 border-transparent focus-within:bg-white dark:focus-within:bg-gray-900 focus-within:border-blue-500 focus-within:shadow-lg focus-within:shadow-blue-500/10'}`}>
-                        <div className="pl-4 pr-3 text-gray-400">
-                          <i className={`${field.icon} text-lg`}></i>
+                  <form onSubmit={handleSubmit} className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {[
+                        { label: 'Full Name', key: 'full_name', value: formData.full_name, type: 'text', placeholder: 'Your Legal Name', icon: 'ri-user-line' },
+                        { label: 'Email Address', key: 'email', value: profile.email, type: 'email', disabled: true, icon: 'ri-mail-line' },
+                        { label: 'Phone Number', key: 'phone', value: formData.phone, type: 'tel', placeholder: 'Eg. 055 555 5555', icon: 'ri-phone-line' },
+                        { label: 'Student ID', key: 'student_id', value: formData.student_id, type: 'text', placeholder: 'Your Index Number', icon: 'ri-id-card-line' },
+                        { label: 'Faculty', key: 'faculty', value: formData.faculty, type: 'text', placeholder: 'Eg. Computing & Engineering', icon: 'ri-building-4-line' },
+                        { label: 'Department', key: 'department', value: formData.department, type: 'text', placeholder: 'Eg. Computer Science', icon: 'ri-computer-line' }
+                      ].map((field) => (
+                        <div key={field.key} className="relative group">
+                          <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2.5 ml-1">{field.label}</label>
+                          <div className={`relative flex items-center rounded-2xl border transition-all duration-300 ${field.disabled ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800' : 'bg-gray-50 dark:bg-gray-800 border-transparent focus-within:bg-white dark:focus-within:bg-gray-900 focus-within:border-blue-500 focus-within:shadow-lg focus-within:shadow-blue-500/10'}`}>
+                            <div className="pl-4 pr-3 text-gray-400">
+                              <i className={`${field.icon} text-lg`}></i>
+                            </div>
+                            <input
+                              type={field.type}
+                              disabled={field.disabled || !editing}
+                              value={field.value}
+                              onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
+                              className="w-full py-4 bg-transparent border-none focus:ring-0 text-sm font-bold text-gray-900 dark:text-white placeholder-gray-400 disabled:text-gray-500"
+                              placeholder={field.placeholder}
+                            />
+                          </div>
                         </div>
-                        <input
-                          type={field.type}
-                          disabled={field.disabled || !editing}
-                          value={field.value}
-                          onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
-                          className="w-full py-4 bg-transparent border-none focus:ring-0 text-sm font-bold text-gray-900 dark:text-white placeholder-gray-400 disabled:text-gray-500"
-                          placeholder={field.placeholder}
-                        />
+                      ))}
+                    </div>
+
+                    {editing && (
+                      <div className="pt-8 border-t border-gray-100 dark:border-gray-800 flex justify-end">
+                        <button
+                          type="submit"
+                          disabled={loading}
+                          className="px-10 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-xl shadow-xl hover:shadow-2xl transition-all uppercase tracking-widest text-xs flex items-center gap-3 hover:-translate-y-1 active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed"
+                        >
+                          {loading ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <i className="ri-save-3-line text-lg"></i>}
+                          Save Changes
+                        </button>
                       </div>
+                    )}
+                  </form>
+                </div>
+
+                {/* Quick Stats Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  {[
+                    { label: 'Saved Items', value: favorites?.length || 0 + ' Items', icon: 'ri-heart-line', color: 'bg-rose-500', path: '#favorites' },
+                    { label: 'Support', value: 'Help Center', icon: 'ri-customer-service-line', color: 'bg-amber-500', path: '/support' },
+                    { label: 'Messages', value: 'Inbox', icon: 'ri-message-3-line', color: 'bg-emerald-500', path: '/messages' }
+                  ].map((stat, i) => (
+                    <div key={i} onClick={() => {
+                      if (stat.path.startsWith('#')) {
+                        navigate(stat.path);
+                      } else {
+                        navigate(stat.path);
+                      }
+                    }} className="bg-white dark:bg-gray-900 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all cursor-pointer group hover:-translate-y-1">
+                      <div className={`w-12 h-12 ${stat.color} rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg group-hover:scale-110 transition-transform`}>
+                        <i className={`${stat.icon} text-xl`}></i>
+                      </div>
+                      <p className="text-lg font-bold text-gray-900 dark:text-white leading-tight">{stat.label}</p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 group-hover:text-blue-500 transition-colors">{stat.value}</p>
                     </div>
                   ))}
                 </div>
-
-                {editing && (
-                  <div className="pt-8 border-t border-gray-100 dark:border-gray-800 flex justify-end">
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="px-10 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-xl shadow-xl hover:shadow-2xl transition-all uppercase tracking-widest text-xs flex items-center gap-3 hover:-translate-y-1 active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed"
-                    >
-                      {loading ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <i className="ri-save-3-line text-lg"></i>}
-                      Save Changes
-                    </button>
+              </>
+            ) : (
+              <div className="space-y-8">
+                <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] p-8 md:p-12 border border-gray-100 dark:border-gray-800 min-h-[400px]">
+                  <div className="flex items-center justify-between mb-8">
+                    <div>
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Saved Items</h3>
+                      <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Products you're interested in</p>
+                    </div>
+                    <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 rounded-2xl flex items-center justify-center text-rose-500">
+                      <i className="ri-heart-fill text-2xl"></i>
+                    </div>
                   </div>
-                )}
-              </form>
-            </div>
 
-            {/* Quick Stats Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              {[
-                { label: 'Saved Items', value: 'Wishlist', icon: 'ri-heart-line', color: 'bg-rose-500', path: '/profile#favorites' },
-                { label: 'Active Drafts', value: 'Work in Progress', icon: 'ri-draft-line', color: 'bg-amber-500', path: '#' },
-                { label: 'Messages', value: 'Inbox', icon: 'ri-message-3-line', color: 'bg-emerald-500', path: '/messages' }
-              ].map((stat, i) => (
-                <div key={i} onClick={() => stat.path !== '#' && navigate(stat.path)} className="bg-white dark:bg-gray-900 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all cursor-pointer group hover:-translate-y-1">
-                  <div className={`w-12 h-12 ${stat.color} rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg group-hover:scale-110 transition-transform`}>
-                    <i className={`${stat.icon} text-xl`}></i>
-                  </div>
-                  <p className="text-lg font-bold text-gray-900 dark:text-white leading-tight">{stat.label}</p>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 group-hover:text-blue-500 transition-colors">{stat.value}</p>
+                  {favsLoading ? (
+                    <div className="py-20 text-center">
+                      <div className="w-10 h-10 border-2 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Loading favorites...</p>
+                    </div>
+                  ) : favorites && favorites.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      {favorites.map((fav: any) => (
+                        <div key={fav.id} className="group relative bg-gray-50 dark:bg-gray-800/50 rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-800 transition-all hover:shadow-2xl hover:shadow-gray-200/50 dark:hover:shadow-none hover:-translate-y-1">
+                          <Link to={`/product/${fav.product_id}`} className="block aspect-square overflow-hidden">
+                            <img
+                              src={getOptimizedImageUrl(fav.product?.images?.[0], 400, 80)}
+                              alt={fav.product?.name}
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            />
+                          </Link>
+
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              toggleFavoriteMutation.mutate(fav.product_id);
+                            }}
+                            className="absolute top-4 right-4 w-10 h-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md rounded-full flex items-center justify-center text-rose-500 shadow-lg hover:scale-110 transition-all cursor-pointer z-10"
+                          >
+                            <i className="ri-heart-fill text-xl"></i>
+                          </button>
+
+                          <div className="p-6">
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="px-3 py-1 bg-blue-600 text-white text-[8px] font-bold uppercase tracking-widest rounded-lg">
+                                {fav.product?.category}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-200">
+                                  <img
+                                    src={getOptimizedImageUrl(fav.product?.seller?.business_logo || fav.product?.seller?.avatar_url, 40, 40)}
+                                    alt=""
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2 line-clamp-1">{fav.product?.name}</h4>
+
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                              <span className="text-xl font-black text-blue-600">GH₵{fav.product?.price?.toLocaleString()}</span>
+                              <Link
+                                to={`/product/${fav.product_id}`}
+                                className="text-[10px] font-bold text-gray-400 hover:text-blue-600 uppercase tracking-widest transition-colors"
+                              >
+                                View Deal <i className="ri-arrow-right-line ml-1"></i>
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-24 text-center">
+                      <div className="w-20 h-20 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i className="ri-heart-line text-4xl text-gray-300"></i>
+                      </div>
+                      <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No Saved Items</h4>
+                      <p className="text-gray-500 text-sm mb-8 max-w-xs mx-auto">Items you save while browsing the marketplace will appear here for easy access later.</p>
+                      <button
+                        onClick={() => navigate('/marketplace')}
+                        className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors uppercase tracking-widest text-[10px]"
+                      >
+                        Browse Marketplace
+                      </button>
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

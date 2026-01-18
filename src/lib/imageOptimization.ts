@@ -5,12 +5,12 @@ export const getOptimizedImageUrl = (url: string | undefined, width?: number, qu
 
   // Supabase transformation requires a specific Pro-tier endpoint (/render/image)
   // Appending query params to standard public URLs can break them on the free tier.
-  if (url.includes('supabase') && !url.includes('/render/image')) {
+  if (url.includes('supabase')) {
+    // Standard Supabase public URLs don't support width/quality params on the free tier.
+    // We return the raw URL to ensure the image displays correctly.
     return url;
   }
-
-  // For other providers or if transformation is already set up
-  if (url.includes('supabase') || url.includes('cloudinary') || url.includes('imgix')) {
+  if (url.includes('cloudinary') || url.includes('imgix')) {
     const separator = url.includes('?') ? '&' : '?';
     const params = [];
 
