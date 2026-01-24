@@ -237,7 +237,7 @@ export default function Navbar() {
     <nav className="fixed top-0 left-0 right-0 z-50 transition-all duration-300">
       <div className={`absolute inset-0 transition-colors duration-500 ${showMobileMenu
         ? 'bg-transparent'
-        : 'bg-white/90 dark:bg-gray-950/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 shadow-sm'
+        : 'bg-white/95 dark:bg-gray-950/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 shadow-sm'
         }`}></div>
 
       <div className="max-w-[1440px] mx-auto px-6 lg:px-12 relative z-[60]">
@@ -264,29 +264,29 @@ export default function Navbar() {
             <div className="hidden lg:flex items-center space-x-6">
               <Link
                 to="/"
-                className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-white transition-colors"
               >
                 Home
               </Link>
               <Link
                 to="/marketplace"
-                className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-white transition-colors"
               >
                 Marketplace
               </Link>
               <Link
                 to="/news"
-                className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-white transition-colors"
               >
                 News
               </Link>
               <Link
                 to="/support"
-                className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-white transition-colors"
               >
                 Help Center
               </Link>
-              <div className="w-px h-6 bg-gray-200 dark:bg-gray-800 mx-2"></div>
+              <div className="w-px h-6 bg-gray-300 dark:bg-gray-800 mx-2"></div>
               {/* Primary Action Button */}
               {profile?.role === 'super_admin' || profile?.role === 'admin' ? (
                 <Link
@@ -326,12 +326,12 @@ export default function Navbar() {
             {/* Auth/User Section */}
             <div className={`flex items-center gap-4 relative z-10 transition-all duration-300 ${showMobileMenu
               ? 'opacity-0 pointer-events-none translate-x-4 invisible'
-              : 'opacity-100 pl-6 border-l border-gray-200 dark:border-gray-800'
+              : 'opacity-100 pl-6 border-l border-gray-300 dark:border-gray-800'
               }`}>
               {/* Dark Mode Toggle */}
               <button
                 onClick={toggleTheme}
-                className="p-2 rounded-full text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                className="p-2 rounded-full text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 title="Toggle Theme"
               >
                 {theme === 'dark' ? (
@@ -343,10 +343,10 @@ export default function Navbar() {
 
               {user ? (
                 <div className="flex items-center gap-4">
-                  <Link to="/messages" className="relative p-2 text-gray-400 hover:text-blue-600 dark:hover:text-white transition-colors">
+                  <Link to="/messages" className="relative p-2 text-gray-600 hover:text-orange-600 dark:text-gray-400 dark:hover:text-white transition-colors">
                     <i className="ri-chat-3-line text-xl"></i>
                     {unreadCount > 0 && (
-                      <span className="absolute top-1 right-1 w-2 h-2 bg-blue-600 rounded-full ring-2 ring-white dark:ring-gray-900"></span>
+                      <span className="absolute top-1 right-1 w-2 h-2 bg-orange-600 rounded-full ring-2 ring-white dark:ring-gray-900"></span>
                     )}
                   </Link>
 
@@ -423,13 +423,13 @@ export default function Navbar() {
                 <div className="flex items-center gap-3">
                   <Link
                     to="/login"
-                    className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors"
+                    className="text-sm font-bold text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-white transition-colors"
                   >
                     Log In
                   </Link>
                   <Link
                     to="/register"
-                    className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-bold rounded-lg hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
+                    className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-sm font-bold rounded-lg shadow-lg transition-all"
                   >
                     Sign Up
                   </Link>
@@ -452,51 +452,51 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Menu Overlay - Cinematic Dark Theme */}
+      {/* Mobile Menu Overlay - Theme Responsive */}
       <div className={`fixed inset-0 z-40 transition-all duration-500 ${showMobileMenu ? 'opacity-100 visible' : 'opacity-0 invisible'
         }`}>
-        <div className="absolute inset-0 bg-gray-950/98 backdrop-blur-xl" />
+        <div className="absolute inset-0 bg-white/98 dark:bg-gray-950/98 backdrop-blur-xl" />
 
         {/* Decorative Background Elements */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-orange-200/20 dark:bg-blue-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-amber-200/20 dark:bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none"></div>
 
         <div className={`relative h-full flex flex-col p-8 pt-12 overflow-y-auto transition-transform duration-500 ease-out ${showMobileMenu ? 'translate-y-0' : '-translate-y-12'
           }`}>
-          {/* Mobile Menu Header with Brand and Manual Close */}
+          {/* Mobile Menu Header */}
           <div className="flex items-center justify-between mb-10 pl-2">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/40">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 dark:bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
                 <img src="/PU%20Connect%20logo.png" alt="PU Connect" className="w-8 h-8 object-contain brightness-0 invert" />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-white tracking-tight">PU Connect</h3>
-                <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Student Portal</p>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">PU Connect</h3>
+                <p className="text-[10px] font-bold text-orange-600 dark:text-blue-400 uppercase tracking-widest">Student Portal</p>
               </div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.3em] mb-4 pl-2">Navigation Terminal</p>
+            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] mb-4 pl-2">Quick Navigation</p>
             {[
-              { label: 'Home Terminal', path: '/', icon: 'ri-home-5-line', color: 'text-blue-400', bg: 'bg-blue-900/20' },
-              { label: 'Marketplace', path: '/marketplace', icon: 'ri-compass-3-line', color: 'text-emerald-400', bg: 'bg-emerald-900/20' },
-              { label: 'Campus News', path: '/news', icon: 'ri-newspaper-line', color: 'text-indigo-400', bg: 'bg-indigo-900/20' },
-              { label: 'Help Center', path: '/support', icon: 'ri-customer-service-2-line', color: 'text-pink-400', bg: 'bg-pink-900/20' },
+              { label: 'Home', path: '/', icon: 'ri-home-5-line', color: 'text-orange-600 dark:text-blue-400', bg: 'bg-orange-100 dark:bg-blue-900/20' },
+              { label: 'Marketplace', path: '/marketplace', icon: 'ri-shopping-bag-3-line', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/20' },
+              { label: 'Campus News', path: '/news', icon: 'ri-newspaper-line', color: 'text-purple-600 dark:text-indigo-400', bg: 'bg-purple-100 dark:bg-indigo-900/20' },
+              { label: 'Help Center', path: '/support', icon: 'ri-customer-service-2-line', color: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-100 dark:bg-pink-900/20' },
             ].map((item) => (
               <Link
                 key={item.label}
                 to={item.path}
                 onClick={() => setShowMobileMenu(false)}
-                className="group flex items-center justify-between p-5 rounded-2xl hover:bg-white/5 active:scale-[0.98] transition-all border border-transparent hover:border-white/5"
+                className="group flex items-center justify-between p-5 rounded-2xl hover:bg-gray-100 dark:hover:bg-white/5 active:scale-[0.98] transition-all border border-transparent hover:border-gray-200 dark:hover:border-white/5"
               >
                 <div className="flex items-center gap-5">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${item.bg} ${item.color} shadow-lg ring-1 ring-white/5`}>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${item.bg} ${item.color} shadow-sm`}>
                     <i className={`${item.icon} text-xl`}></i>
                   </div>
-                  <span className={`text-lg font-bold tracking-tight text-gray-200 group-hover:text-white transition-colors`}>{item.label}</span>
+                  <span className={`text-lg font-bold tracking-tight text-gray-800 dark:text-gray-200 group-hover:text-gray-900 dark:group-hover:text-white transition-colors`}>{item.label}</span>
                 </div>
-                <i className="ri-arrow-right-line text-xl text-gray-700 group-hover:text-white transition-colors"></i>
+                <i className="ri-arrow-right-line text-xl text-gray-300 dark:text-gray-700 group-hover:text-gray-600 dark:group-hover:text-white transition-colors"></i>
               </Link>
             ))}
 
@@ -571,15 +571,15 @@ export default function Navbar() {
             )}
           </div>
 
-          <div className="mt-auto pt-10 border-t border-white/5">
+          <div className="mt-auto pt-10 border-t border-gray-200 dark:border-white/5">
             {user ? (
               <div className="space-y-4">
                 <Link
                   to="/profile"
                   onClick={() => setShowMobileMenu(false)}
-                  className="flex items-center gap-4 p-4 rounded-xl bg-gray-900 border border-white/5 hover:border-blue-500/50 transition-all"
+                  className="flex items-center gap-4 p-4 rounded-xl bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-white/5 hover:border-orange-300 dark:hover:border-blue-500/50 transition-all"
                 >
-                  <div className="w-10 h-10 rounded-full bg-gray-800 overflow-hidden flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden flex items-center justify-center">
                     {profile?.avatar_url ? (
                       <img
                         src={getOptimizedImageUrl(profile.avatar_url, 80, 80)}
@@ -587,14 +587,14 @@ export default function Navbar() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full bg-blue-600 flex items-center justify-center text-white text-[10px] font-bold relative overflow-hidden">
+                      <div className="w-full h-full bg-gradient-to-br from-orange-500 to-amber-500 dark:bg-blue-600 flex items-center justify-center text-white text-[10px] font-bold relative overflow-hidden">
                         <i className="ri-user-3-fill absolute text-2xl opacity-20 translate-y-1"></i>
                         <span className="relative z-10">{profile?.full_name?.charAt(0).toUpperCase()}</span>
                       </div>
                     )}
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-white">{profile?.full_name}</p>
+                    <p className="text-sm font-bold text-gray-900 dark:text-white">{profile?.full_name}</p>
                     <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">{profile?.role?.replace('_', ' ')}</p>
                   </div>
                 </Link>
@@ -615,22 +615,22 @@ export default function Navbar() {
                 <Link
                   to="/login"
                   onClick={() => setShowMobileMenu(false)}
-                  className="py-5 bg-white/5 text-white border border-white/10 font-bold rounded-2xl uppercase tracking-wide text-xs flex items-center justify-center hover:bg-white/10 transition-all"
+                  className="py-5 bg-gray-100 dark:bg-white/5 text-gray-900 dark:text-white border border-gray-200 dark:border-white/10 font-bold rounded-2xl uppercase tracking-wide text-xs flex items-center justify-center hover:bg-gray-200 dark:hover:bg-white/10 transition-all"
                 >
                   Sign In
                 </Link>
                 <Link
                   to="/register"
                   onClick={() => setShowMobileMenu(false)}
-                  className="py-5 bg-blue-600 text-white font-bold rounded-2xl uppercase tracking-wide text-xs flex items-center justify-center shadow-lg shadow-blue-900/20 active:scale-95 transition-all"
+                  className="py-5 bg-gradient-to-r from-orange-500 to-amber-500 dark:bg-blue-600 text-white font-bold rounded-2xl uppercase tracking-wide text-xs flex items-center justify-center shadow-lg active:scale-95 transition-all"
                 >
-                  Join Network
+                  Join Now
                 </Link>
               </div>
             )}
 
             <div className="mt-8 text-center">
-              <p className="text-[9px] font-bold text-gray-700 uppercase tracking-widest">
+              <p className="text-[9px] font-bold text-gray-400 dark:text-gray-700 uppercase tracking-widest">
                 PU Connect • Student Portal
               </p>
             </div>

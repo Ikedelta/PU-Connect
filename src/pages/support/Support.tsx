@@ -67,18 +67,18 @@ export default function Support() {
             <Navbar />
 
             {/* Header Section */}
-            <div className="relative bg-gray-900 overflow-hidden py-24 md:py-32">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-900/40 via-gray-900 to-gray-900 z-0"></div>
-                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[100px] opacity-50 z-0 animate-blob"></div>
+            <div className="relative bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 dark:bg-gray-900 overflow-hidden py-24 md:py-32">
+                <div className="absolute inset-0 bg-gradient-to-br from-white/60 via-white/40 to-white/60 dark:from-gray-950/90 dark:to-gray-950 z-0"></div>
+                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-orange-200/30 dark:bg-orange-600/10 rounded-full blur-[100px] opacity-50 z-0"></div>
 
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-                    <div className="inline-flex items-center justify-center p-3 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl mb-8 animate-fade-in-up">
-                        <i className="ri-customer-service-2-fill text-2xl text-blue-400"></i>
+                    <div className="inline-flex items-center justify-center p-3 bg-white dark:bg-gray-800 border border-orange-200 dark:border-gray-700 rounded-2xl mb-8 shadow-sm">
+                        <i className="ri-customer-service-2-fill text-2xl text-orange-600 dark:text-orange-400"></i>
                     </div>
-                    <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight animate-fade-in-up delay-100">
-                        How can we <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">help you?</span>
+                    <h1 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6 tracking-tight">
+                        How can we <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500">help you?</span>
                     </h1>
-                    <p className="text-gray-300 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed animate-fade-in-up delay-200">
+                    <p className="text-gray-600 dark:text-gray-300 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
                         Search our knowledge base, explore frequently asked questions, or contact our dedicated support team directly.
                     </p>
                 </div>
@@ -91,9 +91,9 @@ export default function Support() {
                         { title: 'Payments & Billing', icon: 'ri-bank-card-line', desc: 'Transactions, Refunds, and Fees' },
                         { title: 'Marketplace', icon: 'ri-store-3-line', desc: 'Listing products and Vendor queries' }
                     ].map((item, i) => (
-                        <div key={i} className="bg-white dark:bg-gray-800 p-8 rounded-[2rem] shadow-xl shadow-gray-200/20 dark:shadow-none border border-gray-100 dark:border-gray-700 hover:-translate-y-2 transition-transform duration-300 group cursor-pointer">
-                            <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                                <i className={`${item.icon} text-3xl text-blue-600 dark:text-blue-400`}></i>
+                        <div key={i} className="bg-white dark:bg-gray-800 p-8 rounded-[2rem] shadow-lg border border-gray-100 dark:border-gray-700 hover:-translate-y-2 transition-transform duration-300 group cursor-pointer">
+                            <div className="w-14 h-14 bg-orange-50 dark:bg-orange-900/20 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                <i className={`${item.icon} text-3xl text-orange-600 dark:text-orange-400`}></i>
                             </div>
                             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{item.title}</h3>
                             <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{item.desc}</p>
@@ -131,7 +131,7 @@ export default function Support() {
                                             value={subject}
                                             onChange={(e) => setSubject(e.target.value)}
                                             required
-                                            className="w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-gray-800 border border-transparent dark:border-gray-700 rounded-xl focus:bg-white dark:focus:bg-gray-900 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-semibold text-gray-900 dark:text-white cursor-pointer appearance-none text-sm"
+                                            className="w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:bg-white dark:focus:bg-gray-900 focus:border-orange-500 dark:focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all font-semibold text-gray-900 dark:text-white cursor-pointer appearance-none text-sm"
                                         >
                                             <option value="">Select a related topic...</option>
                                             <option value="account">Account & Verification</option>
@@ -152,7 +152,7 @@ export default function Support() {
                                         required
                                         placeholder="Please describe your issue clearly..."
                                         rows={6}
-                                        className="w-full p-6 bg-gray-50 dark:bg-gray-800 border border-transparent dark:border-gray-700 rounded-2xl focus:bg-white dark:focus:bg-gray-900 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-medium text-gray-900 dark:text-white resize-none text-sm"
+                                        className="w-full p-6 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl focus:bg-white dark:focus:bg-gray-900 focus:border-orange-500 dark:focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all font-medium text-gray-900 dark:text-white resize-none text-sm"
                                     ></textarea>
                                 </div>
 
@@ -160,7 +160,7 @@ export default function Support() {
                                     <button
                                         type="submit"
                                         disabled={loading}
-                                        className="w-full py-5 bg-blue-600 text-white font-bold rounded-2xl shadow-xl shadow-blue-500/20 hover:bg-blue-700 active:scale-[0.98] transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed group"
+                                        className="w-full py-5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold rounded-2xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed group"
                                     >
                                         {loading ? (
                                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -178,7 +178,7 @@ export default function Support() {
 
                     {/* Contact Info & FAQ */}
                     <div className="space-y-8 flex flex-col">
-                        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl shadow-blue-900/20">
+                        <div className="bg-gradient-to-br from-orange-500 to-amber-600 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
                             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                             <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
 
@@ -190,7 +190,7 @@ export default function Support() {
                                 <h3 className="text-3xl font-bold mb-8">Direct Channels</h3>
                                 <div className="space-y-6">
                                     <div className="flex items-center gap-5 p-4 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/10 hover:bg-white/20 transition-colors cursor-pointer group">
-                                        <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center flex-shrink-0 text-blue-600 group-hover:scale-110 transition-transform">
+                                        <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center flex-shrink-0 text-orange-600 group-hover:scale-110 transition-transform">
                                             <i className="ri-mail-send-fill text-2xl"></i>
                                         </div>
                                         <div>
@@ -200,7 +200,7 @@ export default function Support() {
                                     </div>
 
                                     <div className="flex items-center gap-5 p-4 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/10 hover:bg-white/20 transition-colors cursor-pointer group">
-                                        <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center flex-shrink-0 text-blue-600 group-hover:scale-110 transition-transform">
+                                        <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center flex-shrink-0 text-orange-600 group-hover:scale-110 transition-transform">
                                             <i className="ri-customer-service-2-fill text-2xl"></i>
                                         </div>
                                         <div>
@@ -214,7 +214,7 @@ export default function Support() {
 
                         <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] p-10 border border-gray-100 dark:border-gray-800 flex-1">
                             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-8 flex items-center gap-3">
-                                <i className="ri-question-answer-line text-blue-500"></i>
+                                <i className="ri-question-answer-line text-orange-500"></i>
                                 Common Questions
                             </h3>
                             <div className="space-y-4">
@@ -225,14 +225,14 @@ export default function Support() {
                                 ].map((faq, i) => (
                                     <div key={i}>
                                         <details className="group">
-                                            <summary className="flex items-center justify-between cursor-pointer list-none font-bold text-gray-800 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-sm py-2">
+                                            <summary className="flex items-center justify-between cursor-pointer list-none font-bold text-gray-800 dark:text-gray-200 hover:text-orange-600 dark:hover:text-orange-400 transition-colors text-sm py-2">
                                                 <span>{faq.q}</span>
-                                                <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center group-open:bg-blue-50 dark:group-open:bg-blue-900/30 transition-colors">
+                                                <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center group-open:bg-orange-50 dark:group-open:bg-orange-900/30 transition-colors">
                                                     <i className="ri-add-line group-open:rotate-45 transition-transform duration-300"></i>
                                                 </div>
                                             </summary>
                                             <div className="overflow-hidden h-0 group-open:h-auto transition-all duration-300">
-                                                <p className="text-gray-500 dark:text-gray-400 py-3 text-sm leading-relaxed border-l-2 border-blue-500/20 pl-4 ml-1 mb-2">
+                                                <p className="text-gray-500 dark:text-gray-400 py-3 text-sm leading-relaxed border-l-2 border-orange-500/20 pl-4 ml-1 mb-2">
                                                     {faq.a}
                                                 </p>
                                             </div>

@@ -11,10 +11,10 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const [theme, setTheme] = useState<Theme>(() => {
-        // Check local storage or system preference
+        // Check local storage first, default to light mode for marketplace feel
         const saved = localStorage.getItem('theme');
         if (saved === 'dark' || saved === 'light') return saved;
-        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        return 'light'; // Default to light mode for better marketplace aesthetics
     });
 
     useEffect(() => {

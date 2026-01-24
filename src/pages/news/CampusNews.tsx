@@ -39,32 +39,29 @@ export default function CampusNews() {
     <div className="min-h-screen bg-white dark:bg-gray-950 transition-colors duration-300">
       <Navbar />
 
-      <section className="relative py-24 md:py-40 overflow-hidden bg-gray-950">
+      <section className="relative py-24 md:py-32 overflow-hidden bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 dark:bg-gray-950">
         {/* Background Image Overlay */}
         <div className="absolute inset-0 z-0">
           <img
             src={bannerUrl || 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&q=80&w=1920'}
             alt="Campus"
-            className="w-full h-full object-cover opacity-20 mix-blend-luminosity scale-110 animate-pulse"
+            className="w-full h-full object-cover opacity-10 dark:opacity-20"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/40 to-transparent"></div>
-          {/* Cyberpunk grid overlay */}
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:32px_32px]"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-white/60 via-white/40 to-white/60 dark:from-gray-950/90 dark:to-gray-950"></div>
         </div>
 
         <div className="max-w-7xl mx-auto px-6 md:px-12 relative z-10 w-full">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-12">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
             <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-3 px-4 py-2 bg-blue-600/10 border border-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-[0.2em] rounded-full mb-8 backdrop-blur-md">
-                <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-ping"></span>
+              <div className="inline-flex items-center gap-3 px-4 py-2 bg-white dark:bg-orange-600/10 border border-orange-200 dark:border-orange-500/20 text-orange-700 dark:text-orange-400 text-xs font-bold rounded-full mb-6 shadow-sm">
+                <span className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse"></span>
                 Official News Feed
               </div>
-              <h1 className="text-5xl md:text-8xl font-black text-white leading-none tracking-tighter mb-8 drop-shadow-2xl">
-                Campus<br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Chronicle.</span>
+              <h1 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white leading-tight tracking-tight mb-6">
+                Campus <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500">News</span>
               </h1>
-              <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px] flex items-center gap-3">
-                <span className="w-12 h-[1px] bg-blue-500/30"></span>
-                The pulse of Campus communication
+              <p className="text-gray-600 dark:text-gray-400 font-medium text-base">
+                Stay informed with the latest campus updates
               </p>
             </div>
 
@@ -73,17 +70,17 @@ export default function CampusNews() {
                 onSubmit={(e) => { e.preventDefault(); setDebouncedSearch(searchQuery); }}
                 className="relative group w-full sm:min-w-[400px]"
               >
-                <i className="ri-search-2-line absolute left-6 top-1/2 -translate-y-1/2 text-2xl text-gray-400 group-focus-within:text-blue-400 transition-all pointer-events-none"></i>
+                <i className="ri-search-2-line absolute left-5 top-1/2 -translate-y-1/2 text-xl text-gray-400 pointer-events-none"></i>
                 <input
                   type="text"
-                  placeholder="Scan for articles..."
+                  placeholder="Search articles..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-16 pr-32 py-6 bg-white/5 border border-white/10 rounded-2xl focus:bg-white/10 focus:border-blue-400/50 outline-none transition-all font-bold text-white placeholder-gray-500 text-lg backdrop-blur-xl"
+                  className="w-full pl-14 pr-28 py-4 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-2xl focus:border-orange-500 dark:focus:border-orange-500 outline-none transition-all font-medium text-gray-900 dark:text-white placeholder-gray-400 text-base shadow-sm hover:shadow-md"
                 />
                 <button
                   type="submit"
-                  className="absolute right-3 top-3 bottom-3 px-8 bg-blue-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-blue-500 transition-all shadow-xl shadow-blue-900/40 active:scale-95 cursor-pointer"
+                  className="absolute right-2 top-2 bottom-2 px-6 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl font-bold text-sm transition-all shadow-lg active:scale-95"
                 >
                   Search
                 </button>
@@ -97,27 +94,27 @@ export default function CampusNews() {
         {/* Google AdSense Banner */}
         <AdSenseBanner className="mb-20" />
 
-        {/* Categories Matrix */}
-        <div className="mb-20 overflow-x-auto pb-4 no-scrollbar">
-          <div className="flex gap-4 min-w-max px-2">
+        {/* Categories */}
+        <div className="mb-16 overflow-x-auto pb-4 no-scrollbar">
+          <div className="flex gap-3 min-w-max px-2">
             {[
-              { id: 'all', label: 'All Updates', icon: 'ri-apps-2-fill' },
-              { id: 'General', label: 'General News', icon: 'ri-newspaper-fill' },
-              { id: 'Announcements', label: 'Official Dispatches', icon: 'ri-megaphone-fill' },
-              { id: 'Academic', label: 'Knowledge Hub', icon: 'ri-book-3-fill' },
-              { id: 'Events', label: 'Campus Live', icon: 'ri-calendar-event-fill' },
-              { id: 'Sports', label: 'Athletics', icon: 'ri-trophy-fill' },
-              { id: 'Ads', label: 'Spotlight', icon: 'ri-lightbulb-flash-fill' }
+              { id: 'all', label: 'All News', icon: 'ri-apps-2-line' },
+              { id: 'General', label: 'General', icon: 'ri-newspaper-line' },
+              { id: 'Announcements', label: 'Announcements', icon: 'ri-megaphone-line' },
+              { id: 'Academic', label: 'Academic', icon: 'ri-book-3-line' },
+              { id: 'Events', label: 'Events', icon: 'ri-calendar-event-line' },
+              { id: 'Sports', label: 'Sports', icon: 'ri-trophy-line' },
+              { id: 'Ads', label: 'Spotlight', icon: 'ri-lightbulb-flash-line' }
             ].map((category) => (
               <button
                 key={category.id}
                 onClick={() => setSelectedCategory(category.id)}
-                className={`flex items-center gap-4 px-10 py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.15em] transition-all active:scale-95 cursor-pointer border ${selectedCategory === category.id
-                  ? 'bg-blue-600 border-blue-500 text-white shadow-2xl shadow-blue-500/30'
-                  : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:border-blue-500/30 hover:text-blue-500'
+                className={`flex items-center gap-3 px-6 py-3 rounded-full font-bold text-sm transition-all active:scale-95 border ${selectedCategory === category.id
+                  ? 'bg-gradient-to-r from-orange-500 to-amber-500 border-transparent text-white shadow-lg'
+                  : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-400 hover:border-orange-300 dark:hover:border-orange-700 hover:text-orange-600 dark:hover:text-orange-400'
                   }`}
               >
-                <i className={`${category.icon} text-xl`}></i>
+                <i className={`${category.icon} text-lg`}></i>
                 {category.label}
               </button>
             ))}
@@ -139,36 +136,36 @@ export default function CampusNews() {
                 to={`/news/${article.id}`}
                 className="group relative bg-white dark:bg-gray-900/30 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-700 flex flex-col overflow-hidden"
               >
-                <div className="relative h-72 w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
+                <div className="relative h-72 w-full overflow-hidden bg-gray-100 dark:bg-gray-800 rounded-t-[2.5rem]">
                   <img
                     src={getOptimizedImageUrl(article.image_url, 800, 85)}
                     alt={article.title}
                     onError={(e) => {
                       e.currentTarget.src = 'https://images.unsplash.com/photo-1585829365234-781fcd504308?auto=format&fit=crop&q=80&w=800';
                     }}
-                    className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
                   <div className="absolute top-6 left-6">
-                    <span className="px-5 py-2 bg-blue-600/90 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest rounded-xl shadow-lg">
+                    <span className="px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-bold rounded-xl shadow-lg">
                       {article.category}
                     </span>
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-gray-950/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-gray-950/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                 </div>
 
                 <div className="p-8 flex-1 flex flex-col">
-                  <div className="flex items-center gap-4 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-6">
+                  <div className="flex items-center gap-4 text-xs font-bold text-gray-500 dark:text-gray-500 mb-5">
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-100 dark:border-gray-700">
-                      <i className="ri-time-line text-blue-500"></i>
+                      <i className="ri-time-line text-orange-500"></i>
                       {formatDate(article.created_at)}
                     </div>
                     <div className="flex items-center gap-2 ml-auto">
-                      <i className="ri-bar-chart-2-line text-blue-500"></i>
+                      <i className="ri-eye-line text-orange-500"></i>
                       {article.views_count || 0}
                     </div>
                   </div>
 
-                  <h3 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white mb-6 leading-[1.15] tracking-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
+                  <h3 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 leading-tight line-clamp-2 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
                     {article.title}
                   </h3>
 
@@ -180,10 +177,10 @@ export default function CampusNews() {
                     ...
                   </p>
 
-                  <div className="mt-auto flex items-center justify-between pt-8 border-t border-gray-50 dark:border-gray-800/50">
-                    <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] group-hover:text-blue-600 transition-colors">Digital Library / {article.category}</span>
-                    <div className="w-12 h-12 bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 rounded-xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white group-hover:shadow-lg group-hover:shadow-blue-500/20 transition-all duration-500">
-                      <i className="ri-arrow-right-line text-xl"></i>
+                  <div className="mt-auto flex items-center justify-between pt-6 border-t border-gray-100 dark:border-gray-800">
+                    <span className="text-xs font-bold text-gray-400 dark:text-gray-500">{article.category}</span>
+                    <div className="w-10 h-10 bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 rounded-xl flex items-center justify-center group-hover:bg-gradient-to-r group-hover:from-orange-500 group-hover:to-amber-500 group-hover:text-white group-hover:shadow-lg transition-all duration-500">
+                      <i className="ri-arrow-right-line text-lg"></i>
                     </div>
                   </div>
                 </div>
