@@ -6,6 +6,7 @@ import { getOptimizedImageUrl } from '../../lib/imageOptimization';
 import { useNews } from '../../hooks/useNews';
 import { useSiteContent, CONTENT_KEYS } from '../../hooks/useSiteContent';
 import AdSenseBanner from '../../components/feature/AdSenseBanner';
+import AdBanner from '../../components/feature/AdBanner';
 
 export default function CampusNews() {
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -93,6 +94,11 @@ export default function CampusNews() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-12 md:py-24">
         {/* Google AdSense Banner */}
         <AdSenseBanner className="mb-20" />
+
+        {/* News Feed Ad Placement */}
+        <div className="mb-20">
+          <AdBanner placement="news_feed" className="w-full max-w-5xl mx-auto" />
+        </div>
 
         {/* Categories */}
         <div className="mb-16 overflow-x-auto pb-4 no-scrollbar">

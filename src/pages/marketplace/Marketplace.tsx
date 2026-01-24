@@ -9,6 +9,7 @@ import { getOptimizedImageUrl } from '../../lib/imageOptimization';
 import { useSiteContent, CONTENT_KEYS } from '../../hooks/useSiteContent';
 
 import AdSenseBanner from '../../components/feature/AdSenseBanner';
+import AdBanner from '../../components/feature/AdBanner';
 
 function Marketplace() {
   const navigate = useNavigate();
@@ -227,6 +228,11 @@ function Marketplace() {
         <div className="py-8 md:py-12">
 
           <AdSenseBanner className="mb-12 rounded-[2rem] overflow-hidden shadow-lg" />
+
+          {/* Marketplace Sidebar Ad */}
+          <div className="mb-12">
+            <AdBanner placement="marketplace_sidebar" className="w-full max-w-4xl mx-auto" />
+          </div>
 
           {/* Results Header */}
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-6">

@@ -535,17 +535,22 @@ export default function Home() {
         </div>
       </section>
 
-      <AdSenseBanner />
-
-      {/* Market Categories - Minimal Grid */}
-      <section className="py-16 bg-gray-50 dark:bg-gray-900">
+      {/* Hero Ad Placement */}
+      <section className="py-12 bg-white dark:bg-gray-950">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <div className="mb-10 text-center md:text-left">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Shop by Category</h2>
-            <p className="text-gray-500 dark:text-gray-400">Find exactly what you need.</p>
+          <AdBanner placement="home_hero" className="w-full" />
+        </div>
+      </section>
+
+      {/* Popular Categories - Vibrant Grid */}
+      <section className="py-16 bg-gradient-to-b from-white to-gray-50 dark:from-gray-950 dark:to-gray-900">
+        <div className="max-w-7xl mx-auto px-6 lg:px-12">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white mb-4">Shop by Category</h2>
+            <p className="text-gray-600 dark:text-gray-300 font-medium text-lg">Find exactly what you need, faster.</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               { id: 'electronics', name: 'Electronics', desc: 'Gadgets & Tech', img: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&q=80&w=600' },
               { id: 'books', name: 'Textbooks', desc: 'Study Materials', img: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&q=80&w=600' },
