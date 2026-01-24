@@ -80,52 +80,58 @@ export default function NewsDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950 transition-colors duration-300 pb-20">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300 pb-20 overflow-x-hidden">
       <Navbar />
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 md:pt-40">
-        <div className="mb-12 flex items-center justify-between">
+      {/* Abstract Background Elements */}
+      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[100px] opacity-60"></div>
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[80px] opacity-60"></div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12 pt-28 md:pt-40">
+        <div className="mb-12 flex items-center justify-between sticky top-24 z-20 mix-blend-difference text-white dark:text-white">
           <Link
             to="/news"
-            className="inline-flex items-center gap-3 text-blue-600 hover:text-blue-700 font-black text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all cursor-pointer group"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 hover:bg-white/20 transition-all cursor-pointer group shadow-lg"
           >
-            <i className="ri-arrow-left-s-line text-xl group-hover:-translate-x-1 transition-transform"></i>
-            Return to Feed
+            <i className="ri-arrow-left-line text-lg group-hover:-translate-x-1 transition-transform"></i>
+            <span className="font-bold text-xs uppercase tracking-widest hidden md:inline">Back to Feed</span>
           </Link>
           <div className="flex gap-4">
             <button
               onClick={handleShare}
-              className="w-12 h-12 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all text-gray-500 flex items-center justify-center cursor-pointer active:scale-95"
+              className="w-10 h-10 md:w-12 md:h-12 bg-white/10 backdrop-blur-md rounded-full border border-white/20 hover:bg-white/20 transition-all flex items-center justify-center cursor-pointer active:scale-95 shadow-lg"
               title="Share Article"
             >
-              <i className="ri-share-forward-fill text-xl"></i>
+              <i className="ri-share-forward-fill text-lg md:text-xl"></i>
             </button>
           </div>
         </div>
 
-        <article className="animate-in fade-in slide-in-from-bottom-12 duration-1000 ease-out">
+        <article className="animate-in fade-in slide-in-from-bottom-12 duration-1000 ease-out relative z-10">
           {/* Header Section */}
           <div className="text-center mb-16 md:mb-24">
-            <div className="inline-flex items-center gap-4 mb-8">
-              <span className="px-5 py-2 bg-blue-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg shadow-blue-500/20">
+            <div className="inline-flex items-center gap-4 mb-8 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm px-6 py-3 rounded-full border border-gray-100 dark:border-gray-800 shadow-sm">
+              <span className="px-3 py-1 bg-blue-600 text-white text-[9px] font-black rounded-lg uppercase tracking-widest shadow-md">
                 {article.category}
               </span>
-              <span className="w-1.5 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full"></span>
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{formatDate(article.created_at)}</span>
+              <span className="w-1 h-1 bg-gray-400 dark:bg-gray-600 rounded-full"></span>
+              <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest">{formatDate(article.created_at)}</span>
             </div>
 
-            <h1 className="text-4xl md:text-7xl lg:text-8xl font-black text-gray-900 dark:text-white mb-10 leading-[0.95] tracking-tighter">
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-gray-900 dark:text-white mb-8 leading-tight md:leading-[1.1] tracking-tighter drop-shadow-sm">
               {article.title}
             </h1>
 
-            <div className="flex items-center justify-center gap-8 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-              <div className="flex items-center gap-2">
-                <i className="ri-eye-fill text-blue-500 text-lg"></i>
+            <div className="flex items-center justify-center gap-6 md:gap-8 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
+              <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-full">
+                <i className="ri-eye-line text-blue-500 text-base"></i>
                 {article.views_count.toLocaleString()} Reads
               </div>
-              <div className="flex items-center gap-2">
-                <i className="ri-discuss-fill text-blue-500 text-lg"></i>
-                Verified Press
+              <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-full">
+                <i className="ri-verified-badge-fill text-blue-500 text-base"></i>
+                Verified Source
               </div>
             </div>
           </div>

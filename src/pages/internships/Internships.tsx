@@ -51,60 +51,78 @@ export default function Internships() {
         <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
             <Navbar />
 
-            {/* Mobile-First Header & Search */}
-            <div className="pt-24 pb-4 bg-white dark:bg-gray-900 shadow-sm border-b border-gray-100 dark:border-gray-800 sticky top-0 z-30">
-                <div className="max-w-7xl mx-auto px-4 md:px-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <i className="ri-briefcase-line text-blue-600"></i>
-                            Career Market
-                        </h1>
-                        {/* Admin Action Button */}
+            {/* Hero Section */}
+            <div className="relative pt-24 pb-12 md:pt-40 md:pb-32 bg-blue-600 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-900 z-0"></div>
+                {/* Abstract Shapes */}
+                <div className="absolute top-0 right-0 w-[400px] md:w-[800px] h-[400px] md:h-[800px] bg-white/10 rounded-full blur-[80px] md:blur-[120px] pointer-events-none mix-blend-overlay"></div>
+                <div className="absolute bottom-0 left-0 w-[300px] md:w-[600px] h-[300px] md:h-[600px] bg-purple-500/20 rounded-full blur-[60px] md:blur-[100px] pointer-events-none mix-blend-overlay"></div>
+
+                <div className="max-w-7xl mx-auto px-4 md:px-12 relative z-10">
+                    <div className="flex flex-col md:flex-row items-end justify-between gap-6 md:gap-8 mb-8 md:mb-12">
+                        <div className="w-full md:w-2/3">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 border border-white/20 backdrop-blur-md rounded-full mb-4 md:mb-6 animate-fade-in-up">
+                                <i className="ri-briefcase-4-line text-blue-200"></i>
+                                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-100">
+                                    Career Opportunities
+                                </span>
+                            </div>
+                            <h1 className="text-3xl md:text-7xl font-black text-white tracking-tighter leading-none mb-4 md:mb-6 animate-fade-in-up delay-100 drop-shadow-sm">
+                                Launch Your <br />
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-white">Future Career.</span>
+                            </h1>
+                            <p className="text-blue-100 text-sm md:text-xl font-medium max-w-xl leading-relaxed animate-fade-in-up delay-200 hidden md:block">
+                                Discover internships, placements, and job opportunities curated for Pentecost University students.
+                            </p>
+                        </div>
+
+                        {/* Admin Action */}
                         {(user?.role === 'admin' || user?.role === 'super_admin' || localStorage.getItem('sys_admin_bypass') === 'true') && (
                             <Link
                                 to="/admin/internships"
-                                className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl font-bold text-xs uppercase tracking-wide flex items-center gap-2 hover:opacity-90 transition-opacity"
+                                className="px-4 py-3 md:px-6 md:py-4 bg-white text-blue-900 rounded-xl md:rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-widest hover:bg-blue-50 transition-all shadow-xl shadow-blue-900/20 flex items-center gap-2 md:gap-3 animate-fade-in-up delay-300"
                             >
-                                <i className="ri-settings-4-line"></i>
-                                Manage Jobs
+                                <i className="ri-settings-4-fill text-base md:text-lg"></i>
+                                Manage
                             </Link>
                         )}
                     </div>
 
-                    <div className="relative">
-                        <i className="ri-search-2-line absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
-                        <input
-                            type="text"
-                            placeholder="Search internships, companies..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-gray-100 dark:bg-gray-800 border-none text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 rounded-xl px-12 py-3.5 font-medium transition-all"
-                        />
-                        {searchQuery && (
-                            <button
-                                onClick={() => setSearchQuery('')}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                            >
-                                <i className="ri-close-circle-fill"></i>
-                            </button>
-                        )}
-                    </div>
-
-                    {/* Horizontal Scrollable Filters */}
-                    <div className="flex items-center gap-3 mt-4 overflow-x-auto pb-2 no-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
-                        {filters.map((filter) => (
-                            <button
-                                key={filter.id}
-                                onClick={() => setFilterType(filter.id)}
-                                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-xs uppercase tracking-wide whitespace-nowrap transition-all border ${filterType === filter.id
-                                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white shadow-lg transform scale-105'
-                                    : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                                    }`}
-                            >
-                                <i className={`${filter.icon} text-sm`}></i>
-                                {filter.label}
-                            </button>
-                        ))}
+                    {/* Search & Filter Bar */}
+                    <div className="bg-white/10 backdrop-blur-md border border-white/20 p-1.5 md:p-2 rounded-[1.5rem] md:rounded-[2rem] flex flex-col md:flex-row gap-2 animate-fade-in-up delay-300">
+                        <div className="relative flex-1">
+                            <i className="ri-search-2-line absolute left-4 md:left-6 top-1/2 -translate-y-1/2 text-blue-200 text-lg md:text-xl"></i>
+                            <input
+                                type="text"
+                                placeholder="Search roles..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full h-12 md:h-16 pl-10 md:pl-14 pr-4 md:pr-6 bg-black/20 border border-transparent focus:border-white/20 rounded-[1.2rem] md:rounded-[1.5rem] text-sm md:text-base text-white placeholder-blue-200/60 font-bold outline-none transition-all"
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery('')}
+                                    className="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 text-blue-200 hover:text-white transition-colors"
+                                >
+                                    <i className="ri-close-circle-fill text-lg md:text-xl"></i>
+                                </button>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar px-1 md:px-0 pb-1 md:pb-0">
+                            {filters.map((filter) => (
+                                <button
+                                    key={filter.id}
+                                    onClick={() => setFilterType(filter.id)}
+                                    className={`h-10 md:h-16 px-4 md:px-6 rounded-xl md:rounded-[1.5rem] font-bold text-[10px] md:text-xs uppercase tracking-wider whitespace-nowrap transition-all flex items-center gap-2 ${filterType === filter.id
+                                        ? 'bg-white text-blue-900 shadow-lg'
+                                        : 'bg-black/20 text-blue-100 hover:bg-black/30'
+                                        }`}
+                                >
+                                    <i className={`${filter.icon} text-sm md:text-base`}></i>
+                                    {filter.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>

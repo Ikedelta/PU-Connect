@@ -121,12 +121,7 @@ export default function UserProfile() {
         if (error) throw error;
 
         // Manual data setting for feedback since RPC returns void
-        data = { ...formData, id: '00000000-0000-0000-0000-000000000000' };
-
-        // Warn about Login
-        if (formData.email !== 'system.admin@gmail.com') {
-          alert('IMPORTANT: You have updated your profile email. However, because you are using the System Admin Bypass, you MUST continue to use "system.admin@gmail.com" to login.');
-        }
+        // No reassignment needed, just use formData for success message/log if needed
       } else {
         // Regular User Update
         // If email changed, try to update Auth User
@@ -136,7 +131,7 @@ export default function UserProfile() {
           alert('Email updated! Please check your new email for a confirmation link if required.');
         }
 
-        const { data: updatedProfile, error: updateError } = await supabase
+        const { error: updateError } = await supabase
           .from('profiles')
           .upsert({
             id: profile.id,
@@ -148,17 +143,12 @@ export default function UserProfile() {
             avatar_url: finalAvatarUrl,
             phone: formData.phone,
             updated_at: new Date().toISOString(),
-          })
-          .select()
-          .single();
+          });
 
         if (updateError) throw updateError;
-        data = updatedProfile;
       }
 
-      if (!data && !isBypass) throw new Error('No data returned after update');
-
-      console.log('Profile updated successfully:', data);
+      console.log('Profile updated successfully');
 
       setSelectedFile(null);
       await refreshProfile();
@@ -229,37 +219,38 @@ export default function UserProfile() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
       <Navbar />
 
-      <div className="relative pt-32 pb-20 md:pt-40 md:pb-24 bg-gray-900 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-900 to-blue-900/20 z-0"></div>
+      <div className="relative pt-32 pb-24 md:pt-40 md:pb-32 bg-blue-600 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-900 z-0"></div>
         {/* Abstract Shapes */}
-        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-blue-600/5 rounded-full blur-[120px] pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-indigo-600/5 rounded-full blur-[100px] pointer-events-none"></div>
+        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-white/10 rounded-full blur-[120px] pointer-events-none mix-blend-overlay"></div>
+        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-purple-500/20 rounded-full blur-[100px] pointer-events-none mix-blend-overlay"></div>
+        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:20px_20px]"></div>
 
         <div className="max-w-7xl mx-auto px-6 lg:px-12 relative z-10">
-          <div className="flex flex-col md:flex-row items-end justify-between gap-8">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 backdrop-blur-md rounded-full mb-6 animate-fade-in-up">
-                <i className="ri-shield-user-line text-blue-400"></i>
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300">
+          <div className="flex flex-col lg:flex-row items-end justify-between gap-8 md:gap-12">
+            <div className="w-full lg:w-auto">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 border border-white/20 backdrop-blur-md rounded-full mb-6 animate-fade-in-up">
+                <i className="ri-shield-user-line text-blue-200"></i>
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-100">
                   ID: {profile.id.substring(0, 8).toUpperCase()}
                 </span>
               </div>
-              <h1 className="text-4xl md:text-7xl font-bold text-white tracking-tight leading-none mb-4 animate-fade-in-up delay-100">
+              <h1 className="text-4xl md:text-7xl font-black text-white tracking-tighter leading-none mb-4 animate-fade-in-up delay-100 drop-shadow-sm">
                 {profile.role === 'admin' || profile.role === 'super_admin' ? 'System' :
                   profile.role === 'news_publisher' ? 'Publisher' :
                     profile.role === 'seller' ? 'Merchant' : 'Student'} <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Profile.</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-white">Profile.</span>
               </h1>
             </div>
 
-            <div className="flex flex-col gap-4">
-              <nav className="flex gap-2 p-1 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl animate-fade-in-up delay-200">
+            <div className="flex flex-col w-full lg:w-auto gap-4">
+              <nav className="flex p-1 bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl animate-fade-in-up delay-200 w-full lg:w-auto">
                 <button
                   onClick={() => {
                     setActiveTab('details');
                     navigate('#profile');
                   }}
-                  className={`px-6 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'details' ? 'bg-white text-gray-900 shadow-lg' : 'text-white hover:bg-white/10'}`}
+                  className={`flex-1 lg:flex-none px-6 py-4 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'details' ? 'bg-white text-blue-900 shadow-lg' : 'text-white hover:bg-white/10'}`}
                 >
                   My Details
                 </button>
@@ -268,7 +259,7 @@ export default function UserProfile() {
                     setActiveTab('favorites');
                     navigate('#favorites');
                   }}
-                  className={`px-6 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'favorites' ? 'bg-white text-gray-900 shadow-lg' : 'text-white hover:bg-white/10'}`}
+                  className={`flex-1 lg:flex-none px-6 py-4 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'favorites' ? 'bg-white text-blue-900 shadow-lg' : 'text-white hover:bg-white/10'}`}
                 >
                   Saved Items
                 </button>
@@ -288,14 +279,15 @@ export default function UserProfile() {
                       faculty: profile.faculty || '',
                       avatar_url: profile.avatar_url || '',
                       phone: profile.phone || '',
+                      email: profile.email || '',
                     });
                     setSelectedFile(null);
                   }
                   setEditing(!editing);
                 }}
-                className={`group px-8 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all flex items-center gap-3 shadow-xl animate-fade-in-up delay-200 cursor-pointer ${editing
+                className={`group w-full lg:w-auto px-8 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-xl animate-fade-in-up delay-200 cursor-pointer ${editing
                   ? 'bg-white text-gray-900 hover:bg-gray-100'
-                  : 'bg-blue-600 text-white hover:bg-blue-500 shadow-blue-900/20'}`}
+                  : 'bg-black/30 text-white hover:bg-black/40 border border-white/10 backdrop-blur-md'}`}
               >
                 <span>{editing ? 'Cancel Changes' : 'Edit Information'}</span>
                 <i className={editing ? 'ri-close-line text-lg' : 'ri-edit-2-line text-lg'}></i>
@@ -485,7 +477,7 @@ export default function UserProfile() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                   {[
                     { label: 'Saved Items', value: favorites?.length || 0 + ' Items', icon: 'ri-heart-line', color: 'bg-rose-500', path: '#favorites' },
-                    { label: 'Support', value: 'Help Center', icon: 'ri-customer-service-line', color: 'bg-amber-500', path: '/support' },
+                    { label: 'Support', value: 'Help Center', icon: 'ri-customer-service-line', color: 'bg-indigo-500', path: '/support' },
                     { label: 'Messages', value: 'Inbox', icon: 'ri-message-3-line', color: 'bg-emerald-500', path: '/messages' }
                   ].map((stat, i) => (
                     <div key={i} onClick={() => {

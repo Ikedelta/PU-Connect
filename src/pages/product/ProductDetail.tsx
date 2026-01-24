@@ -134,31 +134,38 @@ export default function ProductDetail() {
   const seller = product.seller as Profile;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pt-24 pb-32 transition-colors duration-300">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pt-32 md:pt-32 pb-32 transition-colors duration-300 overflow-x-hidden">
       <Navbar />
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6 flex items-center justify-between">
+      {/* Abstract Background Elements */}
+      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[100px] opacity-60"></div>
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[80px] opacity-60"></div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pointer-events-none">
+        {/* Desktop Sticky Header / Mobile Absolute Overlay */}
+        <div className="mb-8 md:mb-12 flex items-center justify-between sticky top-24 md:top-28 z-30 pointer-events-auto">
           <Link
             to="/marketplace"
-            className="inline-flex items-center text-blue-600 hover:text-blue-700 font-bold text-sm uppercase tracking-widest transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 px-3 py-2 md:px-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md rounded-full border border-gray-200/50 dark:border-gray-700/50 text-gray-900 dark:text-white hover:bg-white dark:hover:bg-gray-800 transition-all cursor-pointer group shadow-lg"
           >
-            <i className="ri-arrow-left-line mr-2"></i>
-            Back to Marketplace
+            <i className="ri-arrow-left-line text-lg group-hover:-translate-x-1 transition-transform"></i>
+            <span className="font-bold text-xs uppercase tracking-widest hidden md:inline">Back</span>
           </Link>
           <button
             onClick={handleShare}
-            className="w-10 h-10 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all text-gray-500 dark:text-gray-400 cursor-pointer flex items-center justify-center"
+            className="w-10 h-10 md:w-12 md:h-12 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md rounded-full border border-gray-200/50 dark:border-gray-700/50 text-gray-900 dark:text-white hover:bg-white dark:hover:bg-gray-800 transition-all flex items-center justify-center cursor-pointer active:scale-95 shadow-lg"
             title="Share Product"
           >
-            <i className="ri-share-forward-line text-lg"></i>
+            <i className="ri-share-forward-line text-lg md:text-xl"></i>
           </button>
         </div>
 
-        <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-xl shadow-gray-200/40 dark:shadow-none border border-gray-50 dark:border-gray-800 overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 p-6 md:p-12">
+        <div className="bg-white dark:bg-gray-900 rounded-[2rem] md:rounded-[2.5rem] shadow-xl shadow-gray-200/40 dark:shadow-none border border-gray-50 dark:border-gray-800 overflow-hidden relative pointer-events-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 md:gap-12">
             {/* Product Image Gallery */}
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 p-4 md:p-12 pb-0 md:pb-12 bg-gray-50 dark:bg-gray-800/20">
               {/* Main Image */}
               <div className="aspect-[4/5] md:aspect-square bg-gray-50 dark:bg-gray-800 rounded-[2rem] overflow-hidden border border-gray-50 dark:border-gray-800 flex items-center justify-center relative group select-none">
                 {activeImage ? (
@@ -243,7 +250,7 @@ export default function ProductDetail() {
               )}
             </div>
 
-            <div className="flex flex-col">
+            <div className="flex flex-col p-6 md:p-12 md:pt-12">
               <div className="flex items-center justify-between mb-8">
                 <span className="px-4 py-1.5 bg-blue-600 text-white text-[10px] md:text-xs font-bold uppercase tracking-widest rounded-full shadow-lg shadow-blue-500/20">
                   {product.category}
@@ -254,22 +261,30 @@ export default function ProductDetail() {
                 </div>
               </div>
 
-              <div className="flex items-start justify-between gap-4 mb-6">
-                <h1 className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-white leading-tight tracking-tight">
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
+                <h1 className="text-3xl md:text-5xl font-black text-gray-900 dark:text-white leading-tight tracking-tight">
                   {product.name}
                 </h1>
-                <button
-                  onClick={() => toggleFavoriteMutation.mutate(product.id)}
-                  className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all shadow-lg active:scale-95 flex-shrink-0 cursor-pointer ${isFavorited
-                    ? 'bg-rose-500 text-white shadow-rose-200 dark:shadow-none'
-                    : 'bg-white dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-rose-500 border border-gray-100 dark:border-gray-800'
-                    }`}
-                >
-                  <i className={`${isFavorited ? 'ri-heart-fill' : 'ri-heart-line'} text-2xl`}></i>
-                </button>
+
+                {/* Mobile Price (Visible here on small screens too) */}
+                <div className="flex items-center gap-4">
+                  <div className="md:hidden text-2xl font-black text-blue-600 tracking-tight">
+                    {product.price_type === 'fixed' ? `GH₵${product.price?.toLocaleString()}` : 'Contact'}
+                  </div>
+                  <button
+                    onClick={() => toggleFavoriteMutation.mutate(product.id)}
+                    className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all shadow-lg active:scale-95 flex-shrink-0 cursor-pointer ${isFavorited
+                      ? 'bg-rose-500 text-white shadow-rose-200 dark:shadow-none'
+                      : 'bg-white dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-rose-500 border border-gray-100 dark:border-gray-800'
+                      }`}
+                  >
+                    <i className={`${isFavorited ? 'ri-heart-fill' : 'ri-heart-line'} text-2xl`}></i>
+                  </button>
+                </div>
               </div>
 
-              <div className="mb-8 p-8 bg-gray-50 dark:bg-gray-800/50 rounded-[2rem] border border-gray-100 dark:border-gray-800">
+              {/* Desktop Price Box (Hidden on mobile if redundant, but keeping for layout structure) */}
+              <div className="hidden md:block mb-8 p-8 bg-gray-50 dark:bg-gray-800/50 rounded-[2rem] border border-gray-100 dark:border-gray-800">
                 {product.price_type === 'fixed' ? (
                   <div className="flex flex-col">
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Listing Price</span>
@@ -324,32 +339,32 @@ export default function ProductDetail() {
                 </div>
               </div>
 
-              <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-100 dark:border-gray-800 z-50 lg:static lg:p-0 lg:bg-transparent lg:border-none shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] lg:shadow-none animate-slide-in-up">
-                <div className="max-w-6xl mx-auto grid grid-cols-3 gap-2 lg:gap-3">
+              <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-t border-gray-200/50 dark:border-gray-800/50 z-50 lg:static lg:p-0 lg:bg-transparent lg:border-none shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] lg:shadow-none animate-slide-in-up pb-8 lg:pb-0 safe-area-pb">
+                <div className="max-w-6xl mx-auto grid grid-cols-3 gap-4 lg:gap-3">
                   <button
                     onClick={handleWhatsAppContact}
-                    className="w-full flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-2 lg:px-4 py-3 lg:py-4.5 bg-emerald-600 text-white font-bold rounded-xl lg:rounded-2xl hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer active:scale-95 text-[10px] lg:text-xs uppercase tracking-widest"
+                    className="w-full flex flexDirection-col lg:flex-row items-center justify-center gap-2 px-2 lg:px-4 py-3.5 bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-bold rounded-full hover:shadow-lg hover:shadow-emerald-500/30 transition-all cursor-pointer active:scale-95 group"
                     disabled={!product?.whatsapp_number}
                   >
-                    <i className="ri-whatsapp-line text-lg lg:text-xl"></i>
-                    <span className="hidden leading-none sm:inline">WhatsApp</span>
+                    <i className="ri-whatsapp-line text-2xl group-hover:scale-110 transition-transform"></i>
+                    <span className="hidden sm:inline text-xs uppercase tracking-widest ml-1">WhatsApp</span>
                   </button>
 
                   <a
                     href={`tel:${seller?.phone}`}
-                    className={`w-full flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-2 lg:px-4 py-3 lg:py-4.5 bg-blue-600 text-white font-bold rounded-xl lg:rounded-2xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all cursor-pointer active:scale-95 text-[10px] lg:text-xs uppercase tracking-widest ${!seller?.phone ? 'opacity-50 pointer-events-none' : ''}`}
+                    className={`w-full flex items-center justify-center gap-2 px-2 lg:px-4 py-3.5 bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30 font-bold rounded-full hover:bg-blue-50 dark:hover:bg-gray-700 transition-all cursor-pointer active:scale-95 group ${!seller?.phone ? 'opacity-50 pointer-events-none' : ''}`}
                   >
-                    <i className="ri-phone-line text-lg lg:text-xl"></i>
-                    <span className="hidden leading-none sm:inline">Call</span>
+                    <i className="ri-phone-line text-2xl group-hover:rotate-12 transition-transform"></i>
+                    <span className="hidden sm:inline text-xs uppercase tracking-widest ml-1">Call</span>
                   </a>
 
                   <button
                     onClick={handleInAppMessage}
-                    className="w-full flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-2 lg:px-4 py-3 lg:py-4.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-xl lg:rounded-2xl hover:bg-black dark:hover:bg-gray-100 shadow-lg shadow-gray-900/20 transition-all cursor-pointer active:scale-95 text-[10px] lg:text-xs uppercase tracking-widest"
+                    className="w-full flex items-center justify-center gap-2 px-2 lg:px-4 py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-full hover:scale-[1.02] shadow-lg hover:shadow-gray-900/20 transition-all cursor-pointer active:scale-95 group"
                     disabled={createConversationMutation.isPending}
                   >
-                    <i className="ri-message-3-line text-lg lg:text-xl"></i>
-                    <span className="hidden leading-none sm:inline">{createConversationMutation.isPending ? '...' : 'Chat'}</span>
+                    <i className="ri-message-3-line text-2xl group-hover:-translate-y-0.5 transition-transform"></i>
+                    <span className="hidden sm:inline text-xs uppercase tracking-widest ml-1">{createConversationMutation.isPending ? '...' : 'Chat'}</span>
                   </button>
                 </div>
               </div>

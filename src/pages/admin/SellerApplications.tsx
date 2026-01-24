@@ -125,7 +125,7 @@ export default function SellerApplications({ isEmbedded = false }: SellerApplica
 
           await sendSMS(
             [application.contact_phone],
-            `Hi ${firstName}, congratulations! Your seller application for "${application.business_name}" on PU Connect has been APPROVED. You can now log in and start listing your products. Happy selling!`
+            `Hi ${firstName}, congratulations! Your seller application for "${application.business_name}" on Campus Konnect has been APPROVED. You can now log in and start listing your products. Happy selling!`
           );
         } catch (smsErr) {
           console.error('Failed to send approval SMS:', smsErr);

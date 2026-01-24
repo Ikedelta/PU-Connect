@@ -204,7 +204,7 @@ export default function Register() {
           {/* Mobile Logo */}
           <div className="lg:hidden flex justify-center mb-8">
             <Link to="/" className="w-32 h-32 transition-transform duration-500 active:scale-95">
-              <img src="/PU%20Connect%20logo.png" alt="Logo" className="w-full h-full object-contain" />
+              <img src="/Compus%20Konnect%20logo.png" alt="Logo" className="w-full h-full object-contain" />
             </Link>
           </div>
 

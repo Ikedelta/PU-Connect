@@ -128,7 +128,7 @@ export default function Login() {
         {/* Content */}
         <div className="relative z-10 flex flex-col gap-2">
           <Link to="/" className="w-48 h-48 transition-transform duration-500 hover:scale-110">
-            <img src="/PU%20Connect%20logo.png" alt="Logo" className="w-full h-full object-contain filter drop-shadow-lg" />
+            <img src="/Compus%20Konnect%20logo.png" alt="Logo" className="w-full h-full object-contain filter drop-shadow-lg" />
           </Link>
 
           <div className="max-w-xl animate-fade-in-up">
@@ -174,7 +174,7 @@ export default function Login() {
             {/* Mobile Logo */}
             <div className="lg:hidden flex justify-center mb-8">
               <Link to="/" className="w-32 h-32 transition-transform duration-500 active:scale-95">
-                <img src="/PU%20Connect%20logo.png" alt="Logo" className="w-full h-full object-contain" />
+                <img src="/Compus%20Konnect%20logo.png" alt="Logo" className="w-full h-full object-contain" />
               </Link>
             </div>
 

@@ -541,7 +541,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Send Welcome SMS (Non-blocking)
       import('../lib/arkesel').then(({ sendSMS }) => {
-        sendSMS([phone], `Welcome to PU Connect, ${fullName}! Your account has been successfully created. Browse the marketplace and connect with fellow students.`)
+        sendSMS([phone], `Welcome to Campus Konnect, ${fullName}! Your account has been successfully created. Browse the marketplace and connect with fellow students.`)
           .catch(err => console.error('Failed to send welcome SMS:', err));
       });
 

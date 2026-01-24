@@ -243,11 +243,11 @@ export default function Navbar() {
       <div className="max-w-[1440px] mx-auto px-6 lg:px-12 relative z-[60]">
         <div className="flex justify-between items-center h-20">
           {/* Logo Section */}
-          <Link to="/" className="flex items-center gap-2 group relative z-10" onClick={() => setShowMobileMenu(false)}>
+          <Link to="/" className={`flex items-center gap-2 group relative z-10 transition-all duration-300 ${showMobileMenu ? 'opacity-0 invisible' : 'opacity-100 visible'}`} onClick={() => setShowMobileMenu(false)}>
             <div className="h-8 w-auto md:h-10 flex items-center justify-center">
               <img
-                src="/PU%20Connect%20logo.png"
-                alt="PU Connect"
+                src="/Compus%20Konnect%20logo.png"
+                alt="Campus Konnect"
                 className={`w-full h-full object-contain transition-all duration-500 ${showMobileMenu ? 'brightness-0 invert' : ''}`}
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
@@ -264,25 +264,25 @@ export default function Navbar() {
             <div className="hidden lg:flex items-center space-x-6">
               <Link
                 to="/"
-                className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-white transition-colors"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors"
               >
                 Home
               </Link>
               <Link
                 to="/marketplace"
-                className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-white transition-colors"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors"
               >
                 Marketplace
               </Link>
               <Link
                 to="/news"
-                className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-white transition-colors"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors"
               >
                 News
               </Link>
               <Link
                 to="/support"
-                className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-white transition-colors"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors"
               >
                 Help Center
               </Link>
@@ -315,7 +315,7 @@ export default function Navbar() {
               ) : (
                 <Link
                   to="/seller/apply"
-                  className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-orange-500/20 hover:shadow-orange-500/40 active:scale-95 transition-all flex items-center gap-2"
+                  className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 active:scale-95 transition-all flex items-center gap-2"
                 >
                   <i className="ri-store-2-line text-lg"></i>
                   Become a Seller
@@ -343,10 +343,10 @@ export default function Navbar() {
 
               {user ? (
                 <div className="flex items-center gap-4">
-                  <Link to="/messages" className="relative p-2 text-gray-600 hover:text-orange-600 dark:text-gray-400 dark:hover:text-white transition-colors">
+                  <Link to="/messages" className="relative p-2 text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white transition-colors">
                     <i className="ri-chat-3-line text-xl"></i>
                     {unreadCount > 0 && (
-                      <span className="absolute top-1 right-1 w-2 h-2 bg-orange-600 rounded-full ring-2 ring-white dark:ring-gray-900"></span>
+                      <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white dark:ring-gray-900"></span>
                     )}
                   </Link>
 
@@ -373,7 +373,7 @@ export default function Navbar() {
                     </button>
 
                     {/* Dropdown Menu */}
-                    <div className={`absolute top-full right-0 mt-3 w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-900 rounded-2xl shadow-xl shadow-gray-200/20 dark:shadow-black/40 border border-gray-100 dark:border-gray-800 py-3 transition-all duration-200 origin-top-right z-50 overflow-hidden ${showDropdown ? 'opacity-100 scale-100 visible' : 'opacity-0 scale-95 invisible'}`}>
+                    <div className={`absolute top-full right-0 mt-3 w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-900 rounded-2xl shadow-xl shadow-gray-200/20 dark:shadow-black/40 border border-gray-100 dark:border-gray-800 py-3 transition-all duration-200 origin-top-right z-[100] overflow-hidden ${showDropdown ? 'opacity-100 scale-100 visible' : 'opacity-0 scale-95 invisible'}`}>
                       <div className="px-5 py-4 border-b border-gray-50 dark:border-gray-800/50 mb-2 bg-gray-50/50 dark:bg-gray-800/30">
                         <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{profile?.full_name}</p>
                         <p className="text-xs text-gray-500 truncate font-medium">{profile?.email}</p>
@@ -423,13 +423,13 @@ export default function Navbar() {
                 <div className="flex items-center gap-3">
                   <Link
                     to="/login"
-                    className="text-sm font-bold text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-white transition-colors"
+                    className="text-sm font-bold text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors"
                   >
                     Log In
                   </Link>
                   <Link
                     to="/register"
-                    className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-sm font-bold rounded-lg shadow-lg transition-all"
+                    className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-bold rounded-lg shadow-lg transition-all"
                   >
                     Sign Up
                   </Link>
@@ -441,12 +441,12 @@ export default function Navbar() {
             {/* Mobile Toggle */}
             <button
               onClick={() => setShowMobileMenu(!showMobileMenu)}
-              className={`lg:hidden p-3 rounded-xl transition-all duration-300 relative z-[70] ${showMobileMenu
-                ? 'text-white bg-white/10 hover:bg-white/20 shadow-lg'
-                : 'text-gray-900 dark:text-white bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-gray-800'
+              className={`lg:hidden p-3 rounded-xl transition-all duration-300 relative z-[70] shadow-lg border ${showMobileMenu
+                ? 'text-rose-500 bg-rose-50 border-rose-100 hover:bg-rose-100 dark:text-rose-400 dark:bg-rose-900/20 dark:border-rose-900/50'
+                : 'text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
                 }`}
             >
-              <i className={`ri-${showMobileMenu ? 'close' : 'menu-4'}-line text-2xl`}></i>
+              <i className={`ri-${showMobileMenu ? 'close' : 'menu-4'}-line text-2xl font-bold`}></i>
             </button>
           </div>
         </div>
@@ -458,28 +458,22 @@ export default function Navbar() {
         <div className="absolute inset-0 bg-white/98 dark:bg-gray-950/98 backdrop-blur-xl" />
 
         {/* Decorative Background Elements */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-orange-200/20 dark:bg-blue-600/10 rounded-full blur-[120px] pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-amber-200/20 dark:bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-200/20 dark:bg-blue-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-cyan-200/20 dark:bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none"></div>
 
         <div className={`relative h-full flex flex-col p-8 pt-12 overflow-y-auto transition-transform duration-500 ease-out ${showMobileMenu ? 'translate-y-0' : '-translate-y-12'
           }`}>
           {/* Mobile Menu Header */}
           <div className="flex items-center justify-between mb-10 pl-2">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 dark:bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                <img src="/PU%20Connect%20logo.png" alt="PU Connect" className="w-8 h-8 object-contain brightness-0 invert" />
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">PU Connect</h3>
-                <p className="text-[10px] font-bold text-orange-600 dark:text-blue-400 uppercase tracking-widest">Student Portal</p>
-              </div>
+            <div>
+              <img src="/Compus%20Konnect%20logo.png" alt="Campus Konnect" className="h-10 w-auto object-contain" />
             </div>
           </div>
 
           <div className="space-y-2">
             <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] mb-4 pl-2">Quick Navigation</p>
             {[
-              { label: 'Home', path: '/', icon: 'ri-home-5-line', color: 'text-orange-600 dark:text-blue-400', bg: 'bg-orange-100 dark:bg-blue-900/20' },
+              { label: 'Home', path: '/', icon: 'ri-home-5-line', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20' },
               { label: 'Marketplace', path: '/marketplace', icon: 'ri-shopping-bag-3-line', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/20' },
               { label: 'Campus News', path: '/news', icon: 'ri-newspaper-line', color: 'text-purple-600 dark:text-indigo-400', bg: 'bg-purple-100 dark:bg-indigo-900/20' },
               { label: 'Help Center', path: '/support', icon: 'ri-customer-service-2-line', color: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-100 dark:bg-pink-900/20' },
@@ -507,7 +501,7 @@ export default function Navbar() {
                   <Link
                     to={dashboardItem.path}
                     onClick={() => setShowMobileMenu(false)}
-                    className="group flex items-center justify-between p-5 rounded-2xl bg-white/5 border border-white/10 hover:border-blue-500/30 transition-all active:scale-[0.98]"
+                    className="group flex items-center justify-between p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 hover:border-blue-500/30 transition-all active:scale-[0.98]"
                   >
                     <div className="flex items-center gap-5">
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg ring-1 ring-white/10 ${dashboardItem.label === 'View Application Status'
@@ -517,7 +511,7 @@ export default function Navbar() {
                         <i className={`${dashboardItem.icon} text-xl`}></i>
                       </div>
                       <div>
-                        <span className="text-lg font-bold text-white tracking-tight">{dashboardItem.label}</span>
+                        <span className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">{dashboardItem.label}</span>
                         <p className={`text-[10px] font-bold uppercase tracking-wide mt-1 ${dashboardItem.label === 'View Application Status' ? 'text-blue-400' : 'text-emerald-400'
                           }`}>Live Access</p>
                       </div>
@@ -532,18 +526,18 @@ export default function Navbar() {
                     <Link
                       to="/seller/apply"
                       onClick={() => setShowMobileMenu(false)}
-                      className="group flex items-center justify-between p-5 rounded-2xl bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20 hover:border-orange-500/40 transition-all active:scale-[0.98]"
+                      className="group flex items-center justify-between p-5 rounded-2xl bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border border-blue-500/20 hover:border-blue-500/40 transition-all active:scale-[0.98]"
                     >
                       <div className="flex items-center gap-5">
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-900/40">
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-900/40">
                           <i className="ri-store-2-line text-xl"></i>
                         </div>
                         <div>
-                          <span className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-400 tracking-tight">Become a Seller</span>
-                          <p className="text-[10px] font-bold text-orange-500/60 uppercase tracking-wide mt-1">Start Trading</p>
+                          <span className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 tracking-tight">Become a Seller</span>
+                          <p className="text-[10px] font-bold text-blue-500/60 uppercase tracking-wide mt-1">Start Trading</p>
                         </div>
                       </div>
-                      <i className="ri-arrow-right-line text-xl text-orange-500/40 group-hover:text-orange-400 transition-colors"></i>
+                      <i className="ri-arrow-right-line text-xl text-blue-500/40 group-hover:text-blue-400 transition-colors"></i>
                     </Link>
                   )}
               </>
@@ -577,7 +571,7 @@ export default function Navbar() {
                 <Link
                   to="/profile"
                   onClick={() => setShowMobileMenu(false)}
-                  className="flex items-center gap-4 p-4 rounded-xl bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-white/5 hover:border-orange-300 dark:hover:border-blue-500/50 transition-all"
+                  className="flex items-center gap-4 p-4 rounded-xl bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-white/5 hover:border-blue-300 dark:hover:border-blue-500/50 transition-all"
                 >
                   <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden flex items-center justify-center">
                     {profile?.avatar_url ? (
@@ -587,7 +581,7 @@ export default function Navbar() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-orange-500 to-amber-500 dark:bg-blue-600 flex items-center justify-center text-white text-[10px] font-bold relative overflow-hidden">
+                      <div className="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-600 dark:bg-blue-600 flex items-center justify-center text-white text-[10px] font-bold relative overflow-hidden">
                         <i className="ri-user-3-fill absolute text-2xl opacity-20 translate-y-1"></i>
                         <span className="relative z-10">{profile?.full_name?.charAt(0).toUpperCase()}</span>
                       </div>
@@ -622,7 +616,7 @@ export default function Navbar() {
                 <Link
                   to="/register"
                   onClick={() => setShowMobileMenu(false)}
-                  className="py-5 bg-gradient-to-r from-orange-500 to-amber-500 dark:bg-blue-600 text-white font-bold rounded-2xl uppercase tracking-wide text-xs flex items-center justify-center shadow-lg active:scale-95 transition-all"
+                  className="py-5 bg-gradient-to-r from-blue-600 to-indigo-600 dark:bg-blue-600 text-white font-bold rounded-2xl uppercase tracking-wide text-xs flex items-center justify-center shadow-lg active:scale-95 transition-all"
                 >
                   Join Now
                 </Link>
@@ -631,7 +625,7 @@ export default function Navbar() {
 
             <div className="mt-8 text-center">
               <p className="text-[9px] font-bold text-gray-400 dark:text-gray-700 uppercase tracking-widest">
-                PU Connect • Student Portal
+                Campus Konnect • Student Portal
               </p>
             </div>
           </div>

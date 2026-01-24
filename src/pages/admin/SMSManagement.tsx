@@ -36,8 +36,8 @@ type SMSHistoryItem = {
 
 const SMS_TEMPLATES = [
   { title: 'Meeting Reminder', text: 'Reminder: All staff meeting tomorrow at 10 AM at the main hall.' },
-  { title: 'Maintenance Alert', text: 'System Alert: PU Connect will undergoing scheduled maintenance tonight from 11 PM to 4 AM.' },
-  { title: 'Welcome Message', text: 'Welcome to PU Connect! We are glad to have you on board.' },
+  { title: 'Maintenance Alert', text: 'System Alert: Campus Konnect will undergoing scheduled maintenance tonight from 11 PM to 4 AM.' },
+  { title: 'Welcome Message', text: 'Welcome to Campus Konnect! We are glad to have you on board.' },
   { title: 'Application Update', text: 'Update: Your seller application status has changed. Please check your dashboard.' },
 ];
 

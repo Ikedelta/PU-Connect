@@ -86,6 +86,7 @@ export default function SellerDashboard() {
     businessCategory: '',
     businessDescription: ''
   });
+  const [searchQuery, setSearchQuery] = useState('');
 
   const categories = [
     'Electronics', 'Fashion & Clothing', 'Books & Stationery', 'Food & Beverages',
@@ -244,7 +245,9 @@ export default function SellerDashboard() {
   const stats = {
     total: products.length,
     active: products.filter(p => p.is_active).length,
-    views: products.reduce((sum, p) => sum + (p.views_count || 0), 0)
+    views: products.reduce((sum, p) => sum + (p.views_count || 0), 0),
+    totalValue: products.reduce((sum, p) => sum + (p.price || 0), 0),
+    avgPrice: products.length > 0 ? (products.reduce((sum, p) => sum + (p.price || 0), 0) / products.length) : 0
   };
 
   if (!user || (!['seller', 'admin', 'super_admin', 'publisher_seller'].includes(profile?.role || ''))) {
@@ -345,91 +348,143 @@ export default function SellerDashboard() {
           </div>
         )}
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-10 mb-16 md:mb-24 text-center md:text-left bg-slate-50 dark:bg-slate-800/50 p-8 md:p-12 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm">
-          <div className="flex flex-col md:flex-row items-center gap-8 flex-1">
-            <div className="relative group/logo">
-              <div className={`w-32 h-32 rounded-3xl overflow-hidden shadow-2xl border-4 border-white dark:border-slate-700 bg-white transition-all ${updatingLogo ? 'opacity-50' : ''}`}>
-                {sellerProfile?.business_logo ? (
-                  <img
-                    src={getOptimizedImageUrl(sellerProfile.business_logo, 200, 85)}
-                    alt={sellerProfile.business_name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-blue-600 flex items-center justify-center text-white text-4xl">
-                    <i className="ri-store-3-line"></i>
+        {/* Digital Identity Card Header */}
+        <div className="relative mb-12 group perspective-1000">
+          <div className="relative w-full bg-gradient-to-br from-blue-600 to-indigo-800 rounded-[2.5rem] p-8 md:p-12 shadow-2xl shadow-blue-900/20 overflow-hidden transform transition-transform duration-500 hover:scale-[1.01]">
+
+            {/* Background Patterns */}
+            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#fff_2px,transparent_2px)] [background-size:24px_24px]"></div>
+            <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none"></div>
+
+            <div className="relative z-10 flex flex-col justify-between min-h-[280px] md:min-h-[320px]">
+
+              {/* Top Row: Verification + Status */}
+              <div className="flex justify-between items-start">
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full shadow-lg">
+                  <i className="ri-shield-check-fill text-emerald-400"></i>
+                  <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] text-white">Verified Merchant</span>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-1">Status</span>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
+                    <span className="text-sm font-bold text-white tracking-wide">Active</span>
                   </div>
-                )}
+                </div>
               </div>
 
-              {/* Modal Trigger Overlay */}
-              <button
-                onClick={() => setShowSettingsModal(true)}
-                className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/logo:opacity-100 transition-opacity z-10"
-              >
-                <div className="bg-black/60 backdrop-blur-sm inset-0 absolute rounded-3xl"></div>
-                <div className="relative z-30 text-white text-center">
-                  <i className="ri-edit-circle-line text-2xl mb-1 block"></i>
-                  <span className="text-[8px] font-black uppercase tracking-widest leading-none">Edit Profile</span>
+              {/* Bottom Row: Identity & Logo */}
+              <div className="flex flex-col-reverse md:flex-row items-end justify-between gap-8 mt-12">
+                <div className="w-full md:w-auto">
+                  <p className="text-blue-200 text-xs font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
+                    <i className="ri-store-2-line"></i>
+                    {sellerProfile?.business_category || 'Retail Store'}
+                  </p>
+                  <h1 className="text-4xl md:text-7xl font-black text-white tracking-tighter leading-none drop-shadow-lg mb-2">
+                    {sellerProfile?.business_name || 'My Business'}
+                  </h1>
+                  <p className="text-white/60 font-medium text-sm md:text-base tracking-wide flex items-center gap-2">
+                    ID: {profile?.id?.substring(0, 8).toUpperCase()} • Est. {new Date(sellerProfile?.created_at || Date.now()).getFullYear()}
+                  </p>
                 </div>
-              </button>
 
-              {updatingLogo && (
-                <div className="absolute inset-0 flex items-center justify-center z-40">
-                  <i className="ri-loader-4-line animate-spin text-3xl text-blue-600"></i>
+                {/* Card Logo (Bottom Right) */}
+                <div className="relative group/logo flex-shrink-0">
+                  <div className="w-28 h-28 md:w-40 md:h-40 bg-white rounded-[2rem] p-1.5 shadow-2xl rotate-3 group-hover/logo:rotate-0 transition-transform duration-500 ease-out">
+                    <div className="w-full h-full rounded-[1.7rem] overflow-hidden bg-slate-50 border border-slate-100 relative">
+                      {sellerProfile?.business_logo ? (
+                        <img src={getOptimizedImageUrl(sellerProfile.business_logo, 200, 200)} className="w-full h-full object-cover" alt="" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-blue-200 bg-blue-50"><i className="ri-store-fill text-5xl"></i></div>
+                      )}
+
+                      {/* Edit Overlay */}
+                      <button
+                        onClick={() => setShowSettingsModal(true)}
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover/logo:opacity-100 transition-opacity cursor-pointer"
+                      >
+                        <i className="ri-edit-circle-fill text-white text-3xl"></i>
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 mb-8 md:mb-12">
+          <button
+            onClick={() => setShowSettingsModal(true)}
+            className="group bg-white dark:bg-slate-800 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all text-left flex flex-col justify-between min-h-[9rem] md:h-40 relative overflow-hidden"
+          >
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
+            <div className="flex justify-between items-start">
+              <div className="w-12 h-12 bg-slate-50 dark:bg-slate-700 rounded-2xl flex items-center justify-center text-slate-600 dark:text-slate-300 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 group-hover:text-blue-600 transition-colors">
+                <i className="ri-settings-4-fill text-2xl"></i>
+              </div>
+              <span className="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-full text-[10px] font-bold uppercase tracking-wider group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                Manage
+              </span>
             </div>
             <div>
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-slate-900 dark:bg-blue-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-full mb-6 relative hover:scale-105 transition-transform">
-                <i className="ri-shield-star-line text-blue-400 dark:text-blue-200"></i>
-                Official Seller Portal
-              </div>
-              <h1 className="text-3xl md:text-5xl font-bold text-slate-900 dark:text-white leading-tight tracking-tight mb-4">
-                {sellerProfile?.business_name || 'Merchant'}<br />
-                <span className="text-blue-600">Operations.</span>
-              </h1>
-              <p className="text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest text-[10px]">
-                {sellerProfile?.business_category || 'General'} • Established {new Date(sellerProfile?.created_at || Date.now()).getFullYear()}
-              </p>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors">Store Settings</h3>
+              <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wider">Identity & Branding</p>
             </div>
-          </div>
+          </button>
 
-          <div className="flex flex-col gap-3">
-            <button
-              onClick={() => setShowSettingsModal(true)}
-              className="px-10 py-4 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs uppercase tracking-widest rounded-2xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2 active:scale-95"
+          {(!globalSubsEnabled || (subscriptionStatus === 'active' || profile?.role === 'admin' || profile?.role === 'super_admin' || profile?.role === 'publisher_seller')) ? (
+            <Link
+              to="/seller/add-product"
+              className="group bg-blue-600 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] shadow-lg shadow-blue-600/20 hover:shadow-blue-600/40 hover:-translate-y-1 transition-all text-left flex flex-col justify-between min-h-[9rem] md:h-40 relative overflow-hidden"
             >
-              <i className="ri-settings-4-line text-lg text-blue-500"></i>
-              <span>Edit Business Information</span>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-bl-full -mr-10 -mt-10 pointer-events-none"></div>
+              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-white backdrop-blur-md">
+                <i className="ri-add-line text-2xl font-bold"></i>
+              </div>
+              <div className="relative z-10">
+                <h3 className="text-lg font-bold text-white">Add New Product</h3>
+                <p className="text-xs font-medium text-blue-100 mt-1">Create a new listing</p>
+              </div>
+            </Link>
+          ) : (
+            <div className="bg-slate-100 dark:bg-slate-800 p-6 rounded-[2rem] border border-slate-200 dark:border-slate-700 flex flex-col justify-between h-40 opacity-70">
+              <div className="w-12 h-12 bg-slate-200 dark:bg-slate-700 rounded-2xl flex items-center justify-center text-slate-400">
+                <i className="ri-lock-2-fill text-2xl"></i>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-500">Add Product</h3>
+                <p className="text-xs font-medium text-slate-400 mt-1">Subscription Required</p>
+              </div>
+            </div>
+          )}
+
+          {(profile?.role === 'admin' || profile?.role === 'super_admin') ? (
+            <button
+              onClick={() => navigate('/admin/dashboard')}
+              className="group bg-slate-900 dark:bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] shadow-xl hover:-translate-y-1 transition-all text-left flex flex-col justify-between min-h-[9rem] md:h-40"
+            >
+              <div className="w-12 h-12 bg-white/20 dark:bg-slate-200 rounded-2xl flex items-center justify-center text-white dark:text-slate-900">
+                <i className="ri-shield-star-fill text-2xl"></i>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white dark:text-slate-900">Admin Controls</h3>
+                <p className="text-xs font-medium text-slate-400 dark:text-slate-500 mt-1">System management</p>
+              </div>
             </button>
-            {(!globalSubsEnabled || (subscriptionStatus === 'active' || profile?.role === 'admin' || profile?.role === 'super_admin' || profile?.role === 'publisher_seller')) ? (
-              <Link
-                to="/seller/add-product"
-                className="group px-10 py-5 bg-blue-600 text-white font-bold text-xs uppercase tracking-widest rounded-2xl hover:bg-blue-700 transition-all flex items-center justify-center gap-4 active:scale-95 shadow-lg shadow-blue-500/20"
-              >
-                <span>Add New Product</span>
-                <i className="ri-add-line text-xl"></i>
-              </Link>
-            ) : (
-              <button
-                disabled
-                className="group px-10 py-5 bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest rounded-2xl cursor-not-allowed flex items-center justify-center gap-4"
-              >
-                <span>Subscription Needed</span>
-                <i className="ri-lock-2-line text-xl"></i>
-              </button>
-            )}
-            {(profile?.role === 'admin' || profile?.role === 'super_admin') && (
-              <button
-                onClick={() => navigate('/admin/dashboard')}
-                className="group px-10 py-4 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs uppercase tracking-widest rounded-2xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2 active:scale-95"
-              >
-                <i className="ri-arrow-left-line text-lg"></i>
-                <span>Admin Dashboard</span>
-              </button>
-            )}
-          </div>
+          ) : (
+            <div className="group bg-white dark:bg-slate-800 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all text-left flex flex-col justify-between min-h-[9rem] md:h-40">
+              <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center text-emerald-600">
+                <i className="ri-line-chart-fill text-2xl"></i>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Analytics</h3>
+                <p className="text-xs font-medium text-slate-400 mt-1">View performance insights</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Business Settings Modal */}
@@ -549,34 +604,62 @@ export default function SellerDashboard() {
         )}
 
         {/* System Stats Section */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-24">
-          {[
-            { label: 'Inventory Count', value: stats.total, icon: 'ri-shopping-bag-3-fill', color: 'from-slate-700 to-slate-900' },
-            { label: 'Published Items', value: stats.active, icon: 'ri-check-double-line', color: 'from-blue-500 to-blue-600' },
-            { label: 'Cumulative Views', value: stats.views.toLocaleString(), icon: 'ri-eye-line', color: 'from-emerald-500 to-emerald-600' }
-          ].map((stat, i) => (
-            <div key={i} className="relative bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 p-8 rounded-[2rem] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-between overflow-hidden group">
-              <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${stat.color} opacity-[0.05] rounded-bl-full group-hover:scale-110 transition-transform duration-500`}></div>
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">{stat.label}</p>
-                <p className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">{stat.value}</p>
+        {/* System Stats Section */}
+        <div className="mb-24">
+          <div className="flex items-center gap-2 mb-6 ml-2">
+            <i className="ri-bar-chart-groupped-line text-blue-500 text-xl"></i>
+            <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Performance Analytics</h3>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
+            {[
+              { label: 'Inventory', value: stats.total, unit: 'Items', icon: 'ri-shopping-bag-3-fill', color: 'from-blue-600 to-indigo-600' },
+              { label: 'Asset Value', value: stats.totalValue.toLocaleString(), unit: '', icon: 'ri-briefcase-4-fill', color: 'from-indigo-500 to-purple-600' },
+              { label: 'Total Views', value: stats.views.toLocaleString(), unit: '', icon: 'ri-eye-fill', color: 'from-purple-500 to-pink-500' },
+              { label: 'Active', value: stats.active, unit: 'Items', icon: 'ri-check-double-line', color: 'from-emerald-500 to-teal-500' },
+              { label: 'Avg. Price', value: stats.avgPrice.toFixed(0), unit: 'GH₵', icon: 'ri-price-tag-3-fill', color: 'from-cyan-500 to-blue-500' }
+            ].map((stat, i) => (
+              <div key={i} className="group relative bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all overflow-hidden cursor-default">
+                <div className={`absolute top-0 right-0 w-16 h-16 md:w-24 md:h-24 bg-gradient-to-br ${stat.color} opacity-[0.03] rounded-bl-full group-hover:scale-110 transition-transform duration-500`}></div>
+                <div className="flex flex-col h-full justify-between gap-3 md:gap-4">
+                  <div className="flex justify-between items-start">
+                    <div className={`w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br ${stat.color} rounded-lg md:rounded-xl flex items-center justify-center text-white shadow-md`}>
+                      <i className={`${stat.icon} text-sm md:text-lg`}></i>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-lg md:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none mb-1 truncate">
+                      <span className="text-[10px] md:text-xs font-bold text-slate-400 mr-0.5 align-top">{stat.unit === 'GH₵' ? 'GH₵' : ''}</span>
+                      {stat.value}
+                      <span className="text-[9px] md:text-xs font-bold text-slate-400 ml-1 hidden md:inline-block">{stat.unit !== 'GH₵' ? stat.unit : ''}</span>
+                    </p>
+                    <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">{stat.label}</p>
+                  </div>
+                </div>
               </div>
-              <div className={`w-14 h-14 bg-gradient-to-tr ${stat.color} rounded-2xl flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform`}>
-                <i className={`${stat.icon} text-2xl`}></i>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
-        <div className="space-y-12">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-8 border-b border-slate-50 dark:border-slate-800">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-4">
-              Merchant Products
-              <span className="text-sm font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-4 py-1.5 rounded-full uppercase tracking-widest">{products.length} Total</span>
-            </h2>
-            <div className="flex items-center gap-3">
-              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">System Online</span>
+        <div className="space-y-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-2">
+            <div className="flex flex-col gap-1">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-4">
+                Merchant Products
+                <span className="text-sm font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-4 py-1.5 rounded-full uppercase tracking-widest">{products.length} Total</span>
+              </h2>
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Manage your active listings</p>
+            </div>
+
+            {/* Search Bar */}
+            <div className="relative w-full md:w-96">
+              <i className="ri-search-2-line absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+              <input
+                type="text"
+                placeholder="Search inventory by name or category..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl text-sm font-bold shadow-sm focus:border-blue-500 dark:focus:border-blue-500 outline-none transition-all focus:ring-4 focus:ring-blue-500/10"
+              />
             </div>
           </div>
 
@@ -601,80 +684,68 @@ export default function SellerDashboard() {
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-10">
-                {products.map((product) => (
-                  <div key={product.id} className="group relative bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-[2rem] p-6 transition-all hover:shadow-xl hover:border-blue-100 dark:hover:border-blue-900 flex flex-col lg:flex-row items-center gap-10">
-                    {/* Product Image */}
-                    <div className="w-full lg:w-48 h-48 rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-700 border border-slate-50 dark:border-slate-700 flex-shrink-0 relative">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
+                {products.filter(p => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.category.toLowerCase().includes(searchQuery.toLowerCase())).map((product) => (
+                  <div key={product.id} className="group relative bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-[2rem] p-4 transition-all hover:shadow-xl hover:border-blue-100 dark:hover:border-blue-900 flex flex-row items-center gap-4 md:gap-8">
+                    {/* Compact Image */}
+                    <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-700 flex-shrink-0 relative border border-slate-100 dark:border-slate-600">
                       {product.images?.[0] ? (
                         <img
-                          src={getOptimizedImageUrl(product.images[0], 400, 85)}
+                          src={getOptimizedImageUrl(product.images[0], 200, 85)}
                           alt={product.name}
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-slate-200 dark:text-slate-600">
-                          <i className="ri-image-2-line text-4xl"></i>
+                          <i className="ri-image-2-line text-2xl"></i>
                         </div>
                       )}
-                      <div className="absolute top-3 left-3">
-                        <span className={`px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest rounded-lg shadow-md ${product.is_active ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white'}`}>
-                          {product.is_active ? 'Active' : 'Private'}
-                        </span>
-                      </div>
+
+                      {/* Active Status Dot */}
+                      <div className={`absolute top-2 right-2 w-3 h-3 rounded-full border-2 border-white dark:border-slate-800 ${product.is_active ? 'bg-emerald-500' : 'bg-slate-400'}`}></div>
                     </div>
 
-                    <div className="flex-1 w-full flex flex-col justify-between">
-                      <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col md:flex-row md:items-start justify-between gap-2 mb-2">
                         <div>
-                          <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors tracking-tight mb-2">{product.name}</h3>
-                          <div className="flex flex-wrap items-center gap-4">
-                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                              <i className="ri-eye-line text-blue-600 dark:text-blue-400"></i>
-                              {product.views_count || 0} Views
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-[9px] font-bold px-2 py-0.5 rounded-lg uppercase tracking-wider">{product.category}</span>
+                            <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                              <i className="ri-eye-line text-blue-500"></i>
+                              {product.views_count || 0}
                             </div>
-                            <span className="w-1 h-1 bg-slate-300 dark:bg-slate-600 rounded-full"></span>
-                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-500 uppercase tracking-widest">{product.category}</span>
                           </div>
+                          <h3 className="text-base md:text-xl font-bold text-slate-900 dark:text-white truncate pr-4">{product.name}</h3>
                         </div>
-                        <div className="md:text-right">
-                          <p className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-                            {product.price_type === 'fixed' ? (
-                              <>
-                                <span className="text-sm text-blue-600 dark:text-blue-400 font-bold mr-1">GH₵</span>
-                                {product.price?.toLocaleString()}
-                              </>
-                            ) : (
-                              'Negotiable'
-                            )}
-                          </p>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{product.price_type === 'fixed' ? 'Fixed Price' : 'Flexible Pricing'}</p>
-                        </div>
+                        <p className="text-lg font-black text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                          {product.price_type === 'fixed' ? `GH₵${product.price?.toLocaleString()}` : 'Contact'}
+                        </p>
                       </div>
 
-                      <div className="flex flex-col sm:flex-row gap-3">
+                      {/* Desktop Actions */}
+                      <div className="hidden md:flex gap-3 mt-4">
                         <button
                           onClick={() => navigate(`/seller/edit-product/${product.id}`)}
-                          className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl hover:bg-slate-100 dark:hover:bg-slate-600 transition-all border border-slate-100 dark:border-slate-600 active:scale-95 uppercase tracking-widest text-[10px]"
+                          className="px-4 py-2 bg-slate-50 dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-slate-600 dark:text-slate-200 hover:text-blue-600 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors"
                         >
-                          <i className="ri-edit-line text-base"></i>
-                          Edit Details
+                          Edit
                         </button>
                         <button
                           onClick={() => handleToggleStatus(product.id, product.is_active)}
-                          className={`flex-1 flex items-center justify-center gap-2 px-6 py-3.5 font-bold rounded-xl transition-all active:scale-95 uppercase tracking-widest text-[10px] ${product.is_active ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/30' : 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30'
-                            }`}
+                          className="px-4 py-2 bg-slate-50 dark:bg-slate-700 hover:bg-amber-50 dark:hover:bg-amber-900/20 text-slate-600 dark:text-slate-200 hover:text-amber-600 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors"
                         >
-                          <i className={product.is_active ? 'ri-eye-off-line text-base' : 'ri-eye-line text-base'}></i>
-                          {product.is_active ? 'Hide Listing' : 'Publish Listing'}
+                          {product.is_active ? 'Hide' : 'Publish'}
                         </button>
-                        <button
-                          onClick={() => handleDelete(product.id)}
-                          className="sm:flex-none flex items-center justify-center w-12 h-12 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-xl hover:bg-rose-600 hover:text-white transition-all border border-rose-100 dark:border-rose-900/30 active:scale-95"
-                          title="Delete Listing"
-                        >
-                          <i className="ri-delete-bin-line text-lg"></i>
+                        <button onClick={() => handleDelete(product.id)} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-rose-500 transition-colors"><i className="ri-delete-bin-line"></i></button>
+                      </div>
+
+                      {/* Mobile Actions (Icon Only) */}
+                      <div className="flex md:hidden gap-3 mt-2">
+                        <button onClick={() => navigate(`/seller/edit-product/${product.id}`)} className="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-300"><i className="ri-edit-line"></i></button>
+                        <button onClick={() => handleToggleStatus(product.id, product.is_active)} className={`p-2 rounded-lg ${product.is_active ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
+                          <i className={product.is_active ? "ri-eye-off-line" : "ri-eye-line"}></i>
                         </button>
+                        <button onClick={() => handleDelete(product.id)} className="p-2 bg-rose-100 text-rose-600 rounded-lg"><i className="ri-delete-bin-line"></i></button>
                       </div>
                     </div>
                   </div>

@@ -271,14 +271,14 @@ export default function AddProduct() {
         </div>
       )}
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-28 md:py-36">
-        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-10 mb-20">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-36">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 md:gap-10 mb-12 md:mb-20">
           <div className="text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-full mb-8 shadow-xl shadow-blue-500/20">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-full mb-6 md:mb-8 shadow-xl shadow-blue-500/20">
               <i className="ri-shopping-bag-3-line"></i>
               Inventory Console
             </div>
-            <h1 className="text-5xl md:text-8xl font-black text-slate-900 dark:text-white tracking-tighter leading-none mb-6">
+            <h1 className="text-4xl md:text-8xl font-black text-slate-900 dark:text-white tracking-tighter leading-none mb-4 md:mb-6">
               Stock Your<br /><span className="text-blue-600">Storefront.</span>
             </h1>
             <p className="max-w-xl text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-[10px] flex items-center gap-3 justify-center lg:justify-start">
@@ -288,14 +288,14 @@ export default function AddProduct() {
           </div>
           <button
             onClick={() => navigate(isAdmin ? '/admin/dashboard' : '/seller/dashboard')}
-            className="h-16 px-8 bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-500 border border-slate-100 dark:border-slate-700 font-black rounded-2xl transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-3 active:scale-95 group"
+            className="h-14 md:h-16 px-8 bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-500 border border-slate-100 dark:border-slate-700 font-black rounded-2xl transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-3 active:scale-95 group w-full md:w-auto"
           >
             <i className="ri-close-circle-line text-xl group-hover:rotate-90 transition-transform duration-500"></i>
             Discard Entry
           </button>
         </div>
 
-        <div className="flex flex-col-reverse xl:grid xl:grid-cols-5 gap-10">
+        <div className="flex flex-col-reverse xl:grid xl:grid-cols-5 gap-6 md:gap-10">
           {/* Form Section */}
           <div className="xl:col-span-3 space-y-10">
             <div className="bg-white dark:bg-slate-900 rounded-[3rem] shadow-2xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 p-8 md:p-14 relative overflow-hidden">
@@ -342,21 +342,32 @@ export default function AddProduct() {
                     />
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Market Category</label>
-                    <div className="relative">
-                      <select
-                        required
-                        value={formData.category}
-                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                        className="w-full px-8 py-5 bg-slate-50/50 dark:bg-slate-950 border-2 border-transparent focus:border-blue-500/20 rounded-2xl font-bold outline-none text-sm text-slate-900 dark:text-white transition-all appearance-none cursor-pointer"
-                      >
-                        <option value="">Choose category...</option>
-                        {categories.map((cat) => (
-                          <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                      </select>
-                      <i className="ri-arrow-down-s-line absolute right-6 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {[
+                        { name: 'Electronics', icon: 'ri-macbook-line' },
+                        { name: 'Books & Stationery', icon: 'ri-book-3-line' },
+                        { name: 'Fashion & Accessories', icon: 'ri-t-shirt-line' },
+                        { name: 'Food & Beverages', icon: 'ri-restaurant-line' },
+                        { name: 'Sports & Fitness', icon: 'ri-basketball-line' },
+                        { name: 'Home & Living', icon: 'ri-home-smile-line' },
+                        { name: 'Services', icon: 'ri-service-line' },
+                        { name: 'Other', icon: 'ri-more-fill' }
+                      ].map((cat) => (
+                        <button
+                          key={cat.name}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, category: cat.name })}
+                          className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 text-center group ${formData.category === cat.name
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20'
+                            : 'bg-slate-50 dark:bg-slate-950 border-transparent hover:border-blue-200 dark:hover:border-blue-900 text-slate-500 dark:text-slate-400'
+                            }`}
+                        >
+                          <i className={`${cat.icon} text-xl ${formData.category === cat.name ? 'text-white' : 'text-slate-400 group-hover:text-blue-500'} transition-colors`}></i>
+                          <span className="text-[9px] font-bold uppercase tracking-wide leading-tight">{cat.name}</span>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -443,64 +454,83 @@ export default function AddProduct() {
 
           {/* Media Sidebar */}
           <div className="xl:col-span-2 space-y-8">
-            <div className="bg-slate-900 dark:bg-black p-10 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
+            <div className="bg-slate-900 dark:bg-black p-8 md:p-10 rounded-[3rem] text-white shadow-2xl relative overflow-hidden border border-slate-800">
               <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-tr from-blue-600/10 to-transparent"></div>
-              <div className="relative z-10">
-                <h3 className="text-2xl font-black mb-10 tracking-tight flex items-center gap-4">
-                  <i className="ri-gallery-fill text-blue-400"></i>
-                  Media Gallery
-                </h3>
 
-                <div className="grid grid-cols-2 gap-5 mb-10">
-                  {formData.images.map((url, idx) => (
-                    <div key={idx} className="aspect-square rounded-3xl overflow-hidden bg-slate-800 relative group border border-slate-700/50">
-                      <img src={url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                      <button
-                        onClick={() => removeImage(idx)}
-                        className="absolute top-3 right-3 w-8 h-8 bg-rose-600 rounded-full flex items-center justify-center shadow-2xl opacity-0 group-hover:opacity-100 transition-all active:scale-90"
-                      >
-                        <i className="ri-close-line"></i>
-                      </button>
-                      {idx === 0 && (
-                        <div className="absolute inset-x-0 bottom-0 bg-blue-600/90 py-2 text-[8px] font-black uppercase tracking-widest text-center backdrop-blur-md">Headline Image</div>
+              <div className="relative z-10 flex flex-col h-full">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">
+                    <i className="ri-gallery-fill text-blue-400"></i>
+                    Media Gallery
+                  </h3>
+                  <span className="bg-white/10 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-blue-200 border border-white/5">
+                    {formData.images.length} / 8 Photos
+                  </span>
+                </div>
+
+                {formData.images.length === 0 ? (
+                  /* Empty State - Big Drop Zone */
+                  <div className="flex-1 w-full aspect-[4/3] bg-white/5 border-2 border-dashed border-white/10 rounded-[2.5rem] relative group hover:bg-white/10 hover:border-blue-500/50 transition-all cursor-pointer flex flex-col items-center justify-center gap-4">
+                    <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center shadow-2xl shadow-blue-500/20 group-hover:scale-110 transition-transform">
+                      <i className="ri-upload-cloud-2-line text-3xl"></i>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-white mb-1">Click to Upload Photos</p>
+                      <p className="text-xs font-medium text-slate-400">JPG, PNG up to 5MB</p>
+                    </div>
+                    <ImageUploader
+                      folder="products"
+                      autoUpload={false}
+                      onFileSelected={handleFileSelect}
+                      hideInternalUI={true}
+                      size="custom"
+                      noBorder
+                      className="absolute inset-0 z-10 w-full h-full opacity-0 cursor-pointer"
+                    />
+                  </div>
+                ) : (
+                  /* Populated Grid */
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 animate-in fade-in zoom-in-95 duration-300">
+                      {formData.images.map((url, idx) => (
+                        <div key={idx} className={`aspect-square rounded-2xl overflow-hidden bg-slate-800 relative group border ${idx === 0 ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-slate-700/50'}`}>
+                          <img src={url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={`Product ${idx}`} />
+
+                          <button
+                            onClick={() => removeImage(idx)}
+                            type="button"
+                            className="absolute top-1.5 right-1.5 w-6 h-6 bg-rose-500 rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-all active:scale-95"
+                          >
+                            <i className="ri-close-line text-xs"></i>
+                          </button>
+
+                          {idx === 0 && (
+                            <div className="absolute inset-x-0 bottom-0 bg-blue-600/90 py-1.5 text-[7px] font-black uppercase tracking-widest text-center backdrop-blur-md">Headline</div>
+                          )}
+                        </div>
+                      ))}
+
+                      {formData.images.length < 8 && (
+                        <div className="aspect-square bg-white/5 border-2 border-dashed border-white/10 rounded-2xl relative group hover:bg-white/10 hover:border-blue-500/30 transition-all cursor-pointer flex items-center justify-center">
+                          <i className="ri-add-line text-2xl text-slate-500 group-hover:text-blue-400 transition-colors"></i>
+                          <ImageUploader
+                            folder="products"
+                            autoUpload={false}
+                            onFileSelected={handleFileSelect}
+                            hideInternalUI={true}
+                            size="custom"
+                            noBorder
+                            className="absolute inset-0 z-10 w-full h-full opacity-0 cursor-pointer"
+                          />
+                        </div>
                       )}
                     </div>
-                  ))}
 
-                  {formData.images.length < 8 && (
-                    <div className="aspect-square bg-white/5 border-2 border-dashed border-white/10 rounded-3xl relative group hover:bg-white/10 transition-all cursor-pointer">
-                      {/* Visual UI Layer */}
-                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-slate-500 group-hover:text-blue-400 transition-colors pointer-events-none z-0">
-                        <i className="ri-image-add-line text-3xl group-hover:scale-110 transition-transform duration-300"></i>
-                        <span className="text-[10px] font-black uppercase tracking-widest">Add Photo</span>
-                      </div>
-
-                      {/* Functional Click Layer */}
-                      <ImageUploader
-                        folder="products"
-                        autoUpload={false}
-                        onFileSelected={handleFileSelect}
-                        hideInternalUI={true}
-                        size="custom"
-                        noBorder
-                        className="absolute inset-0 z-10 w-full h-full"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div className="p-6 bg-white/5 rounded-3xl border border-white/5">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Inventory Slot</span>
-                    <span className="text-xs font-black text-blue-400">{formData.images.length}/8</span>
+                    <p className="text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest animate-pulse">
+                      Tap the <span className="text-blue-400">+</span> to add more
+                    </p>
                   </div>
-                  <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue-500 transition-all duration-500"
-                      style={{ width: `${(formData.images.length / 8) * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
 

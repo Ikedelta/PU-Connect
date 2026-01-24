@@ -426,7 +426,7 @@ export default function InternshipManagement() {
 
                                         <div className="flex gap-4 mb-4 pr-24">
                                             <div className="w-14 h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 p-2 border border-slate-100 dark:border-slate-700/50">
-                                                <img src={job.logo_url || '/PU Connect logo.png'} alt="Logo" className="w-full h-full object-contain" />
+                                                <img src="/Compus%20Konnect%20logo.png" alt="Logo" className="w-8 h-8 md:w-10 md:h-10 object-contain" />
                                             </div>
                                             <div>
                                                 <h3 className="font-black text-slate-900 dark:text-white text-lg leading-tight mb-1">{job.title}</h3>

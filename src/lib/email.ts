@@ -42,14 +42,14 @@ export const sendEmail = async (data: EmailData) => {
         const templateParams = {
             to_email: data.to_email,
             to_name: data.to_name || 'User',
-            from_name: 'Campus Connect', // Hardcoded sender name
+            from_name: 'Campus Konnect', // Hardcoded sender name
             subject: data.subject,
             heading: data.heading,
             message: data.body, // 'body' might need to be mapped to 'message' depending on template
             cta_text: data.cta_text,
             cta_link: data.cta_link,
             image_url: data.image_url,
-            reply_to: 'support@pentvars.edu.gh' // Optional
+            reply_to: 'campuskonnect11@gmail.com' // Optional
         };
 
         const response = await emailjs.send(

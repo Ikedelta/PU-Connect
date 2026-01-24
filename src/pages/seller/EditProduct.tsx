@@ -441,7 +441,7 @@ export default function EditProduct() {
             <i className="ri-shield-check-fill text-3xl text-blue-600 mb-4 block"></i>
             <p className="text-sm font-bold text-blue-950 uppercase tracking-widest mb-2">Security Note</p>
             <p className="text-xs font-semibold text-blue-800/80 leading-relaxed">
-              Updated information is synchronized instantly across the PU Connect marketplace ecosystem.
+              Updated information is synchronized instantly across the Campus Konnect marketplace ecosystem.
             </p>
           </div>
         </div>
