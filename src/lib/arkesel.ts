@@ -2,15 +2,59 @@ import { supabase } from './supabase';
 
 const API_KEY = import.meta.env.VITE_ARKESEL_API_KEY || 'RHNPVVNWaU5uYW1hcllVVXJvZlY';
 
-export const sendSMS = async (recipients: string[], message: string) => {
+export const sendSMS = async (
+    recipients: string[],
+    message: string,
+    trigger?: 'otp' | 'news' | 'seller_reg' | 'seller_approval' | 'order_updates' | 'welcome' | 'role_update' | 'admin_promo' | 'subscription',
+    placeholders?: Record<string, string>
+) => {
     try {
-        // Check Global Toggle
-        const { data: settings } = await supabase
+        // 1. Check Global/Specific Toggle from platform_settings
+        const settingKey = trigger ? `sms_enabled_${trigger}` : 'enable_sms';
+
+        // Fetch setting
+        const { data: platformSetting } = await supabase
+            .from('platform_settings')
+            .select('value')
+            .eq('key', settingKey)
+            .maybeSingle();
+
+        const isEnabled = platformSetting
+            ? platformSetting.value === true
+            : true;
+
+        if (!isEnabled) {
+            console.log(`🚫 SMS Blocked: Feature '${settingKey}' is disabled in settings.`);
+            return { success: true, status: 'skipped', message: `SMS disabled for ${settingKey}` };
+        }
+
+        // 2. Fetch Template if trigger is provided
+        let finalMessage = message;
+        if (trigger) {
+            const { data: templateSetting } = await supabase
+                .from('platform_settings')
+                .select('value')
+                .eq('key', `sms_template_${trigger}`)
+                .maybeSingle();
+
+            if (templateSetting && templateSetting.value) {
+                let templateText = String(templateSetting.value);
+                if (placeholders) {
+                    Object.entries(placeholders).forEach(([key, val]) => {
+                        templateText = templateText.replace(new RegExp(`\\{${key}\\}`, 'g'), val);
+                    });
+                }
+                finalMessage = templateText;
+            }
+        }
+
+        // Final Global Safety Check from website_settings
+        const { data: websiteSettings } = await supabase
             .from('website_settings')
             .select('enable_sms')
-            .single();
+            .maybeSingle();
 
-        if (settings && settings.enable_sms === false) {
+        if (websiteSettings && websiteSettings.enable_sms === false) {
             console.log('🚫 SMS Blocked: Feature is disabled globally in settings.');
             return { success: true, status: 'skipped', message: 'SMS disabled globally' };
         }
@@ -23,11 +67,27 @@ export const sendSMS = async (recipients: string[], message: string) => {
             },
             body: JSON.stringify({
                 sender: 'CampConnect',
-                message: message,
+                message: finalMessage,
                 recipients: recipients,
             }),
         });
         const result = await response.json();
+
+        // Log to activity_logs
+        try {
+            await supabase.from('activity_logs').insert({
+                action_type: 'sms_sent',
+                action_details: {
+                    trigger: trigger || 'manual',
+                    recipients: recipients,
+                    message: finalMessage,
+                    recipient_count: recipients.length
+                }
+            });
+        } catch (logErr) {
+            console.error('Failed to log SMS activity:', logErr);
+        }
+
         return result;
     } catch (error) {
         console.error('Arkesel SMS Error:', error);

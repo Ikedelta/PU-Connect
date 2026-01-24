@@ -54,7 +54,9 @@ export default function SMSManagement() {
   const [filterFaculty, setFilterFaculty] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const [activeTab, setActiveTab] = useState<'compose' | 'scheduled' | 'history' | 'topups'>('compose');
+  const [activeTab, setActiveTab] = useState<'compose' | 'scheduled' | 'history' | 'topups' | 'settings'>('compose');
+  const [platformSettings, setPlatformSettings] = useState<any[]>([]);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [scheduledSMS, setScheduledSMS] = useState<ScheduledSMS[]>([]);
   const [smsHistory, setSmsHistory] = useState<SMSHistoryItem[]>([]);
   const [scheduledAt, setScheduledAt] = useState('');
@@ -83,7 +85,38 @@ export default function SMSManagement() {
     fetchHistory();
     fetchBalance();
     fetchTopupHistory();
+    fetchPlatformSettings();
   }, [profile, navigate]);
+
+  const fetchPlatformSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('platform_settings')
+        .select('*')
+        .order('key');
+      if (error) throw error;
+      setPlatformSettings(data || []);
+    } catch (err) {
+      console.error('Failed to fetch platform settings', err);
+    }
+  };
+
+  const handleToggleSetting = async (key: string, currentValue: boolean) => {
+    setIsSavingSettings(true);
+    try {
+      const { error } = await supabase
+        .from('platform_settings')
+        .update({ value: !currentValue, updated_at: new Date().toISOString() })
+        .eq('key', key);
+
+      if (error) throw error;
+      await fetchPlatformSettings();
+    } catch (err: any) {
+      alert('Failed to update setting: ' + err.message);
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
 
   const fetchBalance = async () => {
     setIsLoadingBalance(true);
@@ -371,7 +404,8 @@ export default function SMSManagement() {
             { id: 'compose', label: 'Compose', icon: 'ri-edit-box-line' },
             { id: 'scheduled', label: `Scheduled (${scheduledSMS.length})`, icon: 'ri-calendar-event-line' },
             { id: 'history', label: 'Sent History', icon: 'ri-history-line' },
-            { id: 'topups', label: 'Topup History', icon: 'ri-bank-card-line' }
+            { id: 'topups', label: 'Topup History', icon: 'ri-bank-card-line' },
+            { id: 'settings', label: 'Trigger Settings', icon: 'ri-settings-4-line' }
           ].map(tab => (
             <button
               key={tab.id}
@@ -704,6 +738,46 @@ export default function SMSManagement() {
               </div>
             )}
           </div>
+        ) : activeTab === 'settings' ? (
+          // SETTINGS TAB
+          <div className="space-y-6 max-w-3xl">
+            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+              <div className="p-6 border-b border-slate-100 dark:border-slate-700">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">SMS Trigger Configuration</h3>
+                <p className="text-xs text-slate-500 font-medium">Control which automated operations trigger an outdoor SMS notification.</p>
+              </div>
+              <div className="divide-y divide-slate-50 dark:divide-slate-700">
+                {platformSettings.filter(s => s.key.startsWith('sms_enabled_')).map((setting) => (
+                  <div key={setting.key} className="p-6 flex items-center justify-between hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors">
+                    <div className="flex-1">
+                      <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight mb-0.5">
+                        {setting.key.replace('sms_enabled_', '').replace(/_/g, ' ')}
+                      </p>
+                      <p className="text-xs text-slate-500 font-medium">{setting.description}</p>
+                    </div>
+                    <button
+                      onClick={() => handleToggleSetting(setting.key, setting.value)}
+                      disabled={isSavingSettings}
+                      className={`w-14 h-8 rounded-full relative transition-all duration-300 ${setting.value ? 'bg-emerald-500 shadow-lg shadow-emerald-500/30' : 'bg-slate-300 dark:bg-slate-600'}`}
+                    >
+                      <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all duration-300 shadow-sm ${setting.value ? 'left-7' : 'left-1'}`}></div>
+                    </button>
+                  </div>
+                ))}
+
+                {platformSettings.filter(s => s.key.startsWith('sms_enabled_')).length === 0 && (
+                  <div className="p-12 text-center">
+                    <p className="text-sm text-slate-500 italic">No trigger settings found. Please run the SMS Configuration database script.</p>
+                  </div>
+                )}
+              </div>
+              <div className="p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
+                  Note: Disabling a trigger will prevent the system from sending automated SMS for that specific action, even if the user has a valid phone number. This helps manage your credit balance.
+                </p>
+              </div>
+            </div>
+          </div>
         ) : (
           // HISTORY TAB
           <div className="space-y-6">
@@ -758,67 +832,69 @@ export default function SMSManagement() {
       </div>
 
       {/* Purchase Modal */}
-      {showBuyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800 animate-in zoom-in-95">
-            <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Purchase SMS Units</h3>
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Top up your broadcast balance</p>
-              </div>
-              <button
-                onClick={() => setShowBuyModal(false)}
-                className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
-              >
-                <i className="ri-close-line text-xl"></i>
-              </button>
-            </div>
-
-            <div className="p-8">
-              <div className="flex items-center justify-center gap-2 mb-8">
-                <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-600 text-[10px] font-black uppercase tracking-widest rounded-full border border-emerald-500/20">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  Rates synced with Arkesel Official
-                </span>
+      {
+        showBuyModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800 animate-in zoom-in-95">
+              <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Purchase SMS Units</h3>
+                  <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Top up your broadcast balance</p>
+                </div>
+                <button
+                  onClick={() => setShowBuyModal(false)}
+                  className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
+                >
+                  <i className="ri-close-line text-xl"></i>
+                </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                {SMS_PACKAGES.map((pkg, i) => (
-                  <button
-                    key={i}
-                    disabled={buyingUnits}
-                    onClick={() => handlePurchaseSMS(pkg)}
-                    className="group flex flex-col items-center justify-center p-4 sm:p-6 rounded-2xl border-2 border-slate-50 dark:border-slate-800 hover:border-indigo-500 hover:bg-indigo-50/10 transition-all text-center relative overflow-hidden active:scale-95 cursor-pointer shadow-sm hover:shadow-indigo-500/10"
-                  >
-                    <div className="absolute top-0 right-0 w-12 h-12 bg-indigo-500/5 rounded-bl-full group-hover:scale-110 transition-transform"></div>
+              <div className="p-8">
+                <div className="flex items-center justify-center gap-2 mb-8">
+                  <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-600 text-[10px] font-black uppercase tracking-widest rounded-full border border-emerald-500/20">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Rates synced with Arkesel Official
+                  </span>
+                </div>
 
-                    {/* Expiry Tag */}
-                    <div className="absolute top-2 left-2 px-2 py-0.5 bg-slate-900/5 dark:bg-white/5 rounded-md text-[8px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                      {pkg.type === 'no-expiry' ? 'No Expiry' : '30 Days'}
-                    </div>
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  {SMS_PACKAGES.map((pkg, i) => (
+                    <button
+                      key={i}
+                      disabled={buyingUnits}
+                      onClick={() => handlePurchaseSMS(pkg)}
+                      className="group flex flex-col items-center justify-center p-4 sm:p-6 rounded-2xl border-2 border-slate-50 dark:border-slate-800 hover:border-indigo-500 hover:bg-indigo-50/10 transition-all text-center relative overflow-hidden active:scale-95 cursor-pointer shadow-sm hover:shadow-indigo-500/10"
+                    >
+                      <div className="absolute top-0 right-0 w-12 h-12 bg-indigo-500/5 rounded-bl-full group-hover:scale-110 transition-transform"></div>
 
-                    <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 flex items-center justify-center mb-3 text-lg sm:text-xl ring-4 ring-indigo-50 dark:ring-indigo-900/20">
-                      <i className={pkg.icon}></i>
-                    </div>
-                    <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mb-1 leading-none">{pkg.units.toLocaleString()}</div>
-                    <div className="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">{pkg.label}</div>
-                    <div className="w-full py-2 bg-indigo-600 text-white rounded-xl text-[10px] sm:text-sm font-black tracking-tight group-hover:scale-110 transition-transform shadow-lg shadow-indigo-600/20">
-                      GH₵ {pkg.price}
-                    </div>
-                  </button>
-                ))}
-              </div>
+                      {/* Expiry Tag */}
+                      <div className="absolute top-2 left-2 px-2 py-0.5 bg-slate-900/5 dark:bg-white/5 rounded-md text-[8px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                        {pkg.type === 'no-expiry' ? 'No Expiry' : '30 Days'}
+                      </div>
 
-              <div className="mt-8 flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-900/30">
-                <i className="ri-information-line text-blue-600 text-lg"></i>
-                <p className="text-xs text-blue-800 dark:text-blue-300 font-medium leading-relaxed">
-                  Payments are securely processed via <span className="font-black text-indigo-600 dark:text-indigo-400">Paystack</span>. Units will be added to your account record automatically upon successful verification.
-                </p>
+                      <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 flex items-center justify-center mb-3 text-lg sm:text-xl ring-4 ring-indigo-50 dark:ring-indigo-900/20">
+                        <i className={pkg.icon}></i>
+                      </div>
+                      <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mb-1 leading-none">{pkg.units.toLocaleString()}</div>
+                      <div className="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">{pkg.label}</div>
+                      <div className="w-full py-2 bg-indigo-600 text-white rounded-xl text-[10px] sm:text-sm font-black tracking-tight group-hover:scale-110 transition-transform shadow-lg shadow-indigo-600/20">
+                        GH₵ {pkg.price}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-8 flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+                  <i className="ri-information-line text-blue-600 text-lg"></i>
+                  <p className="text-xs text-blue-800 dark:text-blue-300 font-medium leading-relaxed">
+                    Payments are securely processed via <span className="font-black text-indigo-600 dark:text-indigo-400">Paystack</span>. Units will be added to your account record automatically upon successful verification.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }

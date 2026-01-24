@@ -62,7 +62,7 @@ export default function Register() {
       setGeneratedOtp(otp);
 
       // Send OTP via SMS
-      const result = await sendSMS([formData.phone], `Your Campus Connect verification code is: ${otp}`);
+      const result = await sendSMS([formData.phone], `Your Campus Connect verification code is: ${otp}`, 'otp', { otp });
 
       // Check if SMS was sent successfully
       console.log('OTP Sent:', result);
@@ -118,7 +118,9 @@ export default function Register() {
       // Send Welcome SMS (Fire and forget to speed up flow)
       sendSMS(
         [formData.phone],
-        `Welcome to Campus Connect! 🚀\nYour account has been created successfully.\n\nStart buying and selling here: https://pentvars-marketplace.vercel.app`
+        `Welcome to Campus Connect, ${formData.fullName.split(' ')[0]}! Your account has been successfully created.`,
+        'welcome',
+        { name: formData.fullName.split(' ')[0] }
       ).catch(smsError => console.error('Failed to send welcome SMS:', smsError));
 
       // 2. Sign in the user since they are now confirmed
@@ -146,7 +148,7 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex font-sans overflow-x-hidden relative selection:bg-blue-500 selection:text-white">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex font-sans overflow-x-hidden relative selection:bg-blue-500 selection:text-white bg-african-pattern">
       {/* Background Blobs (Global) */}
       <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full mix-blend-multiply blur-3xl opacity-50 animate-blob"></div>

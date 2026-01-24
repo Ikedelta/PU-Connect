@@ -207,71 +207,135 @@ export default function NewsletterSubscribers() {
                             </p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead>
-                                    <tr className="bg-slate-50/50 dark:bg-slate-900/30 border-b border-slate-100 dark:border-slate-700">
-                                        <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-400">Email Address</th>
-                                        <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-400">Joined Date</th>
-                                        <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                                    {subscribers.map(sub => (
-                                        <tr key={sub.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group">
-                                            <td className="px-8 py-5">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-blue-500/20">
-                                                        {sub.email.charAt(0).toUpperCase()}
+                        <>
+                            {/* Desktop View */}
+                            <div className="hidden md:block overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-slate-50/50 dark:bg-slate-900/30 border-b border-slate-100 dark:border-slate-700">
+                                            <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-400">Email Address</th>
+                                            <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-400">Joined Date</th>
+                                            <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                                        {subscribers.map(sub => (
+                                            <tr key={sub.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group">
+                                                <td className="px-8 py-5">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-blue-500/20">
+                                                            {sub.email.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        {editingId === sub.id ? (
+                                                            <div className="flex items-center gap-2">
+                                                                <input
+                                                                    type="email"
+                                                                    value={editEmail}
+                                                                    onChange={(e) => setEditEmail(e.target.value)}
+                                                                    className="px-3 py-1 text-sm border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 dark:text-white"
+                                                                    autoFocus
+                                                                />
+                                                                <button onClick={() => handleSaveEdit(sub.id)} className="w-8 h-8 flex items-center justify-center bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-200">
+                                                                    <i className="ri-check-line"></i>
+                                                                </button>
+                                                                <button onClick={handleCancelEdit} className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-lg hover:bg-slate-200">
+                                                                    <i className="ri-close-line"></i>
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="font-bold text-slate-700 dark:text-slate-200">{sub.email}</span>
+                                                        )}
                                                     </div>
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-xs font-bold">
+                                                        <i className="ri-calendar-line text-slate-400"></i>
+                                                        {new Date(sub.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-5 text-right">
+                                                    <button
+                                                        onClick={() => handleEditClick(sub)}
+                                                        className="w-10 h-10 inline-flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-all shadow-sm mr-2"
+                                                        title="Edit Email"
+                                                    >
+                                                        <i className="ri-pencil-line text-lg"></i>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(sub.id, sub.email, 'subscribers')}
+                                                        className="w-10 h-10 inline-flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:border-rose-200 dark:hover:border-rose-800 transition-all shadow-sm"
+                                                        title="Remove Subscriber"
+                                                    >
+                                                        <i className="ri-delete-bin-line text-lg"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Mobile View - Card Layout */}
+                            <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-700/50">
+                                {subscribers.map(sub => (
+                                    <div key={sub.id} className="p-6 space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
+                                                    {sub.email.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div className="flex flex-col">
                                                     {editingId === sub.id ? (
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="flex items-center gap-2 mb-1">
                                                             <input
                                                                 type="email"
                                                                 value={editEmail}
                                                                 onChange={(e) => setEditEmail(e.target.value)}
-                                                                className="px-3 py-1 text-sm border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                                                className="px-3 py-1 text-sm border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none w-40"
                                                                 autoFocus
                                                             />
-                                                            <button onClick={() => handleSaveEdit(sub.id)} className="w-8 h-8 flex items-center justify-center bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-200">
-                                                                <i className="ri-check-line"></i>
-                                                            </button>
-                                                            <button onClick={handleCancelEdit} className="w-8 h-8 flex items-center justify-center bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200">
-                                                                <i className="ri-close-line"></i>
-                                                            </button>
                                                         </div>
                                                     ) : (
-                                                        <span className="font-bold text-slate-700 dark:text-slate-200">{sub.email}</span>
+                                                        <span className="font-bold text-slate-800 dark:text-slate-100 truncate max-w-[200px]">{sub.email}</span>
                                                     )}
+                                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                                        Joined {new Date(sub.created_at).toLocaleDateString()}
+                                                    </span>
                                                 </div>
-                                            </td>
-                                            <td className="px-8 py-5">
-                                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-bold">
-                                                    <i className="ri-calendar-line text-slate-400"></i>
-                                                    {new Date(sub.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-5 text-right">
-                                                <button
-                                                    onClick={() => handleEditClick(sub)}
-                                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-all shadow-sm mr-2"
-                                                    title="Edit Email"
-                                                >
-                                                    <i className="ri-pencil-line"></i>
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(sub.id, sub.email, 'subscribers')}
-                                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:border-rose-200 dark:hover:border-rose-800 transition-all shadow-sm"
-                                                    title="Remove Subscriber"
-                                                >
-                                                    <i className="ri-delete-bin-line text-lg"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                            </div>
+
+                                            <div className="flex gap-2">
+                                                {editingId === sub.id ? (
+                                                    <>
+                                                        <button onClick={() => handleSaveEdit(sub.id)} className="w-8 h-8 flex items-center justify-center bg-emerald-100 text-emerald-600 rounded-lg">
+                                                            <i className="ri-check-line"></i>
+                                                        </button>
+                                                        <button onClick={handleCancelEdit} className="w-8 h-8 flex items-center justify-center bg-slate-100 text-slate-500 rounded-lg">
+                                                            <i className="ri-close-line"></i>
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleEditClick(sub)}
+                                                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-400"
+                                                        >
+                                                            <i className="ri-pencil-line"></i>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDelete(sub.id, sub.email, 'subscribers')}
+                                                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-rose-50 dark:bg-rose-900/10 text-rose-500"
+                                                        >
+                                                            <i className="ri-delete-bin-line"></i>
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
                     )}
                 </div>
             </div>

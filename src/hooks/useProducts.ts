@@ -8,6 +8,7 @@ export function useProducts(filters?: {
   category?: string;
   search?: string;
   sellerId?: string;
+  limit?: number;
 }) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -43,10 +44,10 @@ export function useProducts(filters?: {
         .from('products')
         .select(`
           *,
-          seller:profiles!products_seller_id_fkey(id, full_name, email, avatar_url)
+          seller:profiles!products_seller_id_fkey(id, full_name, email, avatar_url, phone)
         `)
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(filters?.limit || 100);
 
       if (!isOwner) {
         query = query.eq('is_active', true);
@@ -132,7 +133,7 @@ export function useProduct(id: string | undefined) {
         .from('products')
         .select(`
           *,
-          seller:profiles!products_seller_id_fkey(id, full_name, email, avatar_url, student_id, department)
+          seller:profiles!products_seller_id_fkey(id, full_name, email, avatar_url, student_id, department, phone)
         `)
         .eq('id', id)
         .single();

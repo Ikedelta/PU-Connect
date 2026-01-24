@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { type Profile } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/feature/Navbar';
+import Footer from '../../components/layout/Footer';
 import { getOptimizedImageUrl } from '../../lib/imageOptimization';
 import { useProduct, useFavorites, useToggleFavorite } from '../../hooks/useProducts';
 import { useCreateConversation, useConversations } from '../../hooks/useConversations';
@@ -29,15 +30,25 @@ export default function ProductDetail() {
   }, [product]);
 
   const handleWhatsAppContact = () => {
-    if (!product?.whatsapp_number) {
-      alert('WhatsApp number not available');
+    const whatsappNum = product?.whatsapp_number || (product?.seller as Profile)?.phone;
+
+    if (!whatsappNum) {
+      alert('WhatsApp contact not available for this seller.');
       return;
     }
 
     const message = encodeURIComponent(
-      `Hi! I'm interested in your product: ${product.name}`
+      `Hi! I'm interested in your product listed on Campus Connect: ${product.name}`
     );
-    const whatsappUrl = `https://wa.me/${product.whatsapp_number.replace(/[^0-9]/g, '')}?text=${message}`;
+    // Clean the number - ensure it starts with a country code if it doesn't
+    let cleanedNum = whatsappNum.replace(/[^0-9]/g, '');
+    if (cleanedNum.length === 9 || cleanedNum.length === 10) {
+      // Assuming Ghana (+233) if no country code
+      if (cleanedNum.startsWith('0')) cleanedNum = cleanedNum.substring(1);
+      cleanedNum = '233' + cleanedNum;
+    }
+
+    const whatsappUrl = `https://wa.me/${cleanedNum}?text=${message}`;
     window.open(whatsappUrl, '_blank');
   };
 
@@ -56,7 +67,6 @@ export default function ProductDetail() {
     }
 
     // Check if conversation already exists for this product
-    // A conversation exists if the current user is a participant (buyer or seller) AND the product matches
     const existing = conversations?.find(c =>
       c.product_id === product.id &&
       (c.buyer_id === user.id || c.seller_id === user.id)
@@ -143,9 +153,9 @@ export default function ProductDetail() {
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[80px] opacity-60"></div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pointer-events-none">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Desktop Sticky Header / Mobile Absolute Overlay */}
-        <div className="mb-8 md:mb-12 flex items-center justify-between sticky top-24 md:top-28 z-30 pointer-events-auto">
+        <div className="mb-8 md:mb-12 flex items-center justify-between sticky top-24 md:top-28 z-30">
           <Link
             to="/marketplace"
             className="inline-flex items-center gap-2 px-3 py-2 md:px-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md rounded-full border border-gray-200/50 dark:border-gray-700/50 text-gray-900 dark:text-white hover:bg-white dark:hover:bg-gray-800 transition-all cursor-pointer group shadow-lg"
@@ -162,7 +172,7 @@ export default function ProductDetail() {
           </button>
         </div>
 
-        <div className="bg-white dark:bg-gray-900 rounded-[2rem] md:rounded-[2.5rem] shadow-xl shadow-gray-200/40 dark:shadow-none border border-gray-50 dark:border-gray-800 overflow-hidden relative pointer-events-auto">
+        <div className="bg-white dark:bg-gray-900 rounded-[2rem] md:rounded-[2.5rem] shadow-xl shadow-gray-200/40 dark:shadow-none border border-gray-50 dark:border-gray-800 overflow-hidden relative">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 md:gap-12">
             {/* Product Image Gallery */}
             <div className="flex flex-col gap-4 p-4 md:p-12 pb-0 md:pb-12 bg-gray-50 dark:bg-gray-800/20">
@@ -175,8 +185,6 @@ export default function ProductDetail() {
                       src={getOptimizedImageUrl(activeImage, 1000, 85)}
                       alt={product.name}
                       className="w-full h-full object-cover animate-in fade-in zoom-in-105 duration-500"
-                      loading="eager"
-                      decoding="async"
                     />
 
                     {/* Navigation Arrows (Only if multiple images) */}
@@ -205,7 +213,6 @@ export default function ProductDetail() {
                           <i className="ri-arrow-right-s-line text-2xl"></i>
                         </button>
 
-                        {/* Image Counter Badge */}
                         <div className="absolute bottom-4 right-4 px-3 py-1 bg-black/50 backdrop-blur-md rounded-full text-white text-[10px] font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
                           {product.images.indexOf(activeImage) + 1} / {product.images.length}
                         </div>
@@ -241,9 +248,6 @@ export default function ProductDetail() {
                         alt={`View ${idx + 1}`}
                         className="w-full h-full object-cover"
                       />
-                      {activeImage !== img && (
-                        <div className="absolute inset-0 bg-black/10 group-hover/thumb:bg-transparent transition-colors"></div>
-                      )}
                     </button>
                   ))}
                 </div>
@@ -266,7 +270,6 @@ export default function ProductDetail() {
                   {product.name}
                 </h1>
 
-                {/* Mobile Price (Visible here on small screens too) */}
                 <div className="flex items-center gap-4">
                   <div className="md:hidden text-2xl font-black text-blue-600 tracking-tight">
                     {product.price_type === 'fixed' ? `GH₵${product.price?.toLocaleString()}` : 'Contact'}
@@ -274,8 +277,8 @@ export default function ProductDetail() {
                   <button
                     onClick={() => toggleFavoriteMutation.mutate(product.id)}
                     className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all shadow-lg active:scale-95 flex-shrink-0 cursor-pointer ${isFavorited
-                      ? 'bg-rose-500 text-white shadow-rose-200 dark:shadow-none'
-                      : 'bg-white dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-rose-500 border border-gray-100 dark:border-gray-800'
+                      ? 'bg-rose-500 text-white shadow-rose-200'
+                      : 'bg-white dark:bg-gray-800 text-gray-400 hover:text-rose-500 border border-gray-100 dark:border-gray-800'
                       }`}
                   >
                     <i className={`${isFavorited ? 'ri-heart-fill' : 'ri-heart-line'} text-2xl`}></i>
@@ -283,7 +286,6 @@ export default function ProductDetail() {
                 </div>
               </div>
 
-              {/* Desktop Price Box (Hidden on mobile if redundant, but keeping for layout structure) */}
               <div className="hidden md:block mb-8 p-8 bg-gray-50 dark:bg-gray-800/50 rounded-[2rem] border border-gray-100 dark:border-gray-800">
                 {product.price_type === 'fixed' ? (
                   <div className="flex flex-col">
@@ -300,17 +302,14 @@ export default function ProductDetail() {
 
               <div className="mb-10">
                 <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4 ml-1">Product Description</h3>
-                <div className="prose prose-blue max-w-none dark:prose-invert">
-                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-base font-medium">
-                    {product.description || 'No detailed description provided by the seller.'}
-                  </p>
-                </div>
+                <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-base font-medium">
+                  {product.description || 'No detailed description provided by the seller.'}
+                </p>
               </div>
 
               <div className="mb-10 p-6 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 rounded-xl overflow-hidden shadow-sm border-2 border-white dark:border-gray-700 bg-white dark:bg-black">
-                    {/* Prefer Business Logo, fallback to Avatar */}
+                  <div className="w-12 h-12 rounded-xl overflow-hidden shadow-sm border-2 border-white dark:border-gray-700 bg-white">
                     {(seller as any).business_logo || seller?.avatar_url ? (
                       <img
                         src={getOptimizedImageUrl((seller as any).business_logo || seller.avatar_url, 128, 80)}
@@ -318,7 +317,7 @@ export default function ProductDetail() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full bg-gray-900 dark:bg-gray-700 flex items-center justify-center">
+                      <div className="w-full h-full bg-gray-900 flex items-center justify-center">
                         <span className="text-white font-bold text-lg">
                           {((seller as any).business_name || seller?.full_name)?.charAt(0).toUpperCase() || 'S'}
                         </span>
@@ -330,7 +329,6 @@ export default function ProductDetail() {
                     <p className="font-bold text-gray-900 dark:text-white text-base tracking-tight">
                       {(seller as any).business_name || seller?.full_name || 'Campus Seller'}
                     </p>
-                    {/* If showing business name, maybe show contact name below? distinct from Department */}
                   </div>
                 </div>
                 <div className="text-right hidden sm:block">
@@ -339,41 +337,40 @@ export default function ProductDetail() {
                 </div>
               </div>
 
-              <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-t border-gray-200/50 dark:border-gray-800/50 z-50 lg:static lg:p-0 lg:bg-transparent lg:border-none shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] lg:shadow-none animate-slide-in-up pb-8 lg:pb-0 safe-area-pb">
-                <div className="max-w-6xl mx-auto grid grid-cols-3 gap-4 lg:gap-3">
-                  <button
-                    onClick={handleWhatsAppContact}
-                    className="w-full flex flexDirection-col lg:flex-row items-center justify-center gap-2 px-2 lg:px-4 py-3.5 bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-bold rounded-full hover:shadow-lg hover:shadow-emerald-500/30 transition-all cursor-pointer active:scale-95 group"
-                    disabled={!product?.whatsapp_number}
-                  >
-                    <i className="ri-whatsapp-line text-2xl group-hover:scale-110 transition-transform"></i>
-                    <span className="hidden sm:inline text-xs uppercase tracking-widest ml-1">WhatsApp</span>
-                  </button>
+            </div>
 
-                  <a
-                    href={`tel:${seller?.phone}`}
-                    className={`w-full flex items-center justify-center gap-2 px-2 lg:px-4 py-3.5 bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30 font-bold rounded-full hover:bg-blue-50 dark:hover:bg-gray-700 transition-all cursor-pointer active:scale-95 group ${!seller?.phone ? 'opacity-50 pointer-events-none' : ''}`}
-                  >
-                    <i className="ri-phone-line text-2xl group-hover:rotate-12 transition-transform"></i>
-                    <span className="hidden sm:inline text-xs uppercase tracking-widest ml-1">Call</span>
-                  </a>
+            {/* Mobile Fixed Bottom Action Bar / Desktop Inline */}
+            <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg border-t border-gray-100 dark:border-gray-800 sm:static sm:bg-transparent sm:backdrop-blur-none sm:border-t-0 sm:p-0">
+              <div className="grid grid-cols-3 gap-3 max-w-7xl mx-auto">
+                <button
+                  onClick={handleWhatsAppContact}
+                  className="w-full flex items-center justify-center gap-2 px-2 py-3 bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-bold rounded-xl sm:rounded-full hover:shadow-lg transition-all active:scale-95 group shadow-emerald-500/20"
+                >
+                  <i className="ri-whatsapp-line text-xl sm:text-2xl"></i>
+                  <span className="hidden sm:inline text-xs uppercase tracking-widest ml-1">WhatsApp</span>
+                </button>
 
-                  <button
-                    onClick={handleInAppMessage}
-                    className="w-full flex items-center justify-center gap-2 px-2 lg:px-4 py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-full hover:scale-[1.02] shadow-lg hover:shadow-gray-900/20 transition-all cursor-pointer active:scale-95 group"
-                    disabled={createConversationMutation.isPending}
-                  >
-                    <i className="ri-message-3-line text-2xl group-hover:-translate-y-0.5 transition-transform"></i>
-                    <span className="hidden sm:inline text-xs uppercase tracking-widest ml-1">{createConversationMutation.isPending ? '...' : 'Chat'}</span>
-                  </button>
-                </div>
+                <a
+                  href={`tel:${seller?.phone}`}
+                  className={`w-full flex items-center justify-center gap-2 px-2 py-3 bg-white dark:bg-gray-800 text-blue-600 border border-blue-100 dark:border-blue-900/30 font-bold rounded-xl sm:rounded-full hover:bg-blue-50 transition-all active:scale-95 group ${!seller?.phone ? 'opacity-50 pointer-events-none' : ''}`}
+                >
+                  <i className="ri-phone-line text-xl sm:text-2xl"></i>
+                  <span className="hidden sm:inline text-xs uppercase tracking-widest ml-1">Call</span>
+                </a>
+
+                <button
+                  onClick={handleInAppMessage}
+                  className="w-full flex items-center justify-center gap-2 px-2 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-xl sm:rounded-full hover:scale-[1.02] shadow-lg transition-all active:scale-95 group"
+                >
+                  <i className="ri-message-3-line text-xl sm:text-2xl"></i>
+                  <span className="hidden sm:inline text-xs uppercase tracking-widest ml-1">Chat</span>
+                </button>
               </div>
-
-
             </div>
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

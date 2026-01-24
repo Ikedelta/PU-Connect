@@ -136,6 +136,20 @@ export default function NewsManagement() {
 
   const broadcastNewsSMS = async (title: string) => {
     try {
+      // 1. Check if SMS is enabled globally and for news specifically
+      const { data: settings } = await supabase
+        .from('platform_settings')
+        .select('key, value')
+        .in('key', ['enable_sms', 'sms_enabled_news']);
+
+      const globalEnabled = settings?.find(s => s.key === 'enable_sms')?.value ?? true;
+      const newsEnabled = settings?.find(s => s.key === 'sms_enabled_news')?.value ?? true;
+
+      if (!globalEnabled || !newsEnabled) {
+        console.log('SMS Broadcast skipped: Disabled in platform settings.');
+        return false;
+      }
+
       const { data: users } = await supabase
         .from('profiles')
         .select('phone')
@@ -148,7 +162,7 @@ export default function NewsManagement() {
 
         if (uniquePhones.length > 0) {
           const { sendSMS } = await import('../../lib/arkesel');
-          await sendSMS(uniquePhones, `📢 Campus News: "${title}" has just been published! Read now on Campus Connect.`);
+          await sendSMS(uniquePhones, `📢 Campus News: "${title}" has just been published! Read now on Campus Connect.`, 'news', { title });
           return true;
         }
       }

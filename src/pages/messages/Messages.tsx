@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/feature/Navbar';
+import MobileBottomNav from '../../components/layout/MobileBottomNav';
 import { getOptimizedImageUrl } from '../../lib/imageOptimization';
-import { useConversations, useMessages, type Conversation } from '../../hooks/useConversations';
+import { useConversations, useMessages, useCreateConversation, type Conversation } from '../../hooks/useConversations';
 import { supabase } from '../../lib/supabase';
 import { logActivity } from '../../lib/logger';
 
@@ -12,6 +13,7 @@ export default function Messages() {
   const { conversations, isLoading: loadingDocs, totalUnreadCount, refetch } = useConversations();
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const { messages, isLoading: loadingMsgs, sendMessage: sendMsgMutation, markAsRead } = useMessages(selectedConversation?.id || null);
+  const createConversation = useCreateConversation();
 
   const [newMessage, setNewMessage] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -112,31 +114,47 @@ export default function Messages() {
     e.preventDefault();
     if ((!newMessage.trim() && !selectedFile) || !selectedConversation || !user) return;
 
+    if (sendMsgMutation.isPending) return;
+
     const receiverId = selectedConversation.buyer_id === user.id
       ? selectedConversation.seller_id
       : selectedConversation.buyer_id;
 
-    sendMsgMutation.mutate({
-      message: newMessage.trim(),
-      receiverId,
-      file: selectedFile || undefined
-    }, {
-      onSuccess: async () => {
-        // Log Activity
-        try {
-          await logActivity(user.id, 'message_sent', {
-            receiver_id: receiverId,
-            content_snippet: newMessage.trim().slice(0, 100), // Store snippet
-            has_attachment: !!selectedFile
-          });
-        } catch (err) {
-          console.error('Failed to log message activity', err);
-        }
+    if (!receiverId) {
+      alert("Error: Cannot identify receiver. Please refresh the page.");
+      return;
+    }
 
-        setNewMessage('');
-        handleRemoveFile();
-      }
-    });
+    try {
+      sendMsgMutation.mutate({
+        message: newMessage.trim(),
+        receiverId,
+        file: selectedFile || undefined
+      }, {
+        onSuccess: async () => {
+          // Log Activity silently
+          try {
+            await logActivity(user.id, 'message_sent', {
+              receiver_id: receiverId,
+              content_snippet: newMessage.trim().slice(0, 100), // Store snippet
+              has_attachment: !!selectedFile
+            });
+          } catch (err) {
+            console.error('Failed to log message activity', err);
+          }
+
+          setNewMessage('');
+          handleRemoveFile();
+        },
+        onError: (error: any) => {
+          console.error("Message Send Error:", error);
+          alert(`Failed to send message: ${error.message || 'Unknown error'}`);
+        }
+      });
+    } catch (err) {
+      console.error("Message Mutation Failed:", err);
+      alert("Something went wrong while sending.");
+    }
   };
 
   const getOnlineStatus = (userId: string, lastSeen?: string) => {
@@ -185,6 +203,7 @@ export default function Messages() {
   const startNewChat = async (otherUser: any) => {
     if (!user) return;
 
+    // Optimistically check for existing conversation in local state
     const existing = conversations.find(c =>
       (c.buyer_id === user.id && c.seller_id === otherUser.id) ||
       (c.seller_id === user.id && c.buyer_id === otherUser.id)
@@ -197,29 +216,19 @@ export default function Messages() {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('conversations')
-        .insert({
-          buyer_id: user.id,
-          seller_id: otherUser.id,
-          last_message: '',
-          last_message_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
+      const newConvId = await createConversation.mutateAsync({
+        otherUserId: otherUser.id
+      });
 
       await refetch();
 
       const newConv: Conversation = {
-        id: data.id,
+        id: newConvId,
         product_id: null,
         buyer_id: user.id,
         seller_id: otherUser.id,
-        created_at: data.created_at,
-        updated_at: data.updated_at,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         product: undefined,
         other_user: otherUser,
         last_message: '',
@@ -240,32 +249,33 @@ export default function Messages() {
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-300 pb-20">
       <Navbar />
 
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8 mt-16 pt-24">
-        <div className="mb-4 sm:mb-6 flex justify-between items-end">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white tracking-tight mb-1">Messages</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Connect with the campus community</p>
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-3 sm:py-6 mt-16 pt-20 sm:pt-24">
+        <div className="mb-3 sm:mb-6 flex justify-between items-center">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-gray-900 dark:text-white tracking-tight mb-1">Messages</h1>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium hidden sm:block">Connect with the campus community</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-shrink-0">
             {totalUnreadCount > 0 && (
-              <span className="bg-blue-600 text-white px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 flex items-center h-10">
-                {totalUnreadCount} New
+              <span className="bg-blue-600 text-white px-2 sm:px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 flex items-center h-9 sm:h-10">
+                <span className="hidden sm:inline">{totalUnreadCount} New</span>
+                <span className="sm:hidden">{totalUnreadCount}</span>
               </span>
             )}
             <button
               onClick={() => setShowNewChatModal(true)}
-              className="bg-gray-900 dark:bg-white dark:text-gray-900 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-black dark:hover:bg-gray-200 transition-all flex items-center gap-2 h-10"
+              className="bg-gray-900 dark:bg-white dark:text-gray-900 text-white px-3 sm:px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-black dark:hover:bg-gray-200 transition-all flex items-center gap-2 h-9 sm:h-10"
             >
-              <i className="ri-edit-box-line text-lg"></i>
+              <i className="ri-edit-box-line text-base sm:text-lg"></i>
               <span className="hidden sm:inline">New Chat</span>
             </button>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 rounded-[2rem] border border-gray-100 dark:border-slate-700 shadow-xl shadow-gray-200/40 dark:shadow-none overflow-hidden h-[calc(100dvh-11rem)] md:h-[calc(100dvh-13rem)]">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-[2rem] border border-gray-100 dark:border-slate-700 shadow-xl shadow-gray-200/40 dark:shadow-none overflow-hidden h-[calc(100dvh-10rem)] sm:h-[calc(100dvh-11rem)] md:h-[calc(100dvh-13rem)]">
           <div className="grid grid-cols-1 lg:grid-cols-12 h-full">
             {/* Conversations List */}
-            <div className={`${showConversationList ? 'block' : 'hidden'} lg:block lg:col-span-4 border-r border-gray-50 dark:border-slate-700 overflow-y-auto bg-gray-50/30 dark:bg-slate-900/30`}>
+            <div className={`${showConversationList ? 'block' : 'hidden'} lg:block lg:col-span-4 xl:col-span-3 border-r border-gray-50 dark:border-slate-700 overflow-y-auto bg-gray-50/30 dark:bg-slate-900/30`}>
               {loadingDocs ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="w-8 h-8 border-4 border-gray-100 dark:border-slate-700 border-t-blue-600 rounded-full animate-spin"></div>
@@ -295,30 +305,30 @@ export default function Messages() {
                       <div
                         key={conversation.id}
                         onClick={() => handleConversationSelect(conversation)}
-                        className={`p-5 transition-all cursor-pointer relative ${selectedConversation?.id === conversation.id
-                          ? 'bg-white dark:bg-slate-800 shadow-md border-r-4 border-r-blue-600 z-10 scale-[1.02]'
-                          : 'hover:bg-white dark:hover:bg-slate-800'
+                        className={`p-3 sm:p-4 lg:p-5 transition-all cursor-pointer relative active:scale-[0.98] ${selectedConversation?.id === conversation.id
+                          ? 'bg-white dark:bg-slate-800 shadow-md border-r-4 border-r-blue-600 z-10 lg:scale-[1.02]'
+                          : 'hover:bg-white dark:hover:bg-slate-800 active:bg-gray-100 dark:active:bg-slate-700'
                           } ${hasUnread ? 'bg-blue-50/20 dark:bg-blue-900/10' : ''}`}
                       >
-                        <div className="flex items-start space-x-4">
+                        <div className="flex items-start space-x-3 sm:space-x-4">
                           <div className="relative flex-shrink-0">
                             {otherUser?.avatar_url ? (
                               <img
                                 src={getOptimizedImageUrl(otherUser.avatar_url, 100, 80)}
                                 alt={otherUser.full_name}
-                                className="w-12 h-12 rounded-2xl object-cover border border-gray-100 dark:border-slate-600"
+                                className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl object-cover border border-gray-100 dark:border-slate-600"
                                 loading="lazy"
                                 decoding="async"
                               />
                             ) : (
-                              <div className="w-12 h-12 bg-gray-900 dark:bg-slate-700 rounded-2xl flex items-center justify-center">
+                              <div className="w-11 h-11 sm:w-12 sm:h-12 bg-gray-900 dark:bg-slate-700 rounded-xl sm:rounded-2xl flex items-center justify-center">
                                 <span className="text-white font-bold text-sm">
                                   {otherUser?.full_name?.charAt(0).toUpperCase()}
                                 </span>
                               </div>
                             )}
                             {status.isOnline && (
-                              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-slate-800 rounded-full"></div>
+                              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-emerald-500 border-2 border-white dark:border-slate-800 rounded-full"></div>
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -355,16 +365,16 @@ export default function Messages() {
             </div>
 
             {/* Messages Area */}
-            <div className={`${!showConversationList ? 'block' : 'hidden'} lg:block lg:col-span-8 flex flex-col bg-white dark:bg-slate-800`}>
+            <div className={`${!showConversationList ? 'block' : 'hidden'} lg:block lg:col-span-8 xl:col-span-9 flex flex-col bg-white dark:bg-slate-800`}>
               {selectedConversation ? (
                 <>
-                  <div className="p-4 sm:p-6 border-b border-gray-50 dark:border-slate-700 flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
+                  <div className="p-3 sm:p-4 lg:p-6 border-b border-gray-50 dark:border-slate-700 flex items-center justify-between sticky top-0 bg-white dark:bg-slate-800 z-10">
+                    <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4 flex-1 min-w-0">
                       <button
                         onClick={handleBackToList}
-                        className="lg:hidden w-10 h-10 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-slate-700 rounded-xl transition-all cursor-pointer"
+                        className="lg:hidden w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-slate-700 rounded-xl transition-all cursor-pointer active:scale-95 flex-shrink-0"
                       >
-                        <i className="ri-arrow-left-line text-xl text-gray-700 dark:text-gray-300"></i>
+                        <i className="ri-arrow-left-line text-lg sm:text-xl text-gray-700 dark:text-gray-300"></i>
                       </button>
 
                       <div className="relative">
@@ -408,7 +418,7 @@ export default function Messages() {
                     )}
                   </div>
 
-                  <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 sm:space-y-8 bg-gray-50/50 dark:bg-slate-900/50">
+                  <div className="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 lg:space-y-8 bg-gray-50/50 dark:bg-slate-900/50">
                     {loadingMsgs ? (
                       <div className="flex items-center justify-center h-full">
                         <div className="w-8 h-8 border-4 border-gray-100 dark:border-slate-700 border-t-blue-600 rounded-full animate-spin"></div>
@@ -421,9 +431,9 @@ export default function Messages() {
                           className={`flex ${isSender ? 'justify-end' : 'justify-start'}`}
                         >
                           <div
-                            className={`max-w-[85%] sm:max-w-md px-5 py-3 rounded-[1.5rem] shadow-sm ${isSender
-                              ? 'bg-blue-600 text-white rounded-tr-none'
-                              : 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-tl-none border border-gray-100 dark:border-slate-600'
+                            className={`max-w-[85%] sm:max-w-[75%] lg:max-w-md px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl sm:rounded-[1.5rem] shadow-sm ${isSender
+                              ? 'bg-blue-600 text-white rounded-tr-md sm:rounded-tr-none'
+                              : 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-tl-md sm:rounded-tl-none border border-gray-100 dark:border-slate-600'
                               }`}
                           >
                             {message.attachment_url && (
@@ -478,7 +488,7 @@ export default function Messages() {
                     <div ref={messagesEndRef} />
                   </div>
 
-                  <div className="p-4 sm:p-6 bg-white dark:bg-slate-800 border-t border-gray-50 dark:border-slate-700">
+                  <div className="p-3 sm:p-4 lg:p-6 bg-white dark:bg-slate-800 border-t border-gray-50 dark:border-slate-700 sticky bottom-0">
                     {selectedFile && (
                       <div className="mb-4 flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-700 rounded-2xl border border-gray-100 dark:border-slate-600 animate-fade-in-up">
                         <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-600 border border-gray-200 dark:border-slate-500 flex items-center justify-center overflow-hidden">
@@ -507,7 +517,7 @@ export default function Messages() {
                       </div>
                     )}
 
-                    <form onSubmit={handleSendMessage} className="relative flex items-end gap-3">
+                    <form onSubmit={handleSendMessage} className="relative flex items-end gap-2 sm:gap-3">
                       <input
                         type="file"
                         ref={fileInputRef}
@@ -519,10 +529,10 @@ export default function Messages() {
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="w-12 h-14 bg-gray-50 dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600 text-gray-500 dark:text-gray-300 hover:text-blue-600 rounded-2xl flex items-center justify-center transition-colors border border-transparent hover:border-gray-200 dark:hover:border-slate-500 flex-shrink-0"
+                        className="w-10 h-12 sm:w-12 sm:h-14 bg-gray-50 dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600 text-gray-500 dark:text-gray-300 hover:text-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center transition-colors border border-transparent hover:border-gray-200 dark:hover:border-slate-500 flex-shrink-0 active:scale-95"
                         title="Attach file"
                       >
-                        <i className="ri-attachment-2 text-xl"></i>
+                        <i className="ri-attachment-2 text-lg sm:text-xl"></i>
                       </button>
 
                       <div className="relative flex-1">
@@ -530,22 +540,22 @@ export default function Messages() {
                           type="text"
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
-                          placeholder="Compose your message..."
-                          className="w-full pl-6 pr-32 py-4 bg-gray-50 dark:bg-slate-700 border-none rounded-2xl focus:ring-2 focus:ring-blue-600 dark:text-white text-sm font-medium transition-all"
+                          placeholder="Type a message..."
+                          className="w-full pl-4 sm:pl-6 pr-20 sm:pr-32 py-3 sm:py-4 bg-gray-50 dark:bg-slate-700 border-none rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-blue-600 dark:text-white text-sm font-medium transition-all"
                           disabled={sendMsgMutation.isPending}
                         />
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-2">
+                        <div className="absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1 sm:space-x-2">
                           <button
                             type="submit"
                             disabled={sendMsgMutation.isPending || (!newMessage.trim() && !selectedFile)}
-                            className="px-6 py-2.5 bg-gray-900 dark:bg-white dark:text-gray-900 text-white rounded-xl hover:bg-black dark:hover:bg-gray-200 transition-all text-xs font-bold uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2"
+                            className="px-4 sm:px-6 py-2 sm:py-2.5 bg-gray-900 dark:bg-white dark:text-gray-900 text-white rounded-lg sm:rounded-xl hover:bg-black dark:hover:bg-gray-200 transition-all text-xs font-bold uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5 sm:gap-2 active:scale-95"
                           >
                             {sendMsgMutation.isPending ? (
-                              <i className="ri-loader-4-line animate-spin"></i>
+                              <i className="ri-loader-4-line animate-spin text-sm sm:text-base"></i>
                             ) : (
-                              <i className="ri-send-plane-fill"></i>
+                              <i className="ri-send-plane-fill text-sm sm:text-base"></i>
                             )}
-                            <span>Send</span>
+                            <span className="hidden sm:inline">Send</span>
                           </button>
                         </div>
                       </div>
@@ -648,6 +658,8 @@ export default function Messages() {
           </div>
         </div>
       )}
+
+      <MobileBottomNav />
     </div>
   );
 }

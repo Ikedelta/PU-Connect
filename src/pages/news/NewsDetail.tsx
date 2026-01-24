@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useNewsArticle, useNews } from '../../hooks/useNews';
 import { getOptimizedImageUrl } from '../../lib/imageOptimization';
 import Navbar from '../../components/feature/Navbar';
+import Footer from '../../components/layout/Footer';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -255,7 +256,7 @@ export default function NewsDetail() {
           </div>
         )}
       </div>
+      <Footer />
     </div>
   );
 }
-

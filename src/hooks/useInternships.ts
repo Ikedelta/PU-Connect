@@ -107,30 +107,17 @@ export function useInternships(filters?: { search?: string; type?: string }) {
                 console.error('Supabase error:', err);
             }
 
-            // 2. Fetch from LinkedIn (Multi-Query Strategy to Maximize Results)
+            // 2. Fetch from LinkedIn (Optimized Strategy to prevent 429/Rate Limits)
             const { fetchLinkedInJobs } = await import('../lib/linkedin-service');
 
-            const baseSearch = filters?.search ? `${filters.search} Internship` : 'Internship';
+            // Only perform a single broad query if no search specified, or a specific query if search exists.
+            // This prevents triggering 5 parallel API calls which causes 429 errors on free tiers.
+            const query = filters?.search && filters.search.length > 2
+                ? `${filters.search} Internship`
+                : 'Internship Ghana';
 
-            // We'll run multiple queries to get a diverse set of results
-            const queries = [
-                baseSearch,
-                'Internship Ghana',
-                'Remote Internship',
-                'Software Engineering Internship',
-                'Marketing Internship'
-            ];
-
-            // Remove duplicates if baseSearch overlaps
-            const uniqueQueries = [...new Set(queries)];
-
-            console.log('Fetching LinkedIn jobs for queries:', uniqueQueries);
-
-            const linkedInPromises = uniqueQueries.map(q => fetchLinkedInJobs(q));
-            const linkedInResults = await Promise.all(linkedInPromises);
-
-            // Flatten results
-            const allLinkedInJobs = linkedInResults.flat();
+            console.log('Fetching LinkedIn jobs for:', query);
+            const allLinkedInJobs = await fetchLinkedInJobs(query);
 
             const mappedLinkedInJobs: Internship[] = allLinkedInJobs.map(job => {
                 const id = job.job_id || job.id || Math.random().toString();
@@ -182,6 +169,8 @@ export function useInternships(filters?: { search?: string; type?: string }) {
                 new Date(b.posted_at).getTime() - new Date(a.posted_at).getTime()
             );
         },
-        staleTime: 0, // Real-time: Always refetch on mount
+        staleTime: 1000 * 60 * 60, // 1 hour: Prevents constant re-hitting RapidAPI limits
+        gcTime: 1000 * 60 * 60 * 2,
+        refetchOnWindowFocus: false,
     });
 }

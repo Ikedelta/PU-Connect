@@ -144,17 +144,25 @@ const FALLBACK_JOBS: LinkedInJob[] = [
     }
 ];
 
+const memoryCache = new Map<string, LinkedInJob[]>();
+
 export async function fetchLinkedInJobs(query: string = 'Internship'): Promise<LinkedInJob[]> {
     if (!RAPID_API_KEY) {
         console.debug('LinkedIn Integration: VITE_RAPID_API_KEY is missing. Using Fallback Real Data.');
         return FALLBACK_JOBS;
     }
 
-    try {
-        // Broad search to maximize chances of live results, increased num_pages to 10 for more results
-        const url = `https://${RAPID_API_HOST}/search?query=${encodeURIComponent(query)}&num_pages=10&date_posted=month`;
+    // Check cache first to save API tokens
+    if (memoryCache.has(query)) {
+        console.log('LinkedIn Integration: Returning cached results for:', query);
+        return memoryCache.get(query) || [];
+    }
 
-        console.log('LinkedIn Integration: Fetching from:', url);
+    try {
+        // Reduced num_pages to 3 to stay within rate limits and speed up response
+        const url = `https://${RAPID_API_HOST}/search?query=${encodeURIComponent(query)}&num_pages=3&date_posted=month`;
+
+        console.log('LinkedIn Integration: Fetching from JSearch...');
 
         const response = await fetch(url, {
             method: 'GET',
@@ -164,23 +172,30 @@ export async function fetchLinkedInJobs(query: string = 'Internship'): Promise<L
             }
         });
 
+        // Gracefully handle rate limits (429) or Forbidden (403)
+        if (response.status === 429 || response.status === 403) {
+            console.warn('LinkedIn Integration: API Limit Reached (429/403). Switching to Fallback Data.');
+            return FALLBACK_JOBS;
+        }
+
         if (!response.ok) {
-            console.warn('LinkedIn Integration: API request failed with status:', response.status);
             return FALLBACK_JOBS;
         }
 
         const result = await response.json();
-        console.log('LinkedIn Integration: Raw API Response (Count):', result.data?.length || 0);
+        const data = result.data || [];
 
-        if (!result.data || result.data.length === 0) {
-            console.warn('LinkedIn Integration: No live jobs found, using Fallback Real Data.');
+        if (data.length === 0) {
             return FALLBACK_JOBS;
         }
 
-        return result.data;
+        // Save to memory cache for the current session
+        memoryCache.set(query, data);
+
+        return data;
 
     } catch (err) {
-        console.error('LinkedIn Integration: Network or parsing error:', err);
+        console.error('LinkedIn Integration Error:', err);
         return FALLBACK_JOBS;
     }
 }

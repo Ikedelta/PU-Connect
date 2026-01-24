@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/feature/Navbar';
+import Footer from '../../components/layout/Footer';
 import { useAuth } from '../../contexts/AuthContext';
 
 import { useInternships } from '../../hooks/useInternships';
@@ -229,6 +230,7 @@ export default function Internships() {
                     </div>
                 )}
             </div>
+            <Footer />
         </div>
     );
 }

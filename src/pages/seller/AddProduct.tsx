@@ -295,16 +295,16 @@ export default function AddProduct() {
           </button>
         </div>
 
-        <div className="flex flex-col-reverse xl:grid xl:grid-cols-5 gap-6 md:gap-10">
+        <div className="flex flex-col-reverse xl:grid xl:grid-cols-5 gap-8 xl:gap-16 items-start relative">
           {/* Form Section */}
           <div className="xl:col-span-3 space-y-10">
-            <div className="bg-white dark:bg-slate-900 rounded-[3rem] shadow-2xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 p-8 md:p-14 relative overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 p-8 md:p-12 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
 
-              <form onSubmit={handleSubmit} className="space-y-12 relative z-10">
+              <form onSubmit={handleSubmit} className="space-y-10 relative z-10">
                 {/* Admin Merchant Selection */}
                 {isAdmin && (
-                  <div className="bg-slate-50 dark:bg-slate-950 p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 space-y-4">
+                  <div className="bg-slate-50 dark:bg-slate-950 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-3">
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
                       Target Merchant Account
                     </label>
@@ -312,7 +312,7 @@ export default function AddProduct() {
                       <select
                         value={formData.sellerId}
                         onChange={(e) => setFormData({ ...formData, sellerId: e.target.value })}
-                        className="w-full px-8 py-5 bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-blue-500/30 rounded-2xl font-bold outline-none text-sm text-slate-900 dark:text-white transition-all appearance-none cursor-pointer"
+                        className="w-full px-6 py-4 bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-blue-500/30 rounded-2xl font-bold outline-none text-sm text-slate-900 dark:text-white transition-all appearance-none cursor-pointer"
                         required
                       >
                         <option value="">Select Merchant...</option>
@@ -326,7 +326,7 @@ export default function AddProduct() {
                 )}
 
                 {/* Main Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <div className="grid grid-cols-1 gap-8">
                   <div className="space-y-3">
                     <div className="flex justify-between items-center px-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Product Identity</label>
@@ -337,14 +337,14 @@ export default function AddProduct() {
                       required
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-8 py-5 bg-slate-50/50 dark:bg-slate-950 border-2 border-transparent focus:border-blue-500/20 rounded-2xl font-bold outline-none text-sm text-slate-900 dark:text-white transition-all placeholder:text-slate-300"
-                      placeholder="e.g. MacBook Pro 2021"
+                      className="w-full px-6 py-5 bg-slate-50 dark:bg-slate-950 border-2 border-transparent focus:border-blue-500/20 rounded-2xl font-bold outline-none text-base text-slate-900 dark:text-white transition-all placeholder:text-slate-300"
+                      placeholder="e.g. MacBook Pro M1 2021"
                     />
                   </div>
 
                   <div className="space-y-4">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Market Category</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       {[
                         { name: 'Electronics', icon: 'ri-macbook-line' },
                         { name: 'Books & Stationery', icon: 'ri-book-3-line' },
@@ -359,12 +359,12 @@ export default function AddProduct() {
                           key={cat.name}
                           type="button"
                           onClick={() => setFormData({ ...formData, category: cat.name })}
-                          className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 text-center group ${formData.category === cat.name
+                          className={`p-3 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 text-center group ${formData.category === cat.name
                             ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20'
-                            : 'bg-slate-50 dark:bg-slate-950 border-transparent hover:border-blue-200 dark:hover:border-blue-900 text-slate-500 dark:text-slate-400'
+                            : 'bg-slate-50 dark:bg-slate-950 border-transparent hover:border-blue-100 dark:hover:border-blue-900/50 text-slate-500 dark:text-slate-400'
                             }`}
                         >
-                          <i className={`${cat.icon} text-xl ${formData.category === cat.name ? 'text-white' : 'text-slate-400 group-hover:text-blue-500'} transition-colors`}></i>
+                          <i className={`${cat.icon} text-xl ${formData.category === cat.name ? 'text-white' : 'text-slate-300 group-hover:text-blue-500'} transition-colors`}></i>
                           <span className="text-[9px] font-bold uppercase tracking-wide leading-tight">{cat.name}</span>
                         </button>
                       ))}
@@ -380,40 +380,41 @@ export default function AddProduct() {
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={5}
-                    className="w-full px-8 py-6 bg-slate-50/50 dark:bg-slate-950 border-2 border-transparent focus:border-blue-500/20 rounded-3xl font-bold outline-none text-sm text-slate-900 dark:text-white transition-all resize-none placeholder:text-slate-300"
-                    placeholder="Tell buyers why they need this..."
+                    rows={6}
+                    className="w-full px-6 py-5 bg-slate-50 dark:bg-slate-950 border-2 border-transparent focus:border-blue-500/20 rounded-3xl font-medium outline-none text-sm text-slate-900 dark:text-white transition-all resize-none placeholder:text-slate-300 leading-relaxed"
+                    placeholder="Describe your product in detail. Mention condition, features, and specific reasons to buy..."
                   />
                 </div>
 
                 {/* Pricing Strategy */}
-                <div className="bg-slate-50/50 dark:bg-slate-950 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 space-y-8">
+                <div className="bg-slate-50 dark:bg-slate-950 p-6 md:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 space-y-6">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Pricing Model</label>
                   <div className="flex flex-col sm:flex-row gap-4">
                     {['fixed', 'contact'].map((type) => (
                       <button
                         key={type}
                         type="button"
                         onClick={() => setFormData({ ...formData, priceType: type as any })}
-                        className={`flex-1 p-6 rounded-3xl border-2 transition-all group flex flex-col items-center gap-3 ${formData.priceType === type
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-500/20'
-                          : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-500'
+                        className={`flex-1 p-4 rounded-2xl border-2 transition-all group flex items-center justify-center gap-3 ${formData.priceType === type
+                          ? 'bg-white dark:bg-slate-900 border-blue-500 text-blue-600 shadow-sm'
+                          : 'bg-transparent border-slate-200 dark:border-slate-800 text-slate-400 hover:border-slate-300'
                           }`}
                       >
-                        <i className={`${type === 'fixed' ? 'ri-price-tag-3-line' : 'ri-exchange-line'} text-2xl`}></i>
-                        <span className="text-[10px] font-black uppercase tracking-widest">{type === 'fixed' ? 'Set Price' : 'Negotiable'}</span>
+                        <i className={`${type === 'fixed' ? 'ri-price-tag-3-fill' : 'ri-chat-1-fill'} text-lg`}></i>
+                        <span className="text-xs font-bold uppercase tracking-widest">{type === 'fixed' ? 'Fixed Price' : 'Negotiable'}</span>
                       </button>
                     ))}
                   </div>
 
                   {formData.priceType === 'fixed' && (
-                    <div className="relative max-w-xs transition-all ring-offset-2 focus-within:ring-4 ring-blue-500/10 rounded-2xl">
-                      <span className="absolute left-8 top-1/2 -translate-y-1/2 font-black text-2xl text-slate-300">GH₵</span>
+                    <div className="relative animate-in slide-in-from-top-2 duration-200">
+                      <span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-xl text-slate-400">GH₵</span>
                       <input
                         type="number"
                         step="0.01"
                         value={formData.price}
                         onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                        className="w-full pl-24 pr-8 py-6 bg-white dark:bg-slate-900 border-none rounded-2xl font-black text-3xl text-slate-900 dark:text-white placeholder:text-slate-200 outline-none"
+                        className="w-full pl-20 pr-6 py-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-2xl font-black text-2xl text-slate-900 dark:text-white placeholder:text-slate-200 outline-none transition-all"
                         placeholder="0.00"
                         required={formData.priceType === 'fixed'}
                       />
@@ -422,61 +423,68 @@ export default function AddProduct() {
                 </div>
 
                 <div className="space-y-4">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Business Line (WhatsApp)</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Business Contact</label>
                   <div className="relative group">
-                    <i className="ri-whatsapp-fill absolute left-8 top-1/2 -translate-y-1/2 text-emerald-500 text-2xl"></i>
+                    <div className="absolute left-0 top-0 bottom-0 w-14 flex items-center justify-center bg-emerald-500/10 rounded-l-2xl border-y border-l border-emerald-500/20">
+                      <i className="ri-whatsapp-fill text-emerald-500 text-xl"></i>
+                    </div>
                     <input
                       type="tel"
                       required
                       value={formData.whatsappNumber}
                       onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value })}
-                      className="w-full pl-16 pr-8 py-6 bg-slate-50/50 dark:bg-slate-950 border-2 border-transparent focus:border-emerald-500/20 rounded-2xl font-black text-lg text-slate-900 dark:text-white outline-none transition-all"
-                      placeholder="054XXXXXXXX"
+                      className="w-full pl-16 pr-6 py-5 bg-slate-50 dark:bg-slate-950 border-2 border-transparent focus:border-emerald-500/20 rounded-2xl font-bold text-lg text-slate-900 dark:text-white outline-none transition-all placeholder:text-slate-300"
+                      placeholder="054XXXXXXX"
                     />
                   </div>
+                  <p className="text-[10px] text-slate-400 pl-1 font-medium">Buyers will contact you via this WhatsApp number.</p>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full h-20 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[2.2rem] font-black text-sm uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-2xl disabled:opacity-50 flex items-center justify-center gap-4 cursor-pointer"
-                >
-                  {loading ? <i className="ri-loader-4-line animate-spin text-2xl"></i> : (
-                    <>
-                      Publish to Marketplace
-                      <i className="ri-rocket-fill text-xl text-blue-400 dark:text-blue-600"></i>
-                    </>
-                  )}
-                </button>
+                <div className="pt-4">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-[1.01] active:scale-[0.99] transition-all shadow-xl shadow-blue-600/20 disabled:opacity-70 disabled:grayscale flex items-center justify-center gap-3 cursor-pointer"
+                  >
+                    {loading ? <i className="ri-loader-4-line animate-spin text-xl"></i> : (
+                      <>
+                        <span>Publish Listing</span>
+                        <i className="ri-arrow-right-line text-lg"></i>
+                      </>
+                    )}
+                  </button>
+                </div>
               </form>
             </div>
           </div>
 
-          {/* Media Sidebar */}
-          <div className="xl:col-span-2 space-y-8">
-            <div className="bg-slate-900 dark:bg-black p-8 md:p-10 rounded-[3rem] text-white shadow-2xl relative overflow-hidden border border-slate-800">
-              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-tr from-blue-600/10 to-transparent"></div>
+          {/* Media Sidebar - Sticky on Desktop */}
+          <div className="xl:col-span-2 space-y-8 xl:sticky xl:top-36 h-fit">
+            <div className="bg-slate-900 dark:bg-black p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden ring-1 ring-white/10">
+              <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-600/20 via-slate-900/0 to-transparent"></div>
 
               <div className="relative z-10 flex flex-col h-full">
                 <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">
-                    <i className="ri-gallery-fill text-blue-400"></i>
-                    Media Gallery
+                  <h3 className="text-xl font-black tracking-tight flex items-center gap-3">
+                    <i className="ri-image-add-line text-blue-400"></i>
+                    Gallery
                   </h3>
-                  <span className="bg-white/10 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-blue-200 border border-white/5">
-                    {formData.images.length} / 8 Photos
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${formData.images.length >= 1 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-white/5 border-white/10 text-slate-400'}`}>
+                    {formData.images.length} / 8
                   </span>
                 </div>
 
                 {formData.images.length === 0 ? (
                   /* Empty State - Big Drop Zone */
-                  <div className="flex-1 w-full aspect-[4/3] bg-white/5 border-2 border-dashed border-white/10 rounded-[2.5rem] relative group hover:bg-white/10 hover:border-blue-500/50 transition-all cursor-pointer flex flex-col items-center justify-center gap-4">
-                    <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center shadow-2xl shadow-blue-500/20 group-hover:scale-110 transition-transform">
-                      <i className="ri-upload-cloud-2-line text-3xl"></i>
+                  <div className="w-full aspect-[4/5] bg-white/5 border-2 border-dashed border-white/10 rounded-3xl relative group hover:bg-white/10 hover:border-blue-500/50 transition-all cursor-pointer flex flex-col items-center justify-center gap-6 p-4 text-center">
+                    <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-2xl shadow-blue-600/30 group-hover:scale-110 transition-transform duration-300">
+                      <i className="ri-camera-lens-line text-3xl"></i>
                     </div>
-                    <div className="text-center">
-                      <p className="text-lg font-bold text-white mb-1">Click to Upload Photos</p>
-                      <p className="text-xs font-medium text-slate-400">JPG, PNG up to 5MB</p>
+                    <div>
+                      <p className="text-lg font-bold text-white mb-2">Add Photos</p>
+                      <p className="text-xs font-medium text-slate-400 leading-relaxed max-w-[150px] mx-auto">
+                        Upload high-quality images to attract more buyers.
+                      </p>
                     </div>
                     <ImageUploader
                       folder="products"
@@ -491,21 +499,25 @@ export default function AddProduct() {
                 ) : (
                   /* Populated Grid */
                   <div className="space-y-6">
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 animate-in fade-in zoom-in-95 duration-300">
+                    <div className="grid grid-cols-2 gap-3 animate-in fade-in zoom-in-95 duration-300">
                       {formData.images.map((url, idx) => (
-                        <div key={idx} className={`aspect-square rounded-2xl overflow-hidden bg-slate-800 relative group border ${idx === 0 ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-slate-700/50'}`}>
-                          <img src={url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={`Product ${idx}`} />
+                        <div key={idx} className={`aspect-square rounded-2xl overflow-hidden bg-slate-800 relative group border ${idx === 0 ? 'border-blue-500 ring-2 ring-blue-500/30 col-span-2 aspect-[16/9]' : 'border-slate-700/50'}`}>
+                          <img src={url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={`Product ${idx}`} />
 
                           <button
                             onClick={() => removeImage(idx)}
                             type="button"
-                            className="absolute top-1.5 right-1.5 w-6 h-6 bg-rose-500 rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-all active:scale-95"
+                            className="absolute top-2 right-2 w-7 h-7 bg-black/50 hover:bg-rose-500 backdrop-blur-md rounded-full flex items-center justify-center text-white transition-all transform hover:scale-110 active:scale-90"
                           >
-                            <i className="ri-close-line text-xs"></i>
+                            <i className="ri-close-line"></i>
                           </button>
 
                           {idx === 0 && (
-                            <div className="absolute inset-x-0 bottom-0 bg-blue-600/90 py-1.5 text-[7px] font-black uppercase tracking-widest text-center backdrop-blur-md">Headline</div>
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-6">
+                              <span className="text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1">
+                                <i className="ri-star-fill text-yellow-500"></i> Cover Image
+                              </span>
+                            </div>
                           )}
                         </div>
                       ))}
@@ -525,21 +537,19 @@ export default function AddProduct() {
                         </div>
                       )}
                     </div>
-
-                    <p className="text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest animate-pulse">
-                      Tap the <span className="text-blue-400">+</span> to add more
-                    </p>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-10 rounded-[3rem] text-white shadow-2xl shadow-blue-500/20 group translate-y-0 hover:-translate-y-2 transition-transform duration-500">
-              <i className="ri-shield-user-fill text-4xl text-blue-200 mb-8 block group-hover:rotate-12 transition-transform"></i>
-              <h4 className="text-xl font-black mb-4 tracking-tight">Enterprise Safety</h4>
-              <p className="text-blue-100 text-xs font-bold leading-relaxed uppercase tracking-wider opacity-80">
-                All campus listings are cryptographically signed and monitored for community compliance.
-              </p>
+            <div className="bg-blue-50 dark:bg-blue-900/10 p-6 rounded-3xl border border-blue-100 dark:border-blue-800/30 flex items-start gap-4">
+              <i className="ri-information-fill text-blue-500 text-xl mt-0.5"></i>
+              <div>
+                <h4 className="text-sm font-bold text-blue-900 dark:text-blue-100 mb-1">Selling Tip</h4>
+                <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed font-medium">
+                  Products with 3+ images and detailed descriptions sell 2x faster. Be honest about item condition.
+                </p>
+              </div>
             </div>
           </div>
         </div>

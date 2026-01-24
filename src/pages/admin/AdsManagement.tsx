@@ -147,50 +147,152 @@ export default function AdsManagement() {
                     </div>
                 </div>
 
+                {/* Dashboard Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600">
+                                <i className="ri-megaphone-fill"></i>
+                            </div>
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Ads</span>
+                        </div>
+                        <p className="text-3xl font-black text-slate-900 dark:text-white">
+                            {ads.filter(a => a.status === 'active').length}
+                        </p>
+                    </div>
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600">
+                                <i className="ri-eye-fill"></i>
+                            </div>
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Views</span>
+                        </div>
+                        <p className="text-3xl font-black text-slate-900 dark:text-white">
+                            {ads.reduce((acc, curr) => acc + (curr.impressions_count || 0), 0).toLocaleString()}
+                        </p>
+                    </div>
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-8 h-8 rounded-full bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600">
+                                <i className="ri-cursor-fill"></i>
+                            </div>
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Clicks</span>
+                        </div>
+                        <p className="text-3xl font-black text-slate-900 dark:text-white">
+                            {ads.reduce((acc, curr) => acc + (curr.clicks_count || 0), 0).toLocaleString()}
+                        </p>
+                    </div>
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-8 h-8 rounded-full bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-600">
+                                <i className="ri-percent-line"></i>
+                            </div>
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Avg. CTR</span>
+                        </div>
+                        <p className="text-3xl font-black text-slate-900 dark:text-white">
+                            {(() => {
+                                const totalImpressions = ads.reduce((acc, curr) => acc + (curr.impressions_count || 0), 0);
+                                const totalClicks = ads.reduce((acc, curr) => acc + (curr.clicks_count || 0), 0);
+                                return totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) + '%' : '0.00%';
+                            })()}
+                        </p>
+                    </div>
+                </div>
+
                 {loading ? (
-                    <div className="text-center py-20">Loading...</div>
+                    <div className="text-center py-24">
+                        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                        <p className="text-slate-500 font-medium">Loading campaigns...</p>
+                    </div>
                 ) : ads.length === 0 ? (
-                    <div className="bg-white dark:bg-slate-800 rounded-3xl p-16 text-center border border-slate-100 dark:border-slate-700">
-                        <div className="w-20 h-20 bg-slate-50 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <i className="ri-advertisement-line text-4xl text-slate-300"></i>
+                    <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-16 text-center border border-slate-100 dark:border-slate-700 shadow-xl">
+                        <div className="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
+                            <i className="ri-advertisement-fill text-5xl text-blue-500 dark:text-blue-400"></i>
                         </div>
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">No Active Campaigns</h3>
-                        <p className="text-slate-500 mb-6">Create your first advertisement to start promoting content.</p>
-                        <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl inline-block text-left max-w-md mx-auto">
-                            <p className="text-xs font-bold text-amber-700 dark:text-amber-400 mb-1">Database Setup Required?</p>
-                            <p className="text-xs text-amber-600 dark:text-amber-500/80">If you haven't run the migration script yet, please run <code>database_enhancements.sql</code> in your Supabase SQL Editor.</p>
-                        </div>
+                        <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">No Active Campaigns</h3>
+                        <p className="text-slate-500 mb-8 max-w-md mx-auto leading-relaxed">Create your first advertisement to start promoting content across the platform.</p>
+                        <button
+                            onClick={() => {
+                                setEditingAd(null);
+                                setFormData({
+                                    title: '',
+                                    image_url: '',
+                                    destination_url: '',
+                                    placement_area: 'home_hero',
+                                    status: 'active',
+                                    start_date: new Date().toISOString().slice(0, 16),
+                                });
+                                setShowModal(true);
+                            }}
+                            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold uppercase tracking-widest text-xs hover:shadow-lg hover:-translate-y-1 transition-all"
+                        >
+                            + Create First Campaign
+                        </button>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {ads.map(ad => (
-                            <div key={ad.id} className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-700 shadow-sm group">
-                                <div className="h-48 bg-slate-100 dark:bg-slate-900 relative">
+                            <div key={ad.id} className="bg-white dark:bg-slate-800 rounded-[2rem] overflow-hidden border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group duration-300">
+                                <div className="h-56 bg-slate-100 dark:bg-slate-900 relative group-hover:brightness-110 transition-all">
                                     <img src={ad.image_url} alt={ad.title} className="w-full h-full object-cover" />
-                                    <div className="absolute top-2 right-2">
-                                        <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wide rounded-md ${ad.status === 'active' ? 'bg-emerald-500 text-white' : 'bg-slate-500 text-white'}`}>
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60"></div>
+                                    <div className="absolute top-4 right-4">
+                                        <span className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide rounded-full shadow-lg ${ad.status === 'active' ? 'bg-emerald-500 text-white' :
+                                                ad.status === 'paused' ? 'bg-amber-500 text-white' : 'bg-slate-500 text-white'
+                                            }`}>
                                             {ad.status}
                                         </span>
                                     </div>
+                                    <div className="absolute bottom-4 left-4 right-4">
+                                        <h3 className="font-bold text-white text-lg mb-1 line-clamp-1">{ad.title}</h3>
+                                        <span className="px-2 py-0.5 bg-white/20 backdrop-blur-md rounded text-[10px] font-bold text-white uppercase tracking-wider">
+                                            {ad.placement_area.replace('_', ' ')}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="p-6">
-                                    <h3 className="font-bold text-slate-900 dark:text-white text-lg mb-1">{ad.title}</h3>
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">{ad.placement_area}</p>
 
-                                    <div className="grid grid-cols-2 gap-4 border-t border-slate-50 dark:border-slate-700 pt-4 mb-4">
+                                <div className="p-6">
+                                    {ad.destination_url && (
+                                        <div className="flex items-center gap-2 mb-6 text-xs text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg truncate">
+                                            <i className="ri-link-m"></i>
+                                            <span className="truncate flex-1">{ad.destination_url}</span>
+                                        </div>
+                                    )}
+
+                                    <div className="grid grid-cols-2 gap-4 border-t border-slate-50 dark:border-slate-700 pt-4 mb-6">
                                         <div>
-                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Impressions</p>
-                                            <p className="text-lg font-black text-slate-900 dark:text-white">{ad.impressions_count}</p>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Impressions</p>
+                                            <div className="flex items-baseline gap-1">
+                                                <p className="text-xl font-black text-slate-900 dark:text-white">{ad.impressions_count?.toLocaleString() || 0}</p>
+                                                <span className="text-[10px] text-emerald-500 font-bold">
+                                                    <i className="ri-arrow-up-fill"></i>
+                                                </span>
+                                            </div>
                                         </div>
                                         <div>
-                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Clicks</p>
-                                            <p className="text-lg font-black text-slate-900 dark:text-white">{ad.clicks_count}</p>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Clicks</p>
+                                            <div className="flex items-baseline gap-1">
+                                                <p className="text-xl font-black text-slate-900 dark:text-white">{ad.clicks_count?.toLocaleString() || 0}</p>
+                                                <span className="text-[10px] text-slate-300">
+                                                    CTR {((ad.clicks_count || 0) / (ad.impressions_count || 1) * 100).toFixed(1)}%
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
 
                                     <div className="flex gap-2">
-                                        <button onClick={() => handleEdit(ad)} className="flex-1 py-2 bg-slate-50 dark:bg-slate-700 rounded-lg text-xs font-bold uppercase tracking-wide hover:bg-slate-100 transition-colors">Edit</button>
-                                        <button onClick={() => handleDelete(ad.id)} className="px-3 py-2 bg-rose-50 dark:bg-rose-900/20 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors"><i className="ri-delete-bin-line"></i></button>
+                                        <button
+                                            onClick={() => handleEdit(ad)}
+                                            className="flex-1 py-3 bg-slate-100 dark:bg-slate-700 rounded-xl text-xs font-bold uppercase tracking-wide hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-slate-600 dark:text-slate-200"
+                                        >
+                                            Edit Campaign
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(ad.id)}
+                                            className="w-12 h-10 flex items-center justify-center bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-xl hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors"
+                                        >
+                                            <i className="ri-delete-bin-line text-lg"></i>
+                                        </button>
                                     </div>
                                 </div>
                             </div>

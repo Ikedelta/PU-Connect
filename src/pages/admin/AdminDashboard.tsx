@@ -89,6 +89,8 @@ export default function AdminDashboard() {
   const [newPersonData, setNewPersonData] = useState({ full_name: '', email: '', password: '', role: 'buyer' as 'buyer' | 'admin' | 'news_publisher' });
   const [isSmsLoading, setIsSmsLoading] = useState(false);
   const [isProductCreatorOpen, setIsProductCreatorOpen] = useState(false);
+  const [smsTemplates, setSmsTemplates] = useState<{ key: string, value: string, description: string }[]>([]);
+  const [editingTemplate, setEditingTemplate] = useState<{ key: string, value: string } | null>(null);
 
   const pendingApps = applications.filter(app => app.status?.toLowerCase() === 'pending');
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
@@ -232,6 +234,37 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchSMSTemplates = async () => {
+    try {
+      const { data } = await supabase
+        .from('platform_settings')
+        .select('*')
+        .ilike('key', 'sms_template_%');
+      if (data) setSmsTemplates(data);
+    } catch (err) {
+      console.error('SMS templates error:', err);
+    }
+  };
+
+  const saveSMSTemplate = async () => {
+    if (!editingTemplate) return;
+    setProcessing('save-template');
+    try {
+      const { error } = await supabase
+        .from('platform_settings')
+        .update({ value: editingTemplate.value })
+        .eq('key', editingTemplate.key);
+      if (error) throw error;
+      setNotification({ type: 'success', message: 'SMS template updated successfully' });
+      fetchSMSTemplates();
+      setEditingTemplate(null);
+    } catch (err: any) {
+      setNotification({ type: 'error', message: err.message });
+    } finally {
+      setProcessing(null);
+    }
+  };
+
   const fetchActivityLogs = async () => {
     try {
       const { data } = await supabase
@@ -252,7 +285,7 @@ export default function AdminDashboard() {
       const isBypass = localStorage.getItem('sys_admin_bypass') === 'true';
       const secret = localStorage.getItem('sys_admin_secret') || 'pentvars-sys-admin-x892';
 
-      const [appsRes, usersRes, sellersRes, adminsRes, publishersRes, productsCountRes, servicesCountRes, newsRes, ticketsRes, logsRes, analyticsRes, allProductsRes, settingsRes, buyersRes, newsletterRes, totalProductsRes, topupsRes, newSubsRes, platformSettingsRes] = await Promise.all([
+      const [appsRes, usersRes, sellersRes, adminsRes, publishersRes, productsCountRes, servicesCountRes, newsRes, ticketsRes, logsRes, analyticsRes, allProductsRes, settingsRes, buyersRes, newsletterRes, totalProductsRes, topupsRes, newSubsRes, platformSettingsRes, pendingAppsRes, approvedAppsRes, rejectedAppsRes, cancelledAppsRes] = await Promise.all([
         supabase.from('seller_applications').select('*, user:profiles!user_id(*)').order('created_at', { ascending: false }).limit(50),
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
         supabase.from('seller_profiles').select('id', { count: 'exact', head: true }),
@@ -287,7 +320,11 @@ export default function AdminDashboard() {
           ? supabase.rpc('sys_get_subs_list', { secret_key: secret }).limit(5)
           : supabase.from('newsletter_subscribers').select('*').order('created_at', { ascending: false }).limit(5)
         ),
-        supabase.from('platform_settings').select('value').eq('key', 'subscriptions_enabled').maybeSingle()
+        supabase.from('platform_settings').select('value').eq('key', 'subscriptions_enabled').maybeSingle(),
+        supabase.from('seller_applications').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('seller_applications').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
+        supabase.from('seller_applications').select('id', { count: 'exact', head: true }).eq('status', 'rejected'),
+        supabase.from('seller_applications').select('id', { count: 'exact', head: true }).eq('status', 'cancelled')
       ]);
 
       if (logsRes.data) setRecentLogs(logsRes.data);
@@ -319,10 +356,11 @@ export default function AdminDashboard() {
       // Stats Calculation
       const totalSystemUsers = (buyersRes.count || 0) + (sellersRes.count || 0) + (adminsRes.count || 0) + (publishersRes.count || 0);
       const totalUsers = totalSystemUsers || usersRes.count || 0;
-      const pendingCount = fetchedApps.filter(a => a.status?.toLowerCase() === 'pending').length;
-      const approvedCount = fetchedApps.filter(a => a.status?.toLowerCase() === 'approved').length;
-      const rejectedCount = fetchedApps.filter(a => a.status?.toLowerCase() === 'rejected').length;
-      const cancelledCount = fetchedApps.filter(a => a.status?.toLowerCase() === 'cancelled').length;
+
+      const pendingCount = pendingAppsRes.count || 0;
+      const approvedCount = approvedAppsRes.count || 0;
+      const rejectedCount = rejectedAppsRes.count || 0;
+      const cancelledCount = cancelledAppsRes.count || 0;
 
       setStats(prev => ({
         ...prev,
@@ -365,7 +403,7 @@ export default function AdminDashboard() {
         });
       }
 
-      await Promise.all([fetchSMSBalance(isBackground), fetchSMSHistory()]);
+      await Promise.all([fetchSMSBalance(isBackground), fetchSMSHistory(), fetchSMSTemplates()]);
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -589,7 +627,9 @@ export default function AdminDashboard() {
           const firstName = userData.full_name?.split(' ')[0] || 'User';
           await sendSMS(
             [userData.phone],
-            `Congratulations ${firstName}! Your seller application for "${application.business_name}" has been APPROVED.`
+            `Congratulations ${firstName}! Your seller application for "${application.business_name}" has been APPROVED.`,
+            'seller_approval',
+            { name: firstName, business_name: application.business_name }
           );
         } catch (smsErr) {
           console.error('Failed to send approval SMS:', smsErr);
@@ -736,7 +776,8 @@ export default function AdminDashboard() {
           const { sendSMS } = await import('../../lib/arkesel');
           await sendSMS(
             [selectedAdminUser.phone],
-            `Congratulations! You have been promoted to an Administrator on Campus Connect.`
+            `Congratulations! You have been promoted to an Administrator on Campus Connect.`,
+            'admin_promo'
           );
         } catch (smsErr) {
           console.error('Failed to send admin promo SMS:', smsErr);
@@ -1026,14 +1067,16 @@ export default function AdminDashboard() {
         {/* PROMINENT ALERTS - SMS & Pending Applications */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
           {/* SMS Balance Alert / System Status Reflection */}
-          <div className={`relative overflow-hidden rounded-2xl p-5 border flex flex-col justify-between transition-all duration-500 ${isSmsLoading
-            ? 'bg-slate-800/50 border-slate-700/50'
-            : !stats.smsEnabled
-              ? 'bg-slate-800/50 border-slate-700 grayscale'
-              : stats.smsBalance < 50
-                ? 'bg-gradient-to-br from-rose-950/50 to-rose-900/50 border-rose-500/30'
-                : 'bg-gradient-to-br from-indigo-950/50 to-violet-900/50 border-indigo-500/30'
-            }`}>
+          <div
+            onClick={() => setActiveTab('sms')}
+            className={`relative overflow-hidden rounded-2xl p-5 border flex flex-col justify-between transition-all duration-500 cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${isSmsLoading
+              ? 'bg-slate-800/50 border-slate-700/50'
+              : !stats.smsEnabled
+                ? 'bg-slate-800/50 border-slate-700 grayscale'
+                : stats.smsBalance < 50
+                  ? 'bg-gradient-to-br from-rose-950/50 to-rose-900/50 border-rose-500/30'
+                  : 'bg-gradient-to-br from-indigo-950/50 to-violet-900/50 border-indigo-500/30'
+              }`}>
             {!stats.smsEnabled && (
               <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center text-center p-6">
                 <i className="ri-error-warning-line text-3xl text-slate-400 mb-2"></i>
@@ -1151,36 +1194,29 @@ export default function AdminDashboard() {
                   <h3 className="text-lg font-black text-white mb-5 uppercase tracking-wide">Quick Actions</h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {[
-                      { label: 'Users', path: '/admin/users', icon: 'ri-user-settings-line', color: 'blue' },
-                      { label: 'Applications', path: '/admin/seller-applications', icon: 'ri-file-list-3-line', color: 'amber', badge: pendingApps.length },
+                      { label: 'User Directory', path: '/admin/users', icon: 'ri-user-settings-line', color: 'blue' },
                       { label: 'Registered Sellers', path: '/admin/sellers', icon: 'ri-store-2-line', color: 'green' },
-                      { label: 'News', path: '/admin/news', icon: 'ri-newspaper-line', color: 'emerald' },
-                      { label: 'Email Subscribers', path: '/admin/newsletter', icon: 'ri-mail-send-line', color: 'cyan' },
-                      { label: 'CMS', path: '/admin/content', icon: 'ri-pages-line', color: 'indigo' },
-                      { label: 'SMS', path: '/admin/sms', icon: 'ri-message-3-line', color: 'violet' },
-                      { label: 'Messages', path: '/admin/messages', icon: 'ri-chat-3-line', color: 'pink' },
-                      { label: 'Support', path: '/admin/support', icon: 'ri-customer-service-2-line', color: 'orange', badge: stats.tickets },
-                      { label: 'Ads', path: '/admin/ads', icon: 'ri-advertisement-line', color: 'rose' },
-                      { label: 'Polls', path: '/admin/polls', icon: 'ri-bar-chart-box-line', color: 'teal' },
+                      { label: 'CMS Content', path: '/admin/content', icon: 'ri-pages-line', color: 'indigo' },
+                      { label: 'Ads Management', path: '/admin/ads', icon: 'ri-advertisement-line', color: 'rose' },
+                      { label: 'Campus News', path: '/admin/news', icon: 'ri-newspaper-line', color: 'emerald' },
+                      { label: 'Email Outreach', path: '/admin/newsletter', icon: 'ri-mail-send-line', color: 'cyan' },
                       { label: 'Platform Subs', path: '/admin/subscriptions', icon: 'ri-vip-crown-line', color: 'yellow' },
-                      { label: 'Activity', path: '/admin/activity', icon: 'ri-pulse-line', color: 'red' },
-                      { label: 'Roles', path: '/admin/roles', icon: 'ri-admin-line', color: 'purple' },
-                      { label: 'Settings', path: '/admin/settings', icon: 'ri-settings-4-line', color: 'slate' }
+                      { label: 'In-App Support', path: '/admin/support', icon: 'ri-customer-service-2-line', color: 'orange', badge: stats.tickets },
                     ].map((action, i) => (
                       <Link
                         key={i}
                         to={action.path}
-                        className="relative group bg-slate-900/50 hover:bg-slate-900 border border-slate-700/50 hover:border-slate-600 rounded-xl p-4 transition-all"
+                        className="relative group bg-slate-900/40 hover:bg-slate-900 border border-white/5 hover:border-blue-500/30 rounded-2xl p-5 transition-all shadow-sm hover:shadow-blue-500/10"
                       >
                         {action.badge ? (
-                          <span className="absolute -top-2 -right-2 w-5 h-5 bg-rose-500 text-white text-[10px] font-black rounded-full flex items-center justify-center animate-pulse">
+                          <span className="absolute -top-2 -right-2 px-2 py-0.5 bg-rose-500 text-white text-[10px] font-black rounded-full shadow-lg animate-pulse">
                             {action.badge}
                           </span>
                         ) : null}
-                        <div className={`w-10 h-10 rounded-lg bg-${action.color}-500/10 flex items-center justify-center text-${action.color}-400 mb-3 group-hover:scale-110 transition-transform`}>
-                          <i className={`${action.icon} text-xl`}></i>
+                        <div className={`w-12 h-12 rounded-xl bg-${action.color}-500/10 flex items-center justify-center text-${action.color}-400 mb-4 group-hover:scale-110 transition-transform shadow-inner`}>
+                          <i className={`${action.icon} text-2xl`}></i>
                         </div>
-                        <h4 className="font-bold text-white text-xs uppercase tracking-wide">{action.label}</h4>
+                        <h4 className="font-bold text-white text-[11px] uppercase tracking-wider">{action.label}</h4>
                       </Link>
                     ))}
                   </div>
@@ -1709,6 +1745,109 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 </div>
+
+                {/* SMS Template Editor */}
+                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8">
+                  <div className="flex items-center justify-between mb-8">
+                    <div>
+                      <h3 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+                        <i className="ri-quill-pen-line text-blue-400"></i>
+                        Automated SMS Templates
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-1">Customize the messages sent by system triggers</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {smsTemplates.length > 0 ? (
+                      smsTemplates.map((template) => (
+                        <div key={template.key} className="p-6 bg-slate-900/50 rounded-2xl border border-white/5 hover:border-white/10 transition-all flex flex-col gap-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-black text-xs text-blue-400 uppercase tracking-widest mb-1 truncate">
+                                {template.key.replace('sms_template_', '').split('_').join(' ')}
+                              </h4>
+                              <p className="text-[10px] text-slate-500 line-clamp-1">{template.description}</p>
+                            </div>
+                            <button
+                              onClick={() => setEditingTemplate({ key: template.key, value: template.value })}
+                              className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-blue-600 hover:text-white transition-all"
+                            >
+                              <i className="ri-edit-line"></i>
+                            </button>
+                          </div>
+
+                          <div className="p-4 bg-slate-950/50 rounded-xl border border-white/5 font-medium text-xs text-slate-300 leading-relaxed italic">
+                            "{template.value}"
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="lg:col-span-2 p-12 text-center text-slate-500 border border-dashed border-slate-700 rounded-3xl">
+                        <i className="ri-loader-4-line animate-spin text-2xl mb-2"></i>
+                        <p className="text-sm">Fetching system templates...</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Template Edit Modal */}
+                {editingTemplate && (
+                  <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-lg w-full shadow-2xl animate-in zoom-in-95 duration-300">
+                      <div className="flex items-center justify-between mb-8">
+                        <div>
+                          <h2 className="text-2xl font-black text-white uppercase tracking-tight">Edit Template</h2>
+                          <p className="text-xs font-bold text-blue-400 uppercase tracking-wider mt-1">
+                            {editingTemplate.key.replace('sms_template_', '').split('_').join(' ')}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setEditingTemplate(null)}
+                          className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-rose-500 hover:text-white transition-all"
+                        >
+                          <i className="ri-close-line text-xl"></i>
+                        </button>
+                      </div>
+
+                      <div className="space-y-6">
+                        <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-start gap-4">
+                          <i className="ri-information-line text-xl text-blue-400"></i>
+                          <p className="text-[10px] text-blue-200 leading-relaxed uppercase font-bold tracking-wide">
+                            Placeholders like <span className="text-blue-400">{"{name}"}</span>, <span className="text-blue-400">{"{otp}"}</span>, or <span className="text-blue-400">{"{title}"}</span> will be replaced dynamically. Ensure you keep them for the system to work correctly.
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Message Content</label>
+                          <textarea
+                            rows={5}
+                            value={editingTemplate.value}
+                            onChange={(e) => setEditingTemplate({ ...editingTemplate, value: e.target.value })}
+                            className="w-full bg-slate-800 border border-slate-700 rounded-2xl p-5 text-sm font-medium text-white focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none resize-none"
+                            placeholder="Enter message template..."
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <button
+                            onClick={() => setEditingTemplate(null)}
+                            className="py-4 bg-slate-800 text-slate-300 rounded-2xl font-black text-[10px] uppercase tracking-wider hover:bg-slate-700 transition-all"
+                          >
+                            Discard
+                          </button>
+                          <button
+                            onClick={saveSMSTemplate}
+                            disabled={processing === 'save-template'}
+                            className="py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-wider hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 flex items-center justify-center gap-2"
+                          >
+                            {processing === 'save-template' ? <i className="ri-loader-4-line animate-spin text-lg"></i> : 'Update Template'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )
           }

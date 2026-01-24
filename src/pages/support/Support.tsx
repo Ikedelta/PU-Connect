@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
 import Navbar from '../../components/feature/Navbar';
+import Footer from '../../components/layout/Footer';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -88,7 +89,6 @@ export default function Support() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16 animate-fade-in-up delay-300">
                     {[
                         { title: 'Student Accounts', icon: 'ri-account-circle-line', desc: 'Login, Profile, and Verification issues' },
-                        { title: 'Payments & Billing', icon: 'ri-bank-card-line', desc: 'Transactions, Refunds, and Fees' },
                         { title: 'Marketplace', icon: 'ri-store-3-line', desc: 'Listing products and Vendor queries' }
                     ].map((item, i) => (
                         <div key={i} className="bg-white dark:bg-gray-800 p-8 rounded-[2rem] shadow-lg border border-gray-100 dark:border-gray-700 hover:-translate-y-2 transition-transform duration-300 group cursor-pointer">
@@ -245,6 +245,7 @@ export default function Support() {
                     </div>
                 </div>
             </div>
+            <Footer />
         </div>
     );
 }

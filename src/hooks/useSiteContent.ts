@@ -8,12 +8,42 @@ export const CONTENT_KEYS = {
     NEWS_BANNER: 'news_banner',
 };
 
-const DEFAULTS = {
+const DEFAULTS: Record<string, string> = {
     [CONTENT_KEYS.HOME_HERO_MAIN]: '/Pentecost-University-Sowutoum-Ghana-SchoolFinder-TortoisePathcom-2-1536x1152.jpeg',
     [CONTENT_KEYS.HOME_HERO_AERIAL]: '/Pentecost-University-Sowutoum-Ghana-SchoolFinder-TortoisePathcom-11.jpeg',
     [CONTENT_KEYS.MARKETPLACE_BANNER]: '/Pentecost-University-Sowutoum-Ghana-SchoolFinder-TortoisePathcom-11.jpeg',
     [CONTENT_KEYS.NEWS_BANNER]: '/Pentecost-University-Sowutoum-Ghana-SchoolFinder-TortoisePathcom-2-1536x1152.jpeg',
 };
+
+// Global shared promise to avoid concurrent downloads of the same config file
+let configPromise: Promise<any> | null = null;
+let lastFetchTime = 0;
+const CACHE_DURATION = 1000 * 60 * 5; // 5 minutes
+
+async function fetchConfig() {
+    // Check if we have a fresh cached promise
+    if (configPromise && (Date.now() - lastFetchTime < CACHE_DURATION)) {
+        return configPromise;
+    }
+
+    configPromise = (async () => {
+        try {
+            const { data: blob, error } = await supabase.storage
+                .from('uploads')
+                .download('site_config.json');
+
+            if (error || !blob) return null;
+
+            const text = await blob.text();
+            return JSON.parse(text);
+        } catch (e) {
+            return null;
+        }
+    })();
+
+    lastFetchTime = Date.now();
+    return configPromise;
+}
 
 export function useSiteContent(key: string) {
     const [url, setUrl] = useState<string>(DEFAULTS[key] || '');
@@ -24,41 +54,23 @@ export function useSiteContent(key: string) {
 
         async function checkContent() {
             try {
-                // 1. Check persistent cache
+                // 1. Sync check persistent cache first
                 const cached = localStorage.getItem(`site_content_${key}`);
                 if (cached && mounted) {
                     setUrl(cached);
                 }
 
-                // 2. Silently check for config file existence to avoid noisy 400 errors
-                const { data: files } = await supabase.storage
-                    .from('uploads')
-                    .list('', { limit: 1, search: 'site_config.json' });
+                // 2. Fetch shared config
+                const config = await fetchConfig();
 
-                if (!files || files.length === 0) {
-                    if (mounted) setLoading(false);
-                    return;
-                }
-
-                // 3. Download and parse
-                const { data: blob, error: downloadError } = await supabase.storage
-                    .from('uploads')
-                    .download('site_config.json');
-
-                if (downloadError) throw downloadError;
-
-                if (blob && mounted) {
-                    const text = await blob.text();
-                    const config = JSON.parse(text);
-                    const remoteUrl = config[key];
-
-                    if (remoteUrl && remoteUrl !== cached) {
-                        setUrl(remoteUrl);
-                        localStorage.setItem(`site_content_${key}`, remoteUrl);
+                if (config && config[key] && mounted) {
+                    if (config[key] !== cached) {
+                        setUrl(config[key]);
+                        localStorage.setItem(`site_content_${key}`, config[key]);
                     }
                 }
             } catch (err) {
-                // Completely silent for site content - defaults are fine
+                // Silent
             } finally {
                 if (mounted) setLoading(false);
             }

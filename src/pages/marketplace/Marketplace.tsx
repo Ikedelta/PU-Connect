@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Navbar from '../../components/feature/Navbar';
+import Footer from '../../components/layout/Footer';
 import { useProducts, useToggleFavorite, useFavorites } from '../../hooks/useProducts';
 import { useAuth } from '../../contexts/AuthContext';
 import { type Profile } from '../../lib/supabase';
@@ -22,6 +23,53 @@ function Marketplace() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [priceRange, setPriceRange] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
+
+  // Voice Search Logic
+  const [isListening, setIsListening] = useState(false);
+  const handleVoiceResult = useCallback((transcript: string) => {
+    setSearchQuery(transcript);
+    setIsListening(false);
+  }, []);
+
+  const toggleListening = useCallback(() => {
+    if (isListening) {
+      window.speechSynthesis.cancel(); // Safety cleanup
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert("Your browser does not support Voice Search. Please use Chrome or Edge.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      handleVoiceResult(transcript);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error", event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  }, [isListening, handleVoiceResult]);
 
   // Debounce search
   useEffect(() => {
@@ -91,7 +139,7 @@ function Marketplace() {
   }, [searchParams, setSearchParams]);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950 transition-colors duration-300 font-sans">
+    <div className="min-h-screen bg-white dark:bg-gray-950 transition-colors duration-300 font-sans bg-african-pattern">
 
       <Navbar />
 
@@ -122,11 +170,27 @@ function Marketplace() {
               <i className="ri-search-2-line text-xl md:text-2xl text-gray-400 ml-4 pointer-events-none"></i>
               <input
                 type="text"
-                placeholder="Find textbooks, gadgets, services..."
+                placeholder={isListening ? "Listening..." : "Find textbooks, gadgets, services..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-transparent border-none text-gray-900 dark:text-white placeholder-gray-400 focus:ring-0 text-base font-medium px-4 h-12"
               />
+
+              {/* Voice Search Button */}
+              {'webkitSpeechRecognition' in window || 'SpeechRecognition' in window ? (
+                <button
+                  type="button"
+                  onClick={toggleListening}
+                  className={`mr-2 w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isListening
+                    ? 'bg-rose-500 text-white animate-pulse'
+                    : 'text-gray-400 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  title="Voice Search"
+                >
+                  <i className={`ri-mic-${isListening ? 'fill' : 'line'} text-xl`}></i>
+                </button>
+              ) : null}
+
               <button
                 type="submit"
                 className="px-6 md:px-8 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl transition-all shadow-lg active:scale-95 text-sm"
@@ -298,6 +362,7 @@ function Marketplace() {
           )}
         </div>
       </div>
+      <Footer />
     </div >
   );
 }

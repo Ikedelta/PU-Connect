@@ -20,14 +20,12 @@ export default function AdSenseBanner({ slotId = "0000000000", className = "" }:
         }
     }, []);
 
-    return null; // Temporarily disabled to clear console errors
-    /*
     return (
         <div className={`w-full max-w-7xl mx-auto px-6 lg:px-12 my-8 ${className}`}>
             <div className="flex flex-col items-center">
                 <span className="text-[10px] text-gray-400 uppercase tracking-widest mb-2 font-medium opacity-50">Advertisement</span>
                 <div className="w-full bg-gray-50 dark:bg-gray-900/50 rounded-2xl overflow-hidden flex items-center justify-center min-h-[100px] border border-gray-100 dark:border-gray-800 border-dashed">
-                      <ins className="adsbygoogle"
+                    <ins className="adsbygoogle"
                         style={{ display: 'block', width: '100%' }}
                         data-ad-client="ca-pub-3971214695695889"
                         data-ad-slot={slotId}
@@ -37,5 +35,4 @@ export default function AdSenseBanner({ slotId = "0000000000", className = "" }:
             </div>
         </div>
     );
-    */
 }

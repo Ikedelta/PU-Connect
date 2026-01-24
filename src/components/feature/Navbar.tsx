@@ -156,7 +156,6 @@ export default function Navbar() {
           .eq('user_id', effectiveUserId)
           .maybeSingle();
 
-        // Only update if query was successful
         if (!appError) {
           setApplicationStatus(app?.status || null);
         }
@@ -167,7 +166,25 @@ export default function Navbar() {
 
     fetchData();
 
-    // Real-time subscription for application changes
+    // 1. Real-time subscription for messages (unread count)
+    const msgChannel = supabase
+      .channel(`navbar-messages-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'messages',
+          filter: `receiver_id=eq.${user.id}`,
+        },
+        () => {
+          // Re-fetch unread count when messages change for this user
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    // 2. Real-time subscription for application changes
     const appChannel = supabase
       .channel(`seller-app-${effectiveUserId}`)
       .on(
@@ -189,9 +206,8 @@ export default function Navbar() {
       )
       .subscribe();
 
-    const interval = setInterval(fetchData, 10000);
     return () => {
-      clearInterval(interval);
+      supabase.removeChannel(msgChannel);
       supabase.removeChannel(appChannel);
     };
   }, [user, profile?.role]);
@@ -259,90 +275,61 @@ export default function Navbar() {
           </Link>
 
           {/* Right Side Actions (Nav + Auth) */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3 md:gap-6">
+
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center space-x-6">
-              <Link
-                to="/"
-                className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors"
-              >
-                Home
-              </Link>
-              <Link
-                to="/marketplace"
-                className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors"
-              >
-                Marketplace
-              </Link>
-              <Link
-                to="/news"
-                className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors"
-              >
-                News
-              </Link>
-              <Link
-                to="/support"
-                className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors"
-              >
-                Help Center
-              </Link>
+              <Link to="/" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors">Home</Link>
+              <Link to="/marketplace" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors">Marketplace</Link>
+              <Link to="/news" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors">News</Link>
+              <Link to="/support" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors">Help Center</Link>
               <div className="w-px h-6 bg-gray-300 dark:bg-gray-800 mx-2"></div>
-              {/* Primary Action Button */}
+
+              {/* Primary Action Button (Desktop) */}
               {profile?.role === 'super_admin' || profile?.role === 'admin' ? (
-                <Link
-                  to="/admin"
-                  className="px-5 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-teal-500/20 hover:shadow-teal-500/40 active:scale-95 transition-all flex items-center gap-2"
-                >
-                  <i className="ri-dashboard-line text-lg"></i>
-                  Admin Dashboard
+                <Link to="/admin" className="px-5 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-teal-500/20 hover:shadow-teal-500/40 active:scale-95 transition-all flex items-center gap-2">
+                  <i className="ri-dashboard-line text-lg"></i> Admin Dashboard
                 </Link>
               ) : (applicationStatus && applicationStatus !== 'approved' && applicationStatus !== 'cancelled') ? (
-                <Link
-                  to="/seller/status"
-                  className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 active:scale-95 transition-all flex items-center gap-2"
-                >
-                  <i className="ri-file-list-3-line text-lg"></i>
-                  View Application Status
+                <Link to="/seller/status" className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 active:scale-95 transition-all flex items-center gap-2">
+                  <i className="ri-file-list-3-line text-lg"></i> View Application Status
                 </Link>
               ) : (profile?.role === 'seller' || profile?.role === 'publisher_seller') ? (
-                <Link
-                  to="/seller/dashboard"
-                  className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 active:scale-95 transition-all flex items-center gap-2"
-                >
-                  <i className="ri-dashboard-line text-lg"></i>
-                  Seller Dashboard
+                <Link to="/seller/dashboard" className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 active:scale-95 transition-all flex items-center gap-2">
+                  <i className="ri-dashboard-line text-lg"></i> Seller Dashboard
                 </Link>
               ) : (
-                <Link
-                  to="/seller/apply"
-                  className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 active:scale-95 transition-all flex items-center gap-2"
-                >
-                  <i className="ri-store-2-line text-lg"></i>
-                  Become a Seller
+                <Link to="/seller/apply" className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 active:scale-95 transition-all flex items-center gap-2">
+                  <i className="ri-store-2-line text-lg"></i> Become a Seller
                 </Link>
               )}
             </div>
 
-            {/* Auth/User Section */}
-            <div className={`flex items-center gap-4 relative z-10 transition-all duration-300 ${showMobileMenu
-              ? 'opacity-0 pointer-events-none translate-x-4 invisible'
-              : 'opacity-100 pl-6 border-l border-gray-300 dark:border-gray-800'
-              }`}>
-              {/* Dark Mode Toggle */}
+            {/* Auth/User Section - Visible on Desktop, Simplified on Mobile */}
+            <div className={`flex items-center gap-3 lg:gap-4 relative z-10 transition-all duration-300 ${showMobileMenu ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+
+              {/* Dark Mode Toggle - Always Visible */}
               <button
                 onClick={toggleTheme}
                 className="p-2 rounded-full text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 title="Toggle Theme"
               >
-                {theme === 'dark' ? (
-                  <i className="ri-sun-line text-xl"></i>
-                ) : (
-                  <i className="ri-moon-line text-xl"></i>
-                )}
+                {theme === 'dark' ? <i className="ri-sun-line text-xl"></i> : <i className="ri-moon-line text-xl"></i>}
               </button>
 
-              {user ? (
-                <div className="flex items-center gap-4">
+              {!user ? (
+                /* Logged Out State - Mobile Optimized */
+                <div className="flex items-center gap-2 sm:gap-4">
+                  <Link to="/login" className="text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors">
+                    Log In
+                  </Link>
+                  <Link to="/register" className="px-4 py-2 sm:px-5 sm:py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-bold rounded-lg shadow-lg transition-all shadow-blue-500/30">
+                    Sign Up
+                  </Link>
+                </div>
+              ) : (
+                /* Logged In State */
+                <div className="flex items-center gap-2 lg:gap-4 pl-0 lg:pl-6 lg:border-l border-gray-300 dark:border-gray-800">
                   <Link to="/messages" className="relative p-2 text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white transition-colors">
                     <i className="ri-chat-3-line text-xl"></i>
                     {unreadCount > 0 && (
@@ -350,103 +337,64 @@ export default function Navbar() {
                     )}
                   </Link>
 
-                  {/* Profile Dropdown */}
+                  {/* Desktop Profile Dropdown / Mobile Avatar Link */}
                   <div className="relative" ref={dropdownRef}>
-                    <button
-                      onClick={() => setShowDropdown(!showDropdown)}
-                      className="flex items-center gap-2"
-                    >
+                    <button onClick={() => setShowDropdown(!showDropdown)} className="hidden lg:flex items-center gap-2">
                       <div className="w-9 h-9 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                         {profile?.avatar_url ? (
-                          <img
-                            src={getOptimizedImageUrl(profile.avatar_url, 80, 80)}
-                            alt=""
-                            className="w-full h-full object-cover"
-                          />
+                          <img src={getOptimizedImageUrl(profile.avatar_url, 80, 80)} alt="" className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold relative overflow-hidden">
-                            <i className="ri-user-3-fill absolute text-3xl opacity-20 translate-y-1"></i>
                             <span className="relative z-10">{profile?.full_name?.charAt(0).toUpperCase() || 'U'}</span>
                           </div>
                         )}
                       </div>
                     </button>
+                    {/* Mobile: Just show the avatar, handled by menu logic usually but we can show it here too if we want, or keep it simple */}
+                  </div>
 
-                    {/* Dropdown Menu */}
-                    <div className={`absolute top-full right-0 mt-3 w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-900 rounded-2xl shadow-xl shadow-gray-200/20 dark:shadow-black/40 border border-gray-100 dark:border-gray-800 py-3 transition-all duration-200 origin-top-right z-[100] overflow-hidden ${showDropdown ? 'opacity-100 scale-100 visible' : 'opacity-0 scale-95 invisible'}`}>
-                      <div className="px-5 py-4 border-b border-gray-50 dark:border-gray-800/50 mb-2 bg-gray-50/50 dark:bg-gray-800/30">
-                        <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{profile?.full_name}</p>
-                        <p className="text-xs text-gray-500 truncate font-medium">{profile?.email}</p>
-                      </div>
-
-                      <div className="px-2">
-                        {[
-                          { label: 'My Profile', path: '/profile', icon: 'ri-user-smile-line' },
-                          ...(profile?.role === 'publisher_seller' ? [
-                            { label: 'Seller Dashboard', path: '/seller/dashboard', icon: 'ri-store-3-line' },
-                            { label: 'Publisher Dashboard', path: '/publisher', icon: 'ri-article-line' }
-                          ] : dashboardItem ? [{ ...dashboardItem }] : []),
-                          { label: 'Help Center', path: '/support', icon: 'ri-question-line' }
-                        ].map((item) => (
-                          <Link
-                            key={item.label}
-                            to={item.path}
-                            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
-                            onClick={() => setShowDropdown(false)}
-                          >
-                            <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                              <i className={`${item.icon} text-lg`}></i>
-                            </div>
-                            {item.label}
-                          </Link>
-                        ))}
-                      </div>
-
-                      <div className="border-t border-gray-50 dark:border-gray-800/50 mt-2 pt-2 px-2">
-                        <button
-                          onClick={() => {
-                            setShowDropdown(false);
-                            handleSignOut();
-                          }}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-left group"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-500 group-hover:text-red-600 transition-colors">
-                            <i className="ri-logout-box-line text-lg"></i>
+                  {/* Dropdown Menu (Desktop Only in this layout structure mainly) */}
+                  <div className={`hidden lg:block absolute top-full right-0 mt-3 w-72 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 py-3 transition-all duration-200 origin-top-right z-[100] overflow-hidden ${showDropdown ? 'opacity-100 scale-100 visible' : 'opacity-0 scale-95 invisible'}`}>
+                    <div className="px-5 py-4 border-b border-gray-50 dark:border-gray-800/50 mb-2 bg-gray-50/50 dark:bg-gray-800/30">
+                      <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{profile?.full_name}</p>
+                      <p className="text-xs text-gray-500 truncate font-medium">{profile?.email}</p>
+                    </div>
+                    <div className="px-2">
+                      {[
+                        { label: 'My Profile', path: '/profile', icon: 'ri-user-smile-line' },
+                        ...(profile?.role === 'publisher_seller' ? [
+                          { label: 'Seller Dashboard', path: '/seller/dashboard', icon: 'ri-store-3-line' },
+                          { label: 'Publisher Dashboard', path: '/publisher', icon: 'ri-article-line' }
+                        ] : dashboardItem ? [{ ...dashboardItem }] : []),
+                        { label: 'Help Center', path: '/support', icon: 'ri-question-line' }
+                      ].map((item) => (
+                        <Link key={item.label} to={item.path} onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group">
+                          <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                            <i className={`${item.icon} text-lg`}></i>
                           </div>
-                          Sign Out
-                        </button>
-                      </div>
+                          {item.label}
+                        </Link>
+                      ))}
+                    </div>
+                    <div className="border-t border-gray-50 dark:border-gray-800/50 mt-2 pt-2 px-2">
+                      <button onClick={() => { setShowDropdown(false); handleSignOut(); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-left group">
+                        <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-500 group-hover:text-red-600 transition-colors"><i className="ri-logout-box-line text-lg"></i></div> Sign Out
+                      </button>
                     </div>
                   </div>
                 </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <Link
-                    to="/login"
-                    className="text-sm font-bold text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors"
-                  >
-                    Log In
-                  </Link>
-                  <Link
-                    to="/register"
-                    className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-bold rounded-lg shadow-lg transition-all"
-                  >
-                    Sign Up
-                  </Link>
-                </div>
               )}
-
             </div>
 
-            {/* Mobile Toggle */}
+            {/* Mobile Toggle - Classic Card Style */}
             <button
               onClick={() => setShowMobileMenu(!showMobileMenu)}
-              className={`lg:hidden p-3 rounded-xl transition-all duration-300 relative z-[70] shadow-lg border ${showMobileMenu
-                ? 'text-rose-500 bg-rose-50 border-rose-100 hover:bg-rose-100 dark:text-rose-400 dark:bg-rose-900/20 dark:border-rose-900/50'
-                : 'text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+              className={`lg:hidden w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-xl transition-all duration-300 relative z-[70] shadow-sm border ${showMobileMenu
+                ? 'text-rose-500 bg-rose-50 border-rose-100'
+                : 'text-gray-700 dark:text-white bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
                 }`}
             >
-              <i className={`ri-${showMobileMenu ? 'close' : 'menu-4'}-line text-2xl font-bold`}></i>
+              <i className={`ri-${showMobileMenu ? 'close' : 'menu-4'}-line text-xl sm:text-2xl font-bold`}></i>
             </button>
           </div>
         </div>
@@ -605,27 +553,30 @@ export default function Navbar() {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-4">
-                <Link
-                  to="/login"
-                  onClick={() => setShowMobileMenu(false)}
-                  className="py-5 bg-gray-100 dark:bg-white/5 text-gray-900 dark:text-white border border-gray-200 dark:border-white/10 font-bold rounded-2xl uppercase tracking-wide text-xs flex items-center justify-center hover:bg-gray-200 dark:hover:bg-white/10 transition-all"
-                >
-                  Sign In
-                </Link>
+              <div className="flex flex-col gap-4 mt-4">
                 <Link
                   to="/register"
                   onClick={() => setShowMobileMenu(false)}
-                  className="py-5 bg-gradient-to-r from-blue-600 to-indigo-600 dark:bg-blue-600 text-white font-bold rounded-2xl uppercase tracking-wide text-xs flex items-center justify-center shadow-lg active:scale-95 transition-all"
+                  className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-2xl uppercase tracking-widest text-xs flex items-center justify-center shadow-xl shadow-blue-500/30 active:scale-95 transition-all"
                 >
-                  Join Now
+                  Join Community
                 </Link>
+                <div className="text-center">
+                  <span className="text-gray-400 text-xs font-medium">Already have an account?</span>
+                  <Link
+                    to="/login"
+                    onClick={() => setShowMobileMenu(false)}
+                    className="ml-2 text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-wide hover:underline"
+                  >
+                    Sign In
+                  </Link>
+                </div>
               </div>
             )}
 
             <div className="mt-8 text-center">
               <p className="text-[9px] font-bold text-gray-400 dark:text-gray-700 uppercase tracking-widest">
-                Campus Konnect • Student Portal
+                Campus Konnect
               </p>
             </div>
           </div>

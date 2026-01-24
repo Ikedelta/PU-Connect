@@ -195,7 +195,9 @@ export default function SubscriptionManagement() {
           const name = (fullName || 'Seller').split(' ')[0];
           await sendSMS(
             [phoneNumber],
-            `Hi ${name}, your Campus Marketplace subscription has been ACTIVATED! Start selling now.`
+            `Hi ${name}, your Campus Marketplace subscription has been ACTIVATED! Start selling now.`,
+            'subscription',
+            { name, status: 'ACTIVATED' }
           );
         }
       } catch (smsError) {
@@ -261,7 +263,9 @@ export default function SubscriptionManagement() {
             const name = (fullName || 'Seller').split(' ')[0];
             await sendSMS(
               [phoneNumber],
-              `Hi ${name}, your Campus Marketplace subscription has been ACTIVATED! Start selling now.`
+              `Hi ${name}, your Campus Marketplace subscription has been ACTIVATED! Start selling now.`,
+              'subscription',
+              { name, status: 'ACTIVATED' }
             );
           }
         } catch (smsError) {
@@ -321,7 +325,9 @@ export default function SubscriptionManagement() {
             const name = (fullName || 'Seller').split(' ')[0];
             await sendSMS(
               [phoneNumber],
-              `Hi ${name}, your Campus Marketplace subscription has been SUSPENDED. Your products are now hidden. Please contact support.`
+              `Hi ${name}, your Campus Marketplace subscription has been SUSPENDED. Your products are now hidden. Please contact support.`,
+              'subscription',
+              { name, status: 'SUSPENDED' }
             );
           }
         } catch (smsError) {
@@ -376,7 +382,9 @@ export default function SubscriptionManagement() {
           const name = (fullName || 'Seller').split(' ')[0];
           await sendSMS(
             [phoneNumber],
-            `Hi ${name}, your Campus Marketplace subscription has been SUSPENDED. Your products are now hidden. Please contact support.`
+            `Hi ${name}, your Campus Marketplace subscription has been SUSPENDED. Your products are now hidden. Please contact support.`,
+            'subscription',
+            { name, status: 'SUSPENDED' }
           );
         }
       } catch (smsError) {

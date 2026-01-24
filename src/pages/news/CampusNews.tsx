@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/feature/Navbar';
+import Footer from '../../components/layout/Footer';
 import { getOptimizedImageUrl } from '../../lib/imageOptimization';
 import { useNews } from '../../hooks/useNews';
 import { useSiteContent, CONTENT_KEYS } from '../../hooks/useSiteContent';
@@ -36,7 +37,7 @@ export default function CampusNews() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-gray-950 transition-colors duration-300 bg-african-pattern">
       <Navbar />
 
       <section className="relative py-24 md:py-32 overflow-hidden bg-blue-50 dark:bg-gray-950">
@@ -196,6 +197,7 @@ export default function CampusNews() {
           </div>
         )}
       </div>
+      <Footer />
     </div>
   );
 }

@@ -257,14 +257,6 @@ const routes: RouteObject[] = [
     ),
   },
   {
-    path: '/admin/seller-applications',
-    element: (
-      <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
-        <SellerApplications />
-      </ProtectedRoute>
-    ),
-  },
-  {
     path: '/admin/support',
     element: (
       <ProtectedRoute allowedRoles={['admin', 'super_admin']}>

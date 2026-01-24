@@ -185,7 +185,7 @@ export default function SellerApplication() {
             if (adminPhones.length > 0) {
               const { sendSMS } = await import('../../lib/arkesel');
               const uniquePhones = [...new Set(adminPhones)];
-              await sendSMS(uniquePhones, `New Seller Application: ${formData.businessName} has applied to become a seller. Please check the Admin Portal for review.`);
+              await sendSMS(uniquePhones, `New Seller Application: ${formData.businessName} has applied to become a seller. Please check the Admin Portal for review.`, 'seller_reg', { business_name: formData.businessName });
             }
           }
         } catch (notifyError) {
@@ -275,63 +275,15 @@ export default function SellerApplication() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16">
-          {/* Information Section - Sticky on Desktop */}
-          <div className="lg:col-span-4 space-y-8 lg:sticky lg:top-32 lg:h-fit">
-            <div className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 p-10 rounded-[2.5rem] shadow-2xl shadow-indigo-500/20 dark:shadow-none transition-all relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 rounded-bl-full translate-x-10 -translate-y-10 group-hover:scale-110 transition-transform duration-700"></div>
-              <h3 className="text-2xl font-black mb-10 tracking-tight flex items-center gap-4 relative z-10">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400">
-                  <i className="ri-flashlight-line"></i>
-                </div>
-                Membership
-              </h3>
-              <ul className="space-y-8 relative z-10">
-                {[
-                  { label: 'Merchant Fee', value: 'GH₵ 50 / Mo', desc: 'Full infrastructure access & listing rights', icon: 'ri-money-dollar-circle-line' },
-                  { label: 'Settlement', value: 'Immediate', desc: 'Direct transactions with buyers', icon: 'ri-safe-line' },
-                  { label: 'Growth Plan', value: 'Premium', desc: 'Advanced analytics & featured boosting', icon: 'ri-line-chart-line' },
-                  { label: 'Priority Support', value: '24/7 Access', desc: 'Direct line to community managers', icon: 'ri-customer-service-2-line' }
-                ].map((item, i) => (
-                  <li key={i} className="flex gap-5 group">
-                    <div className="mt-1 w-5 h-5 flex-shrink-0 text-blue-400 group-hover:scale-110 transition-transform">
-                      <i className={`${item.icon} text-lg`}></i>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">{item.label}</p>
-                      <p className="text-xl font-black tracking-tight mb-1 group-hover:text-blue-500 transition-colors">{item.value}</p>
-                      <p className="text-[11px] text-slate-400 font-bold leading-relaxed">{item.desc}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm relative group overflow-hidden">
-              <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-blue-500/5 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
-                  <i className="ri-shield-user-fill text-2xl"></i>
-                </div>
-                <div>
-                  <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest">Secure Program</p>
-                  <p className="text-[10px] font-bold text-slate-500">End-to-end encryption</p>
-                </div>
-              </div>
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 leading-relaxed">
-                Your credentials are encrypted and strictly used for platform validation. We prioritize your privacy and business integrity.
-              </p>
-            </div>
-          </div>
-
-          {/* Form Section */}
-          <div className="lg:col-span-8">
+        <div className="max-w-4xl mx-auto">
+          {/* Form Section - Centered */}
+          <div>
             <div className="bg-white dark:bg-slate-900 rounded-[3rem] shadow-2xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 p-6 sm:p-10 md:p-16 transition-all duration-500">
               <form onSubmit={handleSubmit} className="space-y-12">
-                {/* Visual Header for Mobile */}
-                <div className="md:hidden text-center mb-8 border-b border-slate-50 dark:border-slate-800 pb-8">
+                {/* Visual Header */}
+                <div className="text-center mb-8 border-b border-slate-50 dark:border-slate-800 pb-8">
                   <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-2">Merchant Registration</h2>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Complete current profile</p>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Complete your business profile</p>
                 </div>
 
                 <div className="space-y-6">

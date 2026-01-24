@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import Navbar from '../../components/feature/Navbar';
+import Footer from '../../components/layout/Footer';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import ImageUploader from '../../components/base/ImageUploader';
 import { getOptimizedImageUrl } from '../../lib/imageOptimization';
@@ -589,6 +590,7 @@ export default function UserProfile() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

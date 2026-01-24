@@ -332,6 +332,12 @@ export default function UserManagement() {
         if (roleError) console.error('Failed to update role:', roleError);
       }
 
+      // Send welcome SMS
+      if (newData.phone) {
+        const { sendSMS } = await import('../../lib/arkesel');
+        sendSMS([newData.phone], `Welcome to Campus Konnect, ${newData.fullName}! Your account has been successfully created. Browse the marketplace and connect with fellow students.`, 'welcome');
+      }
+
       setShowAddModal(false);
       setNewData({
         email: '',
@@ -396,7 +402,7 @@ export default function UserManagement() {
       setUsers(users.map(u => u.id === selectedUser.id ? {
         ...u,
         full_name: editData.full_name,
-        role: editData.role,
+        role: editData.role as any,
         department: editData.department,
         faculty: editData.faculty,
         student_id: editData.student_id,
@@ -421,7 +427,7 @@ export default function UserManagement() {
           const firstName = (selectedUser.full_name || 'User').split(' ')[0];
           const smsMessage = `Hi ${firstName}, your role on Campus Connect has been updated to "${editData.role.replace('_', ' ')}".`;
 
-          await sendSMS([editData.phone], smsMessage);
+          await sendSMS([editData.phone], smsMessage, 'role_update', { name: firstName, role: editData.role.replace('_', ' ') });
           setShowSuccessToast(true);
         } catch (smsErr: any) {
           console.error('Failed to send role update SMS:', smsErr);
@@ -941,7 +947,7 @@ export default function UserManagement() {
                   {['buyer', 'seller', 'news_publisher', 'publisher_seller', 'admin'].map(role => (
                     <div
                       key={role}
-                      onClick={() => setEditData({ ...editData, role })}
+                      onClick={() => setEditData({ ...editData, role: role as any })} // Explicitly cast role
                       className={`cursor-pointer px-4 py-3 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-2 text-center ${editData.role === role
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                         : 'border-slate-100 dark:border-slate-800 hover:border-slate-300'
