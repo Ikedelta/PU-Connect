@@ -1,7 +1,7 @@
 import { lazy } from 'react';
 import type { RouteObject } from 'react-router-dom';
-import SellerApplication from '../pages/seller/SellerApplication';
-import UserProfile from '../pages/profile/UserProfile';
+const SellerApplication = lazy(() => import('../pages/seller/SellerApplication'));
+const UserProfile = lazy(() => import('../pages/profile/UserProfile'));
 import ProtectedRoute from './ProtectedRoute';
 
 const Home = lazy(() => import('../pages/home/page'));

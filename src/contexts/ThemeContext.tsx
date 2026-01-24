@@ -11,10 +11,11 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const [theme, setTheme] = useState<Theme>(() => {
-        // Check local storage first, default to light mode for marketplace feel
-        const saved = localStorage.getItem('theme');
-        if (saved === 'dark' || saved === 'light') return saved;
-        return 'light'; // Default to light mode for better marketplace aesthetics
+        // Check local storage first, default to light mode
+        // Changed key to 'campus_theme' to reset legacy preferences
+        const saved = localStorage.getItem('campus_theme');
+        if (saved === 'dark' || saved === 'light') return saved as Theme;
+        return 'light'; // Explicitly default to light
     });
 
     useEffect(() => {
@@ -24,7 +25,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         } else {
             root.classList.remove('dark');
         }
-        localStorage.setItem('theme', theme);
+        localStorage.setItem('campus_theme', theme);
     }, [theme]);
 
     const toggleTheme = () => {
